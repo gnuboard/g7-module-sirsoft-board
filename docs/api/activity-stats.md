@@ -27,6 +27,15 @@
 
 _요청 파라미터 없음._
 
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/me/activity-stats HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
 _단건 응답: `data` 객체의 필드._
@@ -36,6 +45,24 @@ _단건 응답: `data` 객체의 필드._
 | total_posts | integer | `1` | 회원 본인이 작성한 게시글 총수입니다. 비활성 게시판의 글은 제외하며 소프트 삭제된 글도 집계에서 빠집니다. |
 | total_comments | integer | `0` | 회원 본인이 작성한 게시글들의 댓글 수 합계(SUM of comments_count)입니다. 비활성 게시판 글은 제외됩니다. |
 | total_views | integer | `42` | 회원 본인이 작성한 게시글들의 누적 조회수 합계(SUM of view_count)입니다. 비활성 게시판 글은 제외됩니다. |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "활동 통계를 조회했습니다.",
+    "data": {
+        "total_posts": 1,
+        "total_comments": 0,
+        "total_views": 44
+    }
+}
+```
 
 **에러 응답**
 

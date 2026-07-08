@@ -27,6 +27,15 @@
 
 _요청 파라미터 없음._
 
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/me/my-comments HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
 _목록 응답: `data.data[]` 배열 항목의 필드._
@@ -41,6 +50,69 @@ _목록 응답: `data.data[]` 배열 항목의 필드._
 | content | string | `API 문서 샘플 댓글입니다.` | 본문 내용 |
 | created_at | string | `2026-07-07 09:34:50` | 생성 일시 |
 | created_at_formatted | string | `4시간 전` | `created_at` 값의 표시용 포맷 문자열 (통화/용량/일시 등 로케일·단위 포맷) |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "내 활동 게시글을 조회했습니다.",
+    "data": {
+        "current_page": 1,
+        "data": [
+            {
+                "id": 1,
+                "board_slug": "apidoc-sample-board",
+                "board_name": "API 문서 샘플 게시판",
+                "post_title": "API 문서 샘플 게시글",
+                "post_id_val": 1,
+                "content": "API 문서 샘플 댓글입니다.",
+                "created_at": "2026-07-08 10:41:34",
+                "created_at_formatted": "4시간 전"
+            }
+        ],
+        "first_page_url": "https://api.example.com/api/modules/sirsoft-board/me/my-comments?page=1",
+        "from": 1,
+        "last_page": 1,
+        "last_page_url": "https://api.example.com/api/modules/sirsoft-board/me/my-comments?page=1",
+        "links": [
+            {
+                "url": null,
+                "label": "pagination.previous",
+                "page": null,
+                "active": false
+            },
+            {
+                "url": "https://api.example.com/api/modules/sirsoft-board/me/my-comments?page=1",
+                "label": "1",
+                "page": 1,
+                "active": true
+            },
+            {
+                "url": null,
+                "label": "pagination.next",
+                "page": null,
+                "active": false
+            }
+        ],
+        "next_page_url": null,
+        "path": "https://api.example.com/api/modules/sirsoft-board/me/my-comments",
+        "per_page": 25,
+        "prev_page_url": null,
+        "to": 1,
+        "total": 1,
+        "query": {
+            "board_slug": "",
+            "search": "",
+            "sort": "latest"
+        }
+    }
+}
+```
 
 **에러 응답**
 

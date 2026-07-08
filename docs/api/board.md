@@ -35,9 +35,42 @@
 
 > 이 엔드포인트는 확장이 파라미터를 추가할 수 있습니다 (`sirsoft-board.attachment.upload_validation_rules`).
 
+**요청 예시**
+
+```http
+POST /api/modules/sirsoft-board/admin/board/apidoc-sample-board/attachments HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+Content-Type: multipart/form-data; boundary=----G7ExampleBoundary
+
+------G7ExampleBoundary
+Content-Disposition: form-data; name="file"; filename="example.pdf"
+Content-Type: application/octet-stream
+
+(바이너리 파일 내용)
+------G7ExampleBoundary
+Content-Disposition: form-data; name="post_id"
+
+1
+------G7ExampleBoundary
+Content-Disposition: form-data; name="collection"
+
+예시값
+------G7ExampleBoundary
+Content-Disposition: form-data; name="temp_key"
+
+예시값
+------G7ExampleBoundary--
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -66,9 +99,22 @@
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
 | hash | path | string | 예 | — | 대상 리소스의 해시 식별자 |
 
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/admin/board/apidoc-sample-board/attachments/download/apidocsmpl1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: http-404 — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-404 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -98,9 +144,29 @@
 
 > 이 엔드포인트는 확장이 파라미터를 추가할 수 있습니다 (`sirsoft-board.attachment.reorder_validation_rules`).
 
+**요청 예시**
+
+```http
+PATCH /api/modules/sirsoft-board/admin/board/apidoc-sample-board/attachments/reorder HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+Content-Type: application/json
+
+{
+    "order": [
+        "예시값"
+    ]
+}
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -129,9 +195,34 @@
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
 | id | path | string | 예 | — | 대상 리소스의 식별자 |
 
+**요청 예시**
+
+```http
+DELETE /api/modules/sirsoft-board/admin/board/apidoc-sample-board/attachments/1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+
+<!-- 실측 응답에 필드 없음(빈 목록 등) — 데이터가 있는 상태로 재실측하거나 사람이 작성. -->
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "파일이 삭제되었습니다.",
+    "data": null
+}
+```
 
 **에러 응답**
 
@@ -157,6 +248,15 @@
 | 이름 | 위치 | 타입 | 필수 | 허용값 | 용도 |
 | --- | --- | --- | --- | --- | --- |
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
+
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/admin/board/apidoc-sample-board/posts HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
 
 **응답 필드** (`data` 내부)
 
@@ -194,6 +294,101 @@ _목록 응답: `data.data[]` 배열 항목의 필드 + `data.pagination`._
 | number | integer | `1` | 목록에서의 순번 (페이지네이션 반영 행 번호 — HasRowNumber 파생) |
 | show_category | boolean | `false` | 목록에 카테고리 열을 노출할지 여부. 게시판 설정(`show_category`)에서 파생되어 각 행에 부여됩니다. |
 
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "게시글 목록을 조회했습니다.",
+    "data": {
+        "data": [
+            {
+                "id": 1,
+                "category": null,
+                "author": {
+                    "uuid": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+                    "name": "API 문서 샘플 사용자",
+                    "email": "apidoc-sample-user@example.com",
+                    "avatar": null,
+                    "status": "active",
+                    "status_label": "활성",
+                    "is_guest": false
+                },
+                "is_notice": false,
+                "is_secret": "{MASKED}",
+                "content_mode": "html",
+                "is_new": true,
+                "status": "published",
+                "status_label": "게시됨",
+                "view_count": 43,
+                "comment_count": 0,
+                "reply_count": 0,
+                "attachment_count": 0,
+                "has_attachment": false,
+                "thumbnail": "/api/modules/sirsoft-board/boards/apidoc-sample-board/attachment/apidocsmpl1/preview",
+                "parent_id": null,
+                "depth": 0,
+                "is_reply": false,
+                "created_at": "2026-07-08 10:41:34",
+                "created_at_formatted": "4시간 전",
+                "is_author": true,
+                "is_guest_post": false,
+                "slug": "apidoc-sample-board",
+                "title": "API 문서 샘플 게시글",
+                "deleted_at": null,
+                "content_preview": "API 레퍼런스 실측용 완전 샘플 게시글 본문입니다.",
+                "row_type": "normal",
+                "number": 1,
+                "show_category": false
+            }
+        ],
+        "pagination": {
+            "total": 1,
+            "all_total": 1,
+            "count": 1,
+            "per_page": 25,
+            "current_page": 1,
+            "last_page": 1,
+            "from": 1,
+            "to": 1,
+            "has_more_pages": false
+        },
+        "board": {
+            "slug": "apidoc-sample-board",
+            "name": "API 문서 샘플 게시판",
+            "type": "basic",
+            "categories": [],
+            "show_category": false,
+            "settings": {
+                "use_file_upload": true,
+                "use_comment": true,
+                "use_reply": true,
+                "use_report": true,
+                "secret_mode": "{MASKED}",
+                "per_page": 20,
+                "per_page_mobile": 15,
+                "order_by": "created_at",
+                "order_direction": "DESC"
+            }
+        },
+        "abilities": {
+            "can_read": true,
+            "can_write": true,
+            "can_read_secret": "{MASKED}",
+            "can_read_comments": true,
+            "can_write_comments": true,
+            "can_upload": true,
+            "can_download": true,
+            "can_manage": true
+        }
+    }
+}
+```
+
 **에러 응답**
 
 | 상태코드 | 의미 | 발생 조건 |
@@ -221,9 +416,22 @@ _목록 응답: `data.data[]` 배열 항목의 필드 + `data.pagination`._
 
 > 이 엔드포인트는 확장이 파라미터를 추가할 수 있습니다 (`sirsoft-board.post.store_validation_rules`).
 
+**요청 예시**
+
+```http
+POST /api/modules/sirsoft-board/admin/board/apidoc-sample-board/posts HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -251,6 +459,15 @@ _목록 응답: `data.data[]` 배열 항목의 필드 + `data.pagination`._
 | --- | --- | --- | --- | --- | --- |
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
 
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/admin/board/apidoc-sample-board/posts/form-data HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
 _단건 응답: `data` 객체의 필드._
@@ -264,6 +481,28 @@ _단건 응답: `data` 객체의 필드._
 | is_notice | boolean | `false` | notice 여부 |
 | is_secret | boolean | `false` | secret 여부 |
 | parent_id | null | `null` | parent 식별자 (연관 리소스 참조) |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "게시글 폼 데이터를 조회했습니다.",
+    "data": {
+        "title": "",
+        "content": "",
+        "content_mode": "text",
+        "category": null,
+        "is_notice": false,
+        "is_secret": "{MASKED}",
+        "parent_id": null
+    }
+}
+```
 
 **에러 응답**
 
@@ -290,6 +529,15 @@ _단건 응답: `data` 객체의 필드._
 | --- | --- | --- | --- | --- | --- |
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
 
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/admin/board/apidoc-sample-board/posts/form-meta HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
 _단건 응답: `data` 객체의 필드._
@@ -297,6 +545,88 @@ _단건 응답: `data` 객체의 필드._
 | 필드 | 타입 | 실측 예시값 | 용도/설명 |
 | --- | --- | --- | --- |
 | board | object | `{"id":12,"name":"API 문서 샘플 게시판","slug":"apidoc-sample-boa…` | 폼 화면 표시에 필요한 게시판 정보 객체(이름·슬러그·댓글/답글/비밀글 설정 등). 사용자 권한(abilities)과 함께 항상 포함됩니다. |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "게시글 폼 메타 데이터를 조회했습니다.",
+    "data": {
+        "board": {
+            "id": 1,
+            "name": "API 문서 샘플 게시판",
+            "slug": "apidoc-sample-board",
+            "is_active": true,
+            "type": "basic",
+            "description": "",
+            "per_page": 20,
+            "per_page_mobile": 15,
+            "order_by": "created_at",
+            "order_direction": "DESC",
+            "categories": [],
+            "show_view_count": true,
+            "secret_mode": "{MASKED}",
+            "use_comment": true,
+            "use_reply": true,
+            "max_reply_depth": 5,
+            "use_report": true,
+            "comment_order": "ASC",
+            "max_comment_depth": 10,
+            "min_title_length": 2,
+            "max_title_length": 200,
+            "min_content_length": 10,
+            "max_content_length": 10000,
+            "min_comment_length": 2,
+            "max_comment_length": 1000,
+            "blocked_keywords": [],
+            "use_file_upload": true,
+            "max_file_size": 10,
+            "max_file_count": 5,
+            "allowed_extensions": [
+                "jpg",
+                "jpeg",
+                "png",
+                "gif",
+                "pdf",
+                "zip"
+            ],
+            "add_to_menu": null,
+            "new_display_hours": 24,
+            "board_managers": [],
+            "board_steps": [],
+            "board_manager_ids": [],
+            "board_step_ids": [],
+            "notify_author": true,
+            "notify_admin_on_post": true,
+            "created_at": "2026-07-08 10:41:34",
+            "updated_at": "2026-07-08 10:41:34",
+            "permissions": null,
+            "category_post_counts": null,
+            "posts_count": 0,
+            "user_abilities": {
+                "can_read": true,
+                "can_write": true,
+                "can_read_secret": "{MASKED}",
+                "can_read_comments": true,
+                "can_write_comments": true,
+                "can_upload": true,
+                "can_download": true,
+                "can_manage": true
+            },
+            "abilities": {
+                "can_create": true,
+                "can_update": true,
+                "can_delete": true
+            }
+        }
+    }
+}
+```
 
 **에러 응답**
 
@@ -324,9 +654,138 @@ _단건 응답: `data` 객체의 필드._
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
 | id | path | string | 예 | — | 대상 리소스의 식별자 |
 
+**요청 예시**
+
+```http
+DELETE /api/modules/sirsoft-board/admin/board/apidoc-sample-board/posts/1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+_단건 응답: `data` 객체의 필드._
+
+| 필드 | 타입 | 실측 예시값 | 용도/설명 |
+| --- | --- | --- | --- |
+| id | integer | `1` | 기본 키 (내부 식별자) |
+| category | null | `null` | 게시글 분류(카테고리) 문자열. 게시판이 카테고리를 쓰지 않거나 미지정 시 null (최대 50자). |
+| author | object | `{"uuid":"a234c2b1-cde8-437f-b28b-23323be2b98d","name":"AP…` | 작성자 사용자 객체 (uuid/name — author 관계 파생) |
+| is_notice | boolean | `false` | notice 여부 |
+| is_secret | boolean | `false` | secret 여부 |
+| content_mode | string | `html` | 본문 편집 모드. `html`(위지윅/HTML) 또는 `text`(평문)이며, 요약·썸네일 추출과 렌더링 방식을 결정합니다. 미지정 시 `text`. |
+| is_new | boolean | `true` | new 여부 |
+| status | string | `deleted` | 상태 값 (도메인별 상태 집합 — 사람이 읽는 라벨은 status_label, UI 변형은 status_variant 참조) |
+| status_label | string | `삭제됨` | 상태의 사람이 읽는 라벨 (상태 Enum label() 산물) |
+| view_count | integer | `43` | view 개수 (집계) |
+| comment_count | integer | `0` | comment 개수 (집계) |
+| reply_count | integer | `0` | reply 개수 (집계) |
+| attachment_count | integer | `0` | attachment 개수 (집계) |
+| has_attachment | boolean | `false` | attachment 여부 |
+| thumbnail | null | `null` | 썸네일 이미지 URL/경로 |
+| parent_id | null | `null` | parent 식별자 (연관 리소스 참조) |
+| depth | integer | `0` | 계층 트리에서의 깊이 (0 = 최상위, 하위로 갈수록 증가) |
+| is_reply | boolean | `false` | reply 여부 |
+| created_at | string | `2026-07-08 10:41:34` | 생성 일시 |
+| created_at_formatted | string | `4시간 전` | `created_at` 값의 표시용 포맷 문자열 (통화/용량/일시 등 로케일·단위 포맷) |
+| is_author | boolean | `true` | author 여부 |
+| is_guest_post | boolean | `false` | guest post 여부 |
+| title | string | `API 문서 샘플 게시글` | 제목 |
+| content | string | `<p>API 레퍼런스 실측용 완전 샘플 게시글 본문입니다.</p>` | 본문 내용 |
+| user_id | string | `a234c2b1-cde8-437f-b28b-23323be2b98d` | user 식별자 (연관 리소스 참조) |
+| trigger_type | string | `admin` | 동작을 유발한 방식/주체 구분 값 |
+| updated_at | string | `2026-07-08 15:01:43` | 최종 수정 일시 |
+| deleted_at | string | `2026-07-08 15:01:43` | 소프트 삭제 일시 (미삭제 시 null) |
+| ip_address | string | `127.0.0.1` | 요청/행위가 발생한 IP 주소 |
+| action_logs | array | `[{"action":"delete","reason":null,"admin_name":"API 문서 샘플…` | 블라인드/복원/삭제 등 처리 이력 목록(항목별 action·reason·admin_name·created_at). `admin.manage` 권한 보유자에게만 노출되며, 민감 필드(admin_id·ip_address)는 제외됩니다. 비권한자에게는 null. |
+| board | null | `null` | 소속 게시판 정보 객체(슬러그·이름·유형·댓글/답글/신고 사용 여부·조회수 표시·최대 답글/댓글 깊이·신고 사유 목록). board 관계가 로드된 경우에만 채워지며, 아니면 null. |
+| navigation | null | `null` | 이전/다음 게시글 이동 정보(`prev`·`next`). 상세 로드 시 계산되며, 쓰기 응답처럼 인접 게시글을 계산하지 않은 경우 null. |
+| parent | null | `null` | 상위 항목 객체 (parent 관계 파생) |
+| comments | null | `null` | 게시글에 달린 댓글 목록(CommentResource 컬렉션). comments 관계가 로드된 경우에만 채워지며, 아니면 null. |
+| attachments | null | `null` | 게시글 첨부파일 목록(AttachmentResource 컬렉션). attachments 관계가 로드된 경우에만 채워지며, 아니면 null(비밀글·삭제글은 권한에 따라 빈 배열 또는 연쇄 삭제분만 노출). |
+| replies | null | `null` | 이 게시글에 달린 답변글 목록(PostResource 컬렉션, 재귀). replies 관계가 로드된 경우에만 채워지며, 아니면 null. |
+| is_already_reported | boolean | `false` | already reported 여부 |
+| is_owner | boolean | `true` | 현재 인증 사용자가 이 리소스의 소유자인지 여부 (BaseApiResource 표준 메타) |
+| abilities | object | `{"can_read":true,"can_write":true,"can_read_secret":true,…` | 현재 사용자가 이 리소스에 수행 가능한 작업 불리언 맵 (can_update, can_delete 등 — 권한 맵 기반) |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "게시글이 삭제되었습니다.",
+    "data": {
+        "id": 1,
+        "category": null,
+        "author": {
+            "uuid": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+            "name": "API 문서 샘플 사용자",
+            "email": "apidoc-sample-user@example.com",
+            "avatar": null,
+            "status": "active",
+            "status_label": "활성",
+            "is_guest": false
+        },
+        "is_notice": false,
+        "is_secret": "{MASKED}",
+        "content_mode": "html",
+        "is_new": true,
+        "status": "deleted",
+        "status_label": "삭제됨",
+        "view_count": 43,
+        "comment_count": 0,
+        "reply_count": 0,
+        "attachment_count": 0,
+        "has_attachment": false,
+        "thumbnail": null,
+        "parent_id": null,
+        "depth": 0,
+        "is_reply": false,
+        "created_at": "2026-07-08 10:41:34",
+        "created_at_formatted": "4시간 전",
+        "is_author": true,
+        "is_guest_post": false,
+        "title": "API 문서 샘플 게시글",
+        "content": "<p>API 레퍼런스 실측용 완전 샘플 게시글 본문입니다.</p>",
+        "user_id": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+        "trigger_type": "admin",
+        "updated_at": "2026-07-08 15:01:43",
+        "deleted_at": "2026-07-08 15:01:43",
+        "ip_address": "127.0.0.1",
+        "action_logs": [
+            {
+                "action": "delete",
+                "reason": null,
+                "admin_name": "API 문서 샘플 사용자",
+                "created_at": "2026-07-08 06:01:43"
+            }
+        ],
+        "board": null,
+        "navigation": null,
+        "parent": null,
+        "comments": null,
+        "attachments": null,
+        "replies": null,
+        "is_already_reported": false,
+        "is_owner": true,
+        "abilities": {
+            "can_read": true,
+            "can_write": true,
+            "can_read_secret": "{MASKED}",
+            "can_read_comments": true,
+            "can_write_comments": true,
+            "can_upload": true,
+            "can_download": true,
+            "can_manage": true
+        }
+    }
+}
+```
 
 **에러 응답**
 
@@ -353,6 +812,15 @@ _단건 응답: `data` 객체의 필드._
 | --- | --- | --- | --- | --- | --- |
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
 | id | path | string | 예 | — | 대상 리소스의 식별자 |
+
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/admin/board/apidoc-sample-board/posts/1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
 
 **응답 필드** (`data` 내부)
 
@@ -400,6 +868,180 @@ _단건 응답: `data` 객체의 필드._
 | is_owner | boolean | `true` | 현재 인증 사용자가 이 리소스의 소유자인지 여부 (BaseApiResource 표준 메타) |
 | abilities | object | `{"can_read":true,"can_write":true,"can_read_secret":true,…` | 현재 사용자가 이 리소스에 수행 가능한 작업 불리언 맵 (can_update, can_delete 등 — 권한 맵 기반) |
 
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "게시글 목록을 조회했습니다.",
+    "data": {
+        "id": 1,
+        "category": null,
+        "author": {
+            "uuid": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+            "name": "API 문서 샘플 사용자",
+            "email": "apidoc-sample-user@example.com",
+            "avatar": null,
+            "status": "active",
+            "status_label": "활성",
+            "is_guest": false
+        },
+        "is_notice": false,
+        "is_secret": "{MASKED}",
+        "content_mode": "html",
+        "is_new": true,
+        "status": "published",
+        "status_label": "게시됨",
+        "view_count": 44,
+        "comment_count": 0,
+        "reply_count": 0,
+        "attachment_count": 0,
+        "has_attachment": false,
+        "thumbnail": "/api/modules/sirsoft-board/boards/apidoc-sample-board/attachment/apidocsmpl1/preview",
+        "parent_id": null,
+        "depth": 0,
+        "is_reply": false,
+        "created_at": "2026-07-08 10:41:34",
+        "created_at_formatted": "4시간 전",
+        "is_author": true,
+        "is_guest_post": false,
+        "title": "API 문서 샘플 게시글",
+        "content": "<p>API 레퍼런스 실측용 완전 샘플 게시글 본문입니다.</p>",
+        "user_id": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+        "trigger_type": "user",
+        "updated_at": "2026-07-08 15:01:44",
+        "deleted_at": null,
+        "ip_address": "127.0.0.1",
+        "action_logs": [],
+        "board": {
+            "slug": "apidoc-sample-board",
+            "name": "API 문서 샘플 게시판",
+            "type": "basic",
+            "use_comment": true,
+            "use_reply": true,
+            "use_report": true,
+            "show_view_count": true,
+            "max_reply_depth": 5,
+            "max_comment_depth": 10,
+            "report_types": [
+                {
+                    "value": "abuse",
+                    "label": "욕설/비방"
+                },
+                {
+                    "value": "hate_speech",
+                    "label": "혐오 발언"
+                },
+                {
+                    "value": "spam",
+                    "label": "스팸/광고"
+                },
+                {
+                    "value": "copyright",
+                    "label": "저작권 침해"
+                },
+                {
+                    "value": "privacy",
+                    "label": "개인정보 노출"
+                },
+                {
+                    "value": "misinformation",
+                    "label": "허위정보"
+                },
+                {
+                    "value": "sexual",
+                    "label": "성적인 콘텐츠"
+                },
+                {
+                    "value": "violence",
+                    "label": "폭력적인 콘텐츠"
+                },
+                {
+                    "value": "other",
+                    "label": "기타"
+                }
+            ]
+        },
+        "navigation": {
+            "prev": null,
+            "next": null
+        },
+        "parent": null,
+        "comments": [
+            {
+                "id": 1,
+                "post_id": 1,
+                "parent_id": null,
+                "content": "API 문서 샘플 댓글입니다.",
+                "author": {
+                    "uuid": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+                    "name": "API 문서 샘플 사용자",
+                    "email": "apidoc-sample-user@example.com",
+                    "avatar": null,
+                    "status": "active",
+                    "status_label": "활성",
+                    "is_guest": false
+                },
+                "is_secret": "{MASKED}",
+                "status": "published",
+                "status_label": "게시됨",
+                "depth": 0,
+                "replies_count": 0,
+                "created_at": "2026-07-08 10:41:34",
+                "created_at_formatted": "4시간 전",
+                "updated_at": "2026-07-08 10:41:34",
+                "deleted_at": null,
+                "is_cascade_deleted": false,
+                "ip_address": null,
+                "action_logs": [],
+                "is_author": true,
+                "is_guest_comment": false,
+                "is_already_reported": false,
+                "is_owner": true,
+                "abilities": {
+                    "can_read": true,
+                    "can_write": true,
+                    "can_manage": true
+                }
+            }
+        ],
+        "attachments": [
+            {
+                "id": 1,
+                "hash": "apidocsmpl1",
+                "original_filename": "apidoc-sample.png",
+                "mime_type": "image/png",
+                "size": 2048,
+                "size_formatted": "2 KB",
+                "collection": "default",
+                "order": 0,
+                "download_url": "/api/modules/sirsoft-board/boards/apidoc-sample-board/attachment/apidocsmpl1",
+                "preview_url": "/api/modules/sirsoft-board/boards/apidoc-sample-board/attachment/apidocsmpl1/preview",
+                "is_image": true,
+                "meta": null
+            }
+        ],
+        "replies": [],
+        "is_already_reported": false,
+        "is_owner": true,
+        "abilities": {
+            "can_read": true,
+            "can_write": true,
+            "can_read_secret": "{MASKED}",
+            "can_read_comments": true,
+            "can_write_comments": true,
+            "can_upload": true,
+            "can_download": true,
+            "can_manage": true
+        }
+    }
+}
+```
+
 **에러 응답**
 
 | 상태코드 | 의미 | 발생 조건 |
@@ -428,9 +1070,131 @@ _단건 응답: `data` 객체의 필드._
 
 > 이 엔드포인트는 확장이 파라미터를 추가할 수 있습니다 (`sirsoft-board.post.update_validation_rules`).
 
+**요청 예시**
+
+```http
+PUT /api/modules/sirsoft-board/admin/board/apidoc-sample-board/posts/1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+_단건 응답: `data` 객체의 필드._
+
+| 필드 | 타입 | 실측 예시값 | 용도/설명 |
+| --- | --- | --- | --- |
+| id | integer | `1` | 기본 키 (내부 식별자) |
+| category | null | `null` | 게시글 분류(카테고리) 문자열. 게시판이 카테고리를 쓰지 않거나 미지정 시 null (최대 50자). |
+| author | object | `{"uuid":"a234c2b1-cde8-437f-b28b-23323be2b98d","name":"AP…` | 작성자 사용자 객체 (uuid/name — author 관계 파생) |
+| is_notice | boolean | `false` | notice 여부 |
+| is_secret | boolean | `false` | secret 여부 |
+| content_mode | string | `html` | 본문 편집 모드. `html`(위지윅/HTML) 또는 `text`(평문)이며, 요약·썸네일 추출과 렌더링 방식을 결정합니다. 미지정 시 `text`. |
+| is_new | boolean | `true` | new 여부 |
+| status | string | `published` | 상태 값 (도메인별 상태 집합 — 사람이 읽는 라벨은 status_label, UI 변형은 status_variant 참조) |
+| status_label | string | `게시됨` | 상태의 사람이 읽는 라벨 (상태 Enum label() 산물) |
+| view_count | integer | `44` | view 개수 (집계) |
+| comment_count | integer | `0` | comment 개수 (집계) |
+| reply_count | integer | `0` | reply 개수 (집계) |
+| attachment_count | integer | `0` | attachment 개수 (집계) |
+| has_attachment | boolean | `false` | attachment 여부 |
+| thumbnail | null | `null` | 썸네일 이미지 URL/경로 |
+| parent_id | null | `null` | parent 식별자 (연관 리소스 참조) |
+| depth | integer | `0` | 계층 트리에서의 깊이 (0 = 최상위, 하위로 갈수록 증가) |
+| is_reply | boolean | `false` | reply 여부 |
+| created_at | string | `2026-07-08 10:41:34` | 생성 일시 |
+| created_at_formatted | string | `4시간 전` | `created_at` 값의 표시용 포맷 문자열 (통화/용량/일시 등 로케일·단위 포맷) |
+| is_author | boolean | `true` | author 여부 |
+| is_guest_post | boolean | `false` | guest post 여부 |
+| title | string | `API 문서 샘플 게시글` | 제목 |
+| content | string | `<p>API 레퍼런스 실측용 완전 샘플 게시글 본문입니다.</p>` | 본문 내용 |
+| user_id | string | `a234c2b1-cde8-437f-b28b-23323be2b98d` | user 식별자 (연관 리소스 참조) |
+| trigger_type | string | `user` | 동작을 유발한 방식/주체 구분 값 |
+| updated_at | string | `2026-07-08 15:01:44` | 최종 수정 일시 |
+| deleted_at | null | `null` | 소프트 삭제 일시 (미삭제 시 null) |
+| ip_address | string | `127.0.0.1` | 요청/행위가 발생한 IP 주소 |
+| action_logs | array | `[]` | 블라인드/복원/삭제 등 처리 이력 목록(항목별 action·reason·admin_name·created_at). `admin.manage` 권한 보유자에게만 노출되며, 민감 필드(admin_id·ip_address)는 제외됩니다. 비권한자에게는 null. |
+| board | null | `null` | 소속 게시판 정보 객체(슬러그·이름·유형·댓글/답글/신고 사용 여부·조회수 표시·최대 답글/댓글 깊이·신고 사유 목록). board 관계가 로드된 경우에만 채워지며, 아니면 null. |
+| navigation | null | `null` | 이전/다음 게시글 이동 정보(`prev`·`next`). 상세 로드 시 계산되며, 쓰기 응답처럼 인접 게시글을 계산하지 않은 경우 null. |
+| parent | null | `null` | 상위 항목 객체 (parent 관계 파생) |
+| comments | null | `null` | 게시글에 달린 댓글 목록(CommentResource 컬렉션). comments 관계가 로드된 경우에만 채워지며, 아니면 null. |
+| attachments | null | `null` | 게시글 첨부파일 목록(AttachmentResource 컬렉션). attachments 관계가 로드된 경우에만 채워지며, 아니면 null(비밀글·삭제글은 권한에 따라 빈 배열 또는 연쇄 삭제분만 노출). |
+| replies | null | `null` | 이 게시글에 달린 답변글 목록(PostResource 컬렉션, 재귀). replies 관계가 로드된 경우에만 채워지며, 아니면 null. |
+| is_already_reported | boolean | `false` | already reported 여부 |
+| is_owner | boolean | `true` | 현재 인증 사용자가 이 리소스의 소유자인지 여부 (BaseApiResource 표준 메타) |
+| abilities | object | `{"can_read":true,"can_write":true,"can_read_secret":true,…` | 현재 사용자가 이 리소스에 수행 가능한 작업 불리언 맵 (can_update, can_delete 등 — 권한 맵 기반) |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "게시글이 수정되었습니다.",
+    "data": {
+        "id": 1,
+        "category": null,
+        "author": {
+            "uuid": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+            "name": "API 문서 샘플 사용자",
+            "email": "apidoc-sample-user@example.com",
+            "avatar": null,
+            "status": "active",
+            "status_label": "활성",
+            "is_guest": false
+        },
+        "is_notice": false,
+        "is_secret": "{MASKED}",
+        "content_mode": "html",
+        "is_new": true,
+        "status": "published",
+        "status_label": "게시됨",
+        "view_count": 44,
+        "comment_count": 0,
+        "reply_count": 0,
+        "attachment_count": 0,
+        "has_attachment": false,
+        "thumbnail": null,
+        "parent_id": null,
+        "depth": 0,
+        "is_reply": false,
+        "created_at": "2026-07-08 10:41:34",
+        "created_at_formatted": "4시간 전",
+        "is_author": true,
+        "is_guest_post": false,
+        "title": "API 문서 샘플 게시글",
+        "content": "<p>API 레퍼런스 실측용 완전 샘플 게시글 본문입니다.</p>",
+        "user_id": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+        "trigger_type": "user",
+        "updated_at": "2026-07-08 15:01:44",
+        "deleted_at": null,
+        "ip_address": "127.0.0.1",
+        "action_logs": [],
+        "board": null,
+        "navigation": null,
+        "parent": null,
+        "comments": null,
+        "attachments": null,
+        "replies": null,
+        "is_already_reported": false,
+        "is_owner": true,
+        "abilities": {
+            "can_read": true,
+            "can_write": true,
+            "can_read_secret": "{MASKED}",
+            "can_read_comments": true,
+            "can_write_comments": true,
+            "can_upload": true,
+            "can_download": true,
+            "can_manage": true
+        }
+    }
+}
+```
 
 **에러 응답**
 
@@ -460,9 +1224,143 @@ _단건 응답: `data` 객체의 필드._
 | id | path | string | 예 | — | 대상 리소스의 식별자 |
 | reason | body | string | 아니오 | max 1000 | 블라인드 처리 사유(최대 1000자). 처리 이력(action_logs)에 기록되며, 미지정 시 빈 문자열로 저장됩니다. |
 
+**요청 예시**
+
+```http
+PATCH /api/modules/sirsoft-board/admin/board/apidoc-sample-board/posts/1/blind HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+Content-Type: application/json
+
+{
+    "reason": "예시값"
+}
+```
+
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+_단건 응답: `data` 객체의 필드._
+
+| 필드 | 타입 | 실측 예시값 | 용도/설명 |
+| --- | --- | --- | --- |
+| id | integer | `1` | 기본 키 (내부 식별자) |
+| category | null | `null` | 게시글 분류(카테고리) 문자열. 게시판이 카테고리를 쓰지 않거나 미지정 시 null (최대 50자). |
+| author | object | `{"uuid":"a234c2b1-cde8-437f-b28b-23323be2b98d","name":"AP…` | 작성자 사용자 객체 (uuid/name — author 관계 파생) |
+| is_notice | boolean | `false` | notice 여부 |
+| is_secret | boolean | `false` | secret 여부 |
+| content_mode | string | `html` | 본문 편집 모드. `html`(위지윅/HTML) 또는 `text`(평문)이며, 요약·썸네일 추출과 렌더링 방식을 결정합니다. 미지정 시 `text`. |
+| is_new | boolean | `true` | new 여부 |
+| status | string | `blinded` | 상태 값 (도메인별 상태 집합 — 사람이 읽는 라벨은 status_label, UI 변형은 status_variant 참조) |
+| status_label | string | `블라인드` | 상태의 사람이 읽는 라벨 (상태 Enum label() 산물) |
+| view_count | integer | `44` | view 개수 (집계) |
+| comment_count | integer | `0` | comment 개수 (집계) |
+| reply_count | integer | `0` | reply 개수 (집계) |
+| attachment_count | integer | `0` | attachment 개수 (집계) |
+| has_attachment | boolean | `false` | attachment 여부 |
+| thumbnail | null | `null` | 썸네일 이미지 URL/경로 |
+| parent_id | null | `null` | parent 식별자 (연관 리소스 참조) |
+| depth | integer | `0` | 계층 트리에서의 깊이 (0 = 최상위, 하위로 갈수록 증가) |
+| is_reply | boolean | `false` | reply 여부 |
+| created_at | string | `2026-07-08 10:41:34` | 생성 일시 |
+| created_at_formatted | string | `4시간 전` | `created_at` 값의 표시용 포맷 문자열 (통화/용량/일시 등 로케일·단위 포맷) |
+| is_author | boolean | `true` | author 여부 |
+| is_guest_post | boolean | `false` | guest post 여부 |
+| title | string | `API 문서 샘플 게시글` | 제목 |
+| content | string | `<p>API 레퍼런스 실측용 완전 샘플 게시글 본문입니다.</p>` | 본문 내용 |
+| user_id | string | `a234c2b1-cde8-437f-b28b-23323be2b98d` | user 식별자 (연관 리소스 참조) |
+| trigger_type | string | `user` | 동작을 유발한 방식/주체 구분 값 |
+| updated_at | string | `2026-07-08 15:01:44` | 최종 수정 일시 |
+| deleted_at | null | `null` | 소프트 삭제 일시 (미삭제 시 null) |
+| ip_address | string | `127.0.0.1` | 요청/행위가 발생한 IP 주소 |
+| action_logs | array | `[{"action":"blind","reason":"실측 예시값","admin_name":"API 문서…` | 블라인드/복원/삭제 등 처리 이력 목록(항목별 action·reason·admin_name·created_at). `admin.manage` 권한 보유자에게만 노출되며, 민감 필드(admin_id·ip_address)는 제외됩니다. 비권한자에게는 null. |
+| board | null | `null` | 소속 게시판 정보 객체(슬러그·이름·유형·댓글/답글/신고 사용 여부·조회수 표시·최대 답글/댓글 깊이·신고 사유 목록). board 관계가 로드된 경우에만 채워지며, 아니면 null. |
+| navigation | null | `null` | 이전/다음 게시글 이동 정보(`prev`·`next`). 상세 로드 시 계산되며, 쓰기 응답처럼 인접 게시글을 계산하지 않은 경우 null. |
+| parent | null | `null` | 상위 항목 객체 (parent 관계 파생) |
+| comments | null | `null` | 게시글에 달린 댓글 목록(CommentResource 컬렉션). comments 관계가 로드된 경우에만 채워지며, 아니면 null. |
+| attachments | null | `null` | 게시글 첨부파일 목록(AttachmentResource 컬렉션). attachments 관계가 로드된 경우에만 채워지며, 아니면 null(비밀글·삭제글은 권한에 따라 빈 배열 또는 연쇄 삭제분만 노출). |
+| replies | null | `null` | 이 게시글에 달린 답변글 목록(PostResource 컬렉션, 재귀). replies 관계가 로드된 경우에만 채워지며, 아니면 null. |
+| is_already_reported | boolean | `false` | already reported 여부 |
+| is_owner | boolean | `true` | 현재 인증 사용자가 이 리소스의 소유자인지 여부 (BaseApiResource 표준 메타) |
+| abilities | object | `{"can_read":true,"can_write":true,"can_read_secret":true,…` | 현재 사용자가 이 리소스에 수행 가능한 작업 불리언 맵 (can_update, can_delete 등 — 권한 맵 기반) |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "게시글이 블라인드 처리되었습니다.",
+    "data": {
+        "id": 1,
+        "category": null,
+        "author": {
+            "uuid": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+            "name": "API 문서 샘플 사용자",
+            "email": "apidoc-sample-user@example.com",
+            "avatar": null,
+            "status": "active",
+            "status_label": "활성",
+            "is_guest": false
+        },
+        "is_notice": false,
+        "is_secret": "{MASKED}",
+        "content_mode": "html",
+        "is_new": true,
+        "status": "blinded",
+        "status_label": "블라인드",
+        "view_count": 44,
+        "comment_count": 0,
+        "reply_count": 0,
+        "attachment_count": 0,
+        "has_attachment": false,
+        "thumbnail": null,
+        "parent_id": null,
+        "depth": 0,
+        "is_reply": false,
+        "created_at": "2026-07-08 10:41:34",
+        "created_at_formatted": "4시간 전",
+        "is_author": true,
+        "is_guest_post": false,
+        "title": "API 문서 샘플 게시글",
+        "content": "<p>API 레퍼런스 실측용 완전 샘플 게시글 본문입니다.</p>",
+        "user_id": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+        "trigger_type": "user",
+        "updated_at": "2026-07-08 15:01:44",
+        "deleted_at": null,
+        "ip_address": "127.0.0.1",
+        "action_logs": [
+            {
+                "action": "blind",
+                "reason": "실측 예시값",
+                "admin_name": "API 문서 샘플 사용자",
+                "created_at": "2026-07-08 06:01:44"
+            }
+        ],
+        "board": null,
+        "navigation": null,
+        "parent": null,
+        "comments": null,
+        "attachments": null,
+        "replies": null,
+        "is_already_reported": false,
+        "is_owner": true,
+        "abilities": {
+            "can_read": true,
+            "can_write": true,
+            "can_read_secret": "{MASKED}",
+            "can_read_comments": true,
+            "can_write_comments": true,
+            "can_upload": true,
+            "can_download": true,
+            "can_manage": true
+        }
+    }
+}
+```
 
 **에러 응답**
 
@@ -492,9 +1390,27 @@ _단건 응답: `data` 객체의 필드._
 | id | path | string | 예 | — | 대상 리소스의 식별자 |
 | reason | body | string | 아니오 | max 1000 | 블라인드 복원 사유(최대 1000자). 처리 이력(action_logs)에 기록되며, 미지정 시 null로 전달됩니다. |
 
+**요청 예시**
+
+```http
+PATCH /api/modules/sirsoft-board/admin/board/apidoc-sample-board/posts/1/restore HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+Content-Type: application/json
+
+{
+    "reason": "예시값"
+}
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: side-effectful-write — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -525,9 +1441,22 @@ _단건 응답: `data` 객체의 필드._
 
 > 이 엔드포인트는 확장이 파라미터를 추가할 수 있습니다 (`sirsoft-board.comment.store_validation_rules`).
 
+**요청 예시**
+
+```http
+POST /api/modules/sirsoft-board/admin/board/apidoc-sample-board/posts/1/comments HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -557,9 +1486,34 @@ _단건 응답: `data` 객체의 필드._
 | postId | path | string | 예 | — | 대상 post의 식별자 |
 | id | path | string | 예 | — | 대상 리소스의 식별자 |
 
+**요청 예시**
+
+```http
+DELETE /api/modules/sirsoft-board/admin/board/apidoc-sample-board/posts/1/comments/1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+
+<!-- 실측 응답에 필드 없음(빈 목록 등) — 데이터가 있는 상태로 재실측하거나 사람이 작성. -->
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "댓글이 삭제되었습니다.",
+    "data": null
+}
+```
 
 **에러 응답**
 
@@ -590,9 +1544,22 @@ _단건 응답: `data` 객체의 필드._
 
 > 이 엔드포인트는 확장이 파라미터를 추가할 수 있습니다 (`sirsoft-board.comment.update_validation_rules`).
 
+**요청 예시**
+
+```http
+PUT /api/modules/sirsoft-board/admin/board/apidoc-sample-board/posts/1/comments/1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -623,9 +1590,104 @@ _단건 응답: `data` 객체의 필드._
 | id | path | string | 예 | — | 대상 리소스의 식별자 |
 | reason | body | string | 아니오 | max 1000 | 댓글 블라인드 처리 사유(최대 1000자). 처리 이력에 기록되며, 미지정 시 빈 문자열로 저장됩니다. |
 
+**요청 예시**
+
+```http
+PATCH /api/modules/sirsoft-board/admin/board/apidoc-sample-board/posts/1/comments/1/blind HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+Content-Type: application/json
+
+{
+    "reason": "예시값"
+}
+```
+
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+_단건 응답: `data` 객체의 필드._
+
+| 필드 | 타입 | 실측 예시값 | 용도/설명 |
+| --- | --- | --- | --- |
+| id | integer | `1` | 기본 키 (내부 식별자) |
+| post_id | integer | `1` | post 식별자 (연관 리소스 참조) |
+| parent_id | null | `null` | parent 식별자 (연관 리소스 참조) |
+| content | string | `API 문서 샘플 댓글입니다.` | 본문 내용 |
+| author | object | `{"uuid":"a234c2b1-cde8-437f-b28b-23323be2b98d","name":"AP…` | 작성자 사용자 객체 (uuid/name — author 관계 파생) |
+| is_secret | boolean | `false` | secret 여부 |
+| status | string | `blinded` | 상태 값 (도메인별 상태 집합 — 사람이 읽는 라벨은 status_label, UI 변형은 status_variant 참조) |
+| status_label | string | `블라인드` | 상태의 사람이 읽는 라벨 (상태 Enum label() 산물) |
+| depth | integer | `0` | 계층 트리에서의 깊이 (0 = 최상위, 하위로 갈수록 증가) |
+| replies_count | integer | `0` | replies 개수 (집계) |
+| created_at | string | `2026-07-08 10:41:34` | 생성 일시 |
+| created_at_formatted | string | `4시간 전` | `created_at` 값의 표시용 포맷 문자열 (통화/용량/일시 등 로케일·단위 포맷) |
+| updated_at | string | `2026-07-08 15:01:44` | 최종 수정 일시 |
+| deleted_at | null | `null` | 소프트 삭제 일시 (미삭제 시 null) |
+| is_cascade_deleted | boolean | `false` | cascade deleted 여부 |
+| ip_address | null | `null` | 요청/행위가 발생한 IP 주소 |
+| action_logs | array | `[{"action":"blind","reason":"실측 예시값","admin_name":"API 문서…` | 블라인드/복원/삭제 등 처리 이력 목록(항목별 action·reason·admin_name·created_at). `admin.manage` 권한 보유자에게만 노출되며, 민감 필드(admin_id·ip_address)는 제외됩니다. 비권한자에게는 null. |
+| is_author | boolean | `true` | author 여부 |
+| is_guest_comment | boolean | `false` | guest comment 여부 |
+| is_already_reported | boolean | `false` | already reported 여부 |
+| is_owner | boolean | `true` | 현재 인증 사용자가 이 리소스의 소유자인지 여부 (BaseApiResource 표준 메타) |
+| abilities | object | `{"can_read":true,"can_write":true,"can_manage":true}` | 현재 사용자가 이 리소스에 수행 가능한 작업 불리언 맵 (can_update, can_delete 등 — 권한 맵 기반) |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "댓글이 블라인드 처리되었습니다.",
+    "data": {
+        "id": 1,
+        "post_id": 1,
+        "parent_id": null,
+        "content": "API 문서 샘플 댓글입니다.",
+        "author": {
+            "uuid": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+            "name": "API 문서 샘플 사용자",
+            "email": "apidoc-sample-user@example.com",
+            "avatar": null,
+            "status": "active",
+            "status_label": "활성",
+            "is_guest": false
+        },
+        "is_secret": "{MASKED}",
+        "status": "blinded",
+        "status_label": "블라인드",
+        "depth": 0,
+        "replies_count": 0,
+        "created_at": "2026-07-08 10:41:34",
+        "created_at_formatted": "4시간 전",
+        "updated_at": "2026-07-08 15:01:44",
+        "deleted_at": null,
+        "is_cascade_deleted": false,
+        "ip_address": null,
+        "action_logs": [
+            {
+                "action": "blind",
+                "reason": "실측 예시값",
+                "admin_name": "API 문서 샘플 사용자",
+                "created_at": "2026-07-08 06:01:44"
+            }
+        ],
+        "is_author": true,
+        "is_guest_comment": false,
+        "is_already_reported": false,
+        "is_owner": true,
+        "abilities": {
+            "can_read": true,
+            "can_write": true,
+            "can_manage": true
+        }
+    }
+}
+```
 
 **에러 응답**
 
@@ -655,9 +1717,22 @@ _단건 응답: `data` 객체의 필드._
 | postId | path | string | 예 | — | 대상 post의 식별자 |
 | id | path | string | 예 | — | 대상 리소스의 식별자 |
 
+**요청 예시**
+
+```http
+PATCH /api/modules/sirsoft-board/admin/board/apidoc-sample-board/posts/1/comments/1/restore HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: side-effectful-write — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 

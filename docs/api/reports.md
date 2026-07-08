@@ -38,6 +38,15 @@
 | sort_order | query | string | 아니오 | `asc`, `desc` | 정렬 방향 (asc 오름차순 / desc 내림차순) |
 | per_page | query | integer | 아니오 | — | 페이지당 항목 수 |
 
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/admin/reports?filters=%EC%98%88%EC%8B%9C%EA%B0%92&status=%EC%98%88%EC%8B%9C%EA%B0%92&target_type=%EC%98%88%EC%8B%9C%EA%B0%92&target_status=%EC%98%88%EC%8B%9C%EA%B0%92&board_id=1&reported_at_from=%EC%98%88%EC%8B%9C%EA%B0%92&reported_at_to=%EC%98%88%EC%8B%9C%EA%B0%92&sort_by=%EC%98%88%EC%8B%9C%EA%B0%92&sort_order=asc&per_page=1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
 _목록 응답: `data.data[]` 배열 항목의 필드 + `data.pagination`._
@@ -75,6 +84,92 @@ _목록 응답: `data.data[]` 배열 항목의 필드 + `data.pagination`._
 | is_owner | boolean | `false` | 현재 인증 사용자가 이 리소스의 소유자인지 여부 (BaseApiResource 표준 메타) |
 | abilities | object | `{"can_view":true,"can_manage":true}` | 현재 사용자가 이 리소스에 수행 가능한 작업 불리언 맵 (can_update, can_delete 등 — 권한 맵 기반) |
 
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "신고 목록을 조회했습니다.",
+    "data": {
+        "data": [
+            {
+                "id": 1,
+                "board_id": 1,
+                "board": {
+                    "id": 1,
+                    "name": "API 문서 샘플 게시판",
+                    "slug": "apidoc-sample-board",
+                    "title": null,
+                    "current_status": null,
+                    "deleted_at": null
+                },
+                "target_type": "post",
+                "target_type_label": "게시글",
+                "target_id": 1,
+                "post_id": 1,
+                "content": null,
+                "content_mode": "text",
+                "content_preview": "",
+                "author": {
+                    "uuid": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+                    "name": "API 문서 샘플 사용자",
+                    "email": "apidoc-sample-user@example.com",
+                    "is_guest": false
+                },
+                "reporter": null,
+                "reason_type": null,
+                "reason_type_label": null,
+                "status": "pending",
+                "status_label": "접수",
+                "status_variant": "warning",
+                "processor": null,
+                "processed_at": null,
+                "metadata": null,
+                "report_count": 0,
+                "last_reported_at": "2026-07-08 10:41:34",
+                "is_reactivated": false,
+                "target_status": "published",
+                "target_trigger_type": "user",
+                "target_status_label": "게시중",
+                "created_at": "2026-07-08 10:41:34",
+                "updated_at": "2026-07-08 10:41:34",
+                "is_owner": false,
+                "abilities": {
+                    "can_view": true,
+                    "can_manage": true
+                }
+            }
+        ],
+        "statistics": {
+            "by_status": {
+                "pending": 1
+            },
+            "by_type": {
+                "post": 1
+            },
+            "total": 1
+        },
+        "pagination": {
+            "current_page": 1,
+            "last_page": 1,
+            "per_page": 20,
+            "total": 1,
+            "from": 1,
+            "to": 1,
+            "has_more_pages": false
+        },
+        "abilities": {
+            "can_view": true,
+            "can_manage": true
+        }
+    }
+}
+```
+
 **에러 응답**
 
 | 상태코드 | 의미 | 발생 조건 |
@@ -102,9 +197,31 @@ _목록 응답: `data.data[]` 배열 항목의 필드 + `data.pagination`._
 | status | body | string | 예 | — | 일괄 전환할 신고 상태 (`ReportStatus` 허용값: pending/review/rejected/suspended 등). 지정한 모든 신고를 이 상태로 변경합니다. |
 | process_note | body | string | 아니오 | max 1000 | 처리 메모 (최대 1000자). 상태 변경 사유나 조치 내용을 처리 이력에 함께 기록합니다. |
 
+**요청 예시**
+
+```http
+PATCH /api/modules/sirsoft-board/admin/reports/bulk-status HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+Content-Type: application/json
+
+{
+    "ids": [
+        "예시값"
+    ],
+    "status": "예시값",
+    "process_note": "예시값"
+}
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -132,9 +249,30 @@ _목록 응답: `data.data[]` 배열 항목의 필드 + `data.pagination`._
 | ids | body | array | 예 | min 1 | 대상 리소스 식별자 배열 (대량 작업 대상) |
 | target_status | body | string | 아니오 | — | 집계 기준이 되는 전환 대상 상태 (`ReportStatus` 허용값). 지정 시 해당 상태로의 일괄 전환을 가정한 상태별 건수 요약을 계산합니다. |
 
+**요청 예시**
+
+```http
+POST /api/modules/sirsoft-board/admin/reports/status-counts HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+Content-Type: application/json
+
+{
+    "ids": [
+        "예시값"
+    ],
+    "target_status": "예시값"
+}
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -161,9 +299,34 @@ _목록 응답: `data.data[]` 배열 항목의 필드 + `data.pagination`._
 | --- | --- | --- | --- | --- | --- |
 | report | path | string | 예 | — | 대상 report의 식별자 |
 
+**요청 예시**
+
+```http
+DELETE /api/modules/sirsoft-board/admin/reports/1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+
+<!-- 실측 응답에 필드 없음(빈 목록 등) — 데이터가 있는 상태로 재실측하거나 사람이 작성. -->
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "신고가 삭제되었습니다.",
+    "data": null
+}
+```
 
 **에러 응답**
 
@@ -189,6 +352,15 @@ _목록 응답: `data.data[]` 배열 항목의 필드 + `data.pagination`._
 | 이름 | 위치 | 타입 | 필수 | 허용값 | 용도 |
 | --- | --- | --- | --- | --- | --- |
 | report | path | string | 예 | — | 대상 report의 식별자 |
+
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/admin/reports/1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
 
 **응답 필드** (`data` 내부)
 
@@ -220,6 +392,70 @@ _단건 응답: `data` 객체의 필드._
 | created_at | string | `2026-06-04 09:35:42` | 생성 일시 |
 | updated_at | string | `2026-06-04 09:35:42` | 최종 수정 일시 |
 
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "신고 목록을 조회했습니다.",
+    "data": {
+        "id": 1,
+        "board_id": 1,
+        "board": {
+            "id": 1,
+            "name": "API 문서 샘플 게시판",
+            "slug": "apidoc-sample-board"
+        },
+        "target_type": "post",
+        "target_id": 1,
+        "post": {
+            "id": 1,
+            "title": "API 문서 샘플 게시글",
+            "content": "<p>API 레퍼런스 실측용 완전 샘플 게시글 본문입니다.</p>",
+            "content_mode": "html",
+            "created_at": "2026-07-08 10:41:34",
+            "author": {
+                "uuid": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+                "name": "API 문서 샘플 사용자",
+                "email": "apidoc-sample-user@example.com",
+                "is_guest": false
+            }
+        },
+        "comment": null,
+        "target_status": "published",
+        "target_status_label": "게시중",
+        "blind_trigger_type": "user",
+        "blind_trigger_type_label": "사용자 직접 삭제",
+        "status": "pending",
+        "available_actions": [
+            "review",
+            "rejected",
+            "suspended",
+            "deleted"
+        ],
+        "abilities": {
+            "can_view": true,
+            "can_manage": true
+        },
+        "reporters": [],
+        "report_count": 0,
+        "reason_summary": "-",
+        "first_reported_at": "2026-07-08 10:41:34",
+        "last_reported_at": "2026-07-08 10:41:34",
+        "histories": [],
+        "metadata": {
+            "reason": "spam"
+        },
+        "created_at": "2026-07-08 10:41:34",
+        "updated_at": "2026-07-08 10:41:34"
+    }
+}
+```
+
 **에러 응답**
 
 | 상태코드 | 의미 | 발생 조건 |
@@ -247,6 +483,15 @@ _단건 응답: `data` 객체의 필드._
 | per_page | query | integer | 아니오 | min 1 | 페이지당 항목 수 |
 | page | query | integer | 아니오 | min 1 | 조회할 페이지 번호 (1부터 시작) |
 
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/admin/reports/1/reporters?per_page=1&page=1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
 _목록 응답: `data.data[]` 배열 항목의 필드 + `data.pagination`._
@@ -260,6 +505,30 @@ _목록 응답: `data.data[]` 배열 항목의 필드 + `data.pagination`._
 | reason_detail | string | `욕설과 비방이 포함된 게시글입니다. 다른 사용자를 모욕하는 내용이 …` | 신고자가 직접 입력한 상세 사유 텍스트. 입력하지 않은 경우 null 입니다. |
 | snapshot | object | `{"board_name":"갤러리","title":"작업물 공유합니다","content":"최근에 작업…` | 신고 접수 시점의 대상 콘텐츠 스냅샷 (게시판명/제목/본문/작성자 등). 이후 대상이 수정·삭제되어도 신고 당시 내용을 보존합니다. |
 | reported_at | string | `2026-06-04 09:35:42` | reported 일시 |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "신고 목록을 조회했습니다.",
+    "data": {
+        "data": [],
+        "pagination": {
+            "total": 0,
+            "from": 0,
+            "to": 0,
+            "per_page": 25,
+            "current_page": 1,
+            "last_page": 1
+        }
+    }
+}
+```
 
 **에러 응답**
 
@@ -289,9 +558,28 @@ _목록 응답: `data.data[]` 배열 항목의 필드 + `data.pagination`._
 | status | body | string | 예 | — | 전환할 신고 상태 (`ReportStatus` 허용값). 현재 상태에서 전환 불가한 값(영구삭제 등)은 검증에서 422로 차단됩니다. |
 | process_note | body | string | 아니오 | max 1000 | 처리 메모 (최대 1000자). 상태 변경 사유나 조치 내용을 처리 이력에 함께 기록합니다. |
 
+**요청 예시**
+
+```http
+PATCH /api/modules/sirsoft-board/admin/reports/1/status HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+Content-Type: application/json
+
+{
+    "status": "예시값",
+    "process_note": "예시값"
+}
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 

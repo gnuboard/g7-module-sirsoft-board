@@ -27,6 +27,15 @@
 
 _요청 파라미터 없음._
 
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/admin/boards HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
 _목록 응답: `data.data[]` 배열 항목의 필드 + `data.pagination`._
@@ -78,6 +87,95 @@ _목록 응답: `data.data[]` 배열 항목의 필드 + `data.pagination`._
 | posts_count | integer | `0` | posts 개수 (집계) |
 | user_abilities | null | `null` | 현재 사용자의 게시판별 세부 권한 맵 (can_read/can_write/can_read_secret/can_manage 등 — include_user_abilities 요청 시에만 채워지며 미포함 시 null) |
 | abilities | object | `{"can_create":true,"can_update":true,"can_delete":true}` | 현재 사용자가 이 리소스에 수행 가능한 작업 불리언 맵 (can_update, can_delete 등 — 권한 맵 기반) |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "게시판 정보를 조회했습니다.",
+    "data": {
+        "data": [
+            {
+                "id": 1,
+                "name": "API 문서 샘플 게시판",
+                "slug": "apidoc-sample-board",
+                "is_active": true,
+                "type": "basic",
+                "description": "",
+                "per_page": 20,
+                "per_page_mobile": 15,
+                "order_by": "created_at",
+                "order_direction": "DESC",
+                "categories": [],
+                "show_view_count": true,
+                "secret_mode": "{MASKED}",
+                "use_comment": true,
+                "use_reply": true,
+                "max_reply_depth": 5,
+                "use_report": true,
+                "comment_order": "ASC",
+                "max_comment_depth": 10,
+                "min_title_length": 2,
+                "max_title_length": 200,
+                "min_content_length": 10,
+                "max_content_length": 10000,
+                "min_comment_length": 2,
+                "max_comment_length": 1000,
+                "blocked_keywords": [],
+                "use_file_upload": true,
+                "max_file_size": 10,
+                "max_file_count": 5,
+                "allowed_extensions": [
+                    "jpg",
+                    "jpeg",
+                    "png",
+                    "gif",
+                    "pdf",
+                    "zip"
+                ],
+                "add_to_menu": null,
+                "new_display_hours": 24,
+                "board_managers": [],
+                "board_steps": [],
+                "board_manager_ids": [],
+                "board_step_ids": [],
+                "notify_author": true,
+                "notify_admin_on_post": true,
+                "created_at": "2026-07-08 10:41:34",
+                "updated_at": "2026-07-08 10:41:34",
+                "permissions": null,
+                "category_post_counts": null,
+                "posts_count": 0,
+                "user_abilities": null,
+                "abilities": {
+                    "can_create": true,
+                    "can_update": true,
+                    "can_delete": true
+                }
+            }
+        ],
+        "pagination": {
+            "current_page": 1,
+            "last_page": 1,
+            "per_page": 25,
+            "total": 1,
+            "from": 1,
+            "to": 1,
+            "has_more_pages": false
+        },
+        "abilities": {
+            "can_create": true,
+            "can_update": true,
+            "can_delete": true
+        }
+    }
+}
+```
 
 **에러 응답**
 
@@ -140,9 +238,78 @@ _목록 응답: `data.data[]` 배열 항목의 필드 + `data.pagination`._
 
 > 이 엔드포인트는 확장이 파라미터를 추가할 수 있습니다 (`sirsoft-board.board.store_validation_rules`).
 
+**요청 예시**
+
+```http
+POST /api/modules/sirsoft-board/admin/boards HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+Content-Type: application/json
+
+{
+    "name": [
+        "예시 이름"
+    ],
+    "slug": "example-key",
+    "description": [
+        "예시 내용입니다."
+    ],
+    "is_active": true,
+    "type": "예시값",
+    "add_to_menu": true,
+    "per_page": 1,
+    "per_page_mobile": 1,
+    "order_by": "created_at",
+    "order_direction": "ASC",
+    "categories": [
+        "예시값"
+    ],
+    "show_view_count": true,
+    "secret_mode": "disabled",
+    "use_comment": true,
+    "use_reply": true,
+    "use_report": true,
+    "comment_order": "ASC",
+    "new_display_hours": 1,
+    "min_title_length": 1,
+    "max_title_length": 1,
+    "min_content_length": 1,
+    "max_content_length": 1,
+    "min_comment_length": 1,
+    "max_comment_length": 1,
+    "use_file_upload": true,
+    "max_file_size": 1,
+    "max_file_count": 1,
+    "allowed_extensions": [
+        "예시값"
+    ],
+    "board_manager_ids": [
+        "예시값"
+    ],
+    "board_step_ids": [
+        "예시값"
+    ],
+    "permissions": [
+        "예시값"
+    ],
+    "max_reply_depth": 1,
+    "max_comment_depth": 1,
+    "notify_admin_on_post": true,
+    "notify_author": true,
+    "blocked_keywords": [
+        "예시값"
+    ]
+}
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -166,6 +333,15 @@ _목록 응답: `data.data[]` 배열 항목의 필드 + `data.pagination`._
 **요청 파라미터**
 
 _요청 파라미터 없음._
+
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/admin/boards/form-data HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
 
 **응답 필드** (`data` 내부)
 
@@ -217,6 +393,281 @@ _단건 응답: `data` 객체의 필드._
 | board_types | array | `[{"id":1,"slug":"basic","name":{"ko":"기본형","en":"Basic Li…` | 선택 가능한 게시판 타입 목록 (타입 선택 UI 렌더링용 — id/slug/name 등) |
 | _meta | object | `{"limits":{"per_page_min":5,"per_page_max":100,"min_title…` | 폼 입력 한계값 메타 (config('sirsoft-board.limits') — 페이지당 수·제목/본문/댓글 길이 등 min/max 범위) |
 
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "게시판 폼 데이터를 조회했습니다.",
+    "data": {
+        "type": "basic",
+        "per_page": 20,
+        "per_page_mobile": 15,
+        "order_by": "created_at",
+        "order_direction": "DESC",
+        "secret_mode": "{MASKED}",
+        "use_comment": true,
+        "use_reply": true,
+        "max_reply_depth": 5,
+        "max_comment_depth": 10,
+        "comment_order": "ASC",
+        "show_view_count": true,
+        "use_report": false,
+        "min_title_length": 2,
+        "max_title_length": 200,
+        "min_content_length": 2,
+        "max_content_length": 10000,
+        "min_comment_length": 2,
+        "max_comment_length": 1000,
+        "use_file_upload": false,
+        "max_file_size": 10,
+        "max_file_count": 5,
+        "notify_admin_on_post": true,
+        "notify_author": true,
+        "new_display_hours": 24,
+        "id": null,
+        "slug": null,
+        "is_active": true,
+        "add_to_menu": false,
+        "board_managers": [
+            {
+                "uuid": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+                "name": "API 문서 샘플 사용자",
+                "email": "apidoc-sample-user@example.com"
+            }
+        ],
+        "board_steps": [],
+        "board_manager_ids": [
+            "a234c2b1-cde8-437f-b28b-23323be2b98d"
+        ],
+        "board_step_ids": [],
+        "created_at": null,
+        "updated_at": null,
+        "name": {
+            "ko": ""
+        },
+        "description": {
+            "ko": ""
+        },
+        "categories": [],
+        "blocked_keywords": [],
+        "allowed_extensions": [
+            "jpg",
+            "jpeg",
+            "png",
+            "gif",
+            "webp",
+            "pdf",
+            "doc",
+            "docx",
+            "xls",
+            "xlsx",
+            "ppt",
+            "pptx",
+            "hwp",
+            "txt",
+            "zip"
+        ],
+        "permissions": {
+            "admin_posts_read": {
+                "_key": "admin_posts_read",
+                "name": "admin.posts.read",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "admin_posts_write": {
+                "_key": "admin_posts_write",
+                "name": "admin.posts.write",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "admin_posts_read-secret": {
+                "_key": "admin_posts_read-secret",
+                "name": "admin.posts.read-secret",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "admin_comments_read": {
+                "_key": "admin_comments_read",
+                "name": "admin.comments.read",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "admin_comments_write": {
+                "_key": "admin_comments_write",
+                "name": "admin.comments.write",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "admin_attachments_upload": {
+                "_key": "admin_attachments_upload",
+                "name": "admin.attachments.upload",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "admin_attachments_download": {
+                "_key": "admin_attachments_download",
+                "name": "admin.attachments.download",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "admin_manage": {
+                "_key": "admin_manage",
+                "name": "admin.manage",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "posts_read": {
+                "_key": "posts_read",
+                "name": "posts.read",
+                "mode": "roles",
+                "roles": [
+                    "admin",
+                    "user",
+                    "guest"
+                ]
+            },
+            "posts_write": {
+                "_key": "posts_write",
+                "name": "posts.write",
+                "mode": "roles",
+                "roles": [
+                    "admin",
+                    "user"
+                ]
+            },
+            "posts_read-secret": {
+                "_key": "posts_read-secret",
+                "name": "posts.read-secret",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "comments_read": {
+                "_key": "comments_read",
+                "name": "comments.read",
+                "mode": "roles",
+                "roles": [
+                    "admin",
+                    "user",
+                    "guest"
+                ]
+            },
+            "comments_write": {
+                "_key": "comments_write",
+                "name": "comments.write",
+                "mode": "roles",
+                "roles": [
+                    "admin",
+                    "user"
+                ]
+            },
+            "attachments_upload": {
+                "_key": "attachments_upload",
+                "name": "attachments.upload",
+                "mode": "roles",
+                "roles": [
+                    "admin",
+                    "user"
+                ]
+            },
+            "attachments_download": {
+                "_key": "attachments_download",
+                "name": "attachments.download",
+                "mode": "roles",
+                "roles": [
+                    "admin",
+                    "user",
+                    "guest"
+                ]
+            },
+            "manager": {
+                "_key": "manager",
+                "name": "manager",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            }
+        },
+        "board_types": [
+            {
+                "id": 2,
+                "slug": "basic",
+                "name": {
+                    "ko": "기본형",
+                    "en": "Basic List"
+                }
+            },
+            {
+                "id": 3,
+                "slug": "gallery",
+                "name": {
+                    "ko": "갤러리형",
+                    "en": "Gallery"
+                }
+            },
+            {
+                "id": 4,
+                "slug": "card",
+                "name": {
+                    "ko": "카드형",
+                    "en": "Card"
+                }
+            }
+        ],
+        "_meta": {
+            "limits": {
+                "per_page_min": 5,
+                "per_page_max": 100,
+                "min_title_length_min": 0,
+                "min_title_length_max": 200,
+                "max_title_length_min": 1,
+                "max_title_length_max": 1000,
+                "min_content_length_min": 0,
+                "min_content_length_max": 10000,
+                "max_content_length_min": 1,
+                "max_content_length_max": 100000,
+                "min_comment_length_min": 0,
+                "min_comment_length_max": 1000,
+                "max_comment_length_min": 1,
+                "max_comment_length_max": 10000,
+                "max_file_size_min": 1,
+                "max_file_size_max": 200,
+                "max_file_count_min": 1,
+                "max_file_count_max": 20,
+                "category_max": 50,
+                "max_reply_depth_min": 1,
+                "max_reply_depth_max": 10,
+                "max_comment_depth_min": 0,
+                "max_comment_depth_max": 10
+            }
+        }
+    }
+}
+```
+
 **에러 응답**
 
 | 상태코드 | 의미 | 발생 조건 |
@@ -240,6 +691,15 @@ _단건 응답: `data` 객체의 필드._
 | 이름 | 위치 | 타입 | 필수 | 허용값 | 용도 |
 | --- | --- | --- | --- | --- | --- |
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
+
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/admin/boards/slug/apidoc-sample-board HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
 
 **응답 필드** (`data` 내부)
 
@@ -293,6 +753,86 @@ _단건 응답: `data` 객체의 필드._
 | user_abilities | object | `{"can_read":true,"can_write":true,"can_read_secret":true,…` | 현재 사용자의 게시판별 세부 권한 맵 (can_read/can_write/can_read_secret/can_read_comments/can_write_comments/can_upload/can_download/can_manage — 관리자 라우트에서는 항상 포함) |
 | abilities | object | `{"can_create":true,"can_update":true,"can_delete":true}` | 현재 사용자가 이 리소스에 수행 가능한 작업 불리언 맵 (can_update, can_delete 등 — 권한 맵 기반) |
 
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "게시판 정보를 조회했습니다.",
+    "data": {
+        "id": 1,
+        "name": "API 문서 샘플 게시판",
+        "slug": "apidoc-sample-board",
+        "is_active": true,
+        "type": "basic",
+        "description": "",
+        "per_page": 20,
+        "per_page_mobile": 15,
+        "order_by": "created_at",
+        "order_direction": "DESC",
+        "categories": [],
+        "show_view_count": true,
+        "secret_mode": "{MASKED}",
+        "use_comment": true,
+        "use_reply": true,
+        "max_reply_depth": 5,
+        "use_report": true,
+        "comment_order": "ASC",
+        "max_comment_depth": 10,
+        "min_title_length": 2,
+        "max_title_length": 200,
+        "min_content_length": 10,
+        "max_content_length": 10000,
+        "min_comment_length": 2,
+        "max_comment_length": 1000,
+        "blocked_keywords": [],
+        "use_file_upload": true,
+        "max_file_size": 10,
+        "max_file_count": 5,
+        "allowed_extensions": [
+            "jpg",
+            "jpeg",
+            "png",
+            "gif",
+            "pdf",
+            "zip"
+        ],
+        "add_to_menu": null,
+        "new_display_hours": 24,
+        "board_managers": [],
+        "board_steps": [],
+        "board_manager_ids": [],
+        "board_step_ids": [],
+        "notify_author": true,
+        "notify_admin_on_post": true,
+        "created_at": "2026-07-08 10:41:34",
+        "updated_at": "2026-07-08 10:41:34",
+        "permissions": null,
+        "category_post_counts": null,
+        "posts_count": 0,
+        "user_abilities": {
+            "can_read": true,
+            "can_write": true,
+            "can_read_secret": "{MASKED}",
+            "can_read_comments": true,
+            "can_write_comments": true,
+            "can_upload": true,
+            "can_download": true,
+            "can_manage": true
+        },
+        "abilities": {
+            "can_create": true,
+            "can_update": true,
+            "can_delete": true
+        }
+    }
+}
+```
+
 **에러 응답**
 
 | 상태코드 | 의미 | 발생 조건 |
@@ -318,9 +858,34 @@ _단건 응답: `data` 객체의 필드._
 | --- | --- | --- | --- | --- | --- |
 | board | path | string | 예 | — | 대상 board의 식별자 |
 
+**요청 예시**
+
+```http
+DELETE /api/modules/sirsoft-board/admin/boards/1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+
+<!-- 실측 응답에 필드 없음(빈 목록 등) — 데이터가 있는 상태로 재실측하거나 사람이 작성. -->
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "게시판이 삭제되었습니다.",
+    "data": null
+}
+```
 
 **에러 응답**
 
@@ -346,6 +911,15 @@ _단건 응답: `data` 객체의 필드._
 | 이름 | 위치 | 타입 | 필수 | 허용값 | 용도 |
 | --- | --- | --- | --- | --- | --- |
 | board | path | string | 예 | — | 대상 board의 식별자 |
+
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/admin/boards/1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
 
 **응답 필드** (`data` 내부)
 
@@ -398,6 +972,215 @@ _단건 응답: `data` 객체의 필드._
 | posts_count | integer | `0` | posts 개수 (집계) |
 | user_abilities | null | `null` | 현재 사용자의 게시판별 세부 권한 맵 (can_read/can_write/can_read_secret/can_manage 등 — include_user_abilities 요청 시에만 채워지며 미포함 시 null) |
 | abilities | object | `{"can_create":true,"can_update":true,"can_delete":true}` | 현재 사용자가 이 리소스에 수행 가능한 작업 불리언 맵 (can_update, can_delete 등 — 권한 맵 기반) |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "게시판 정보를 조회했습니다.",
+    "data": {
+        "id": 1,
+        "name": "API 문서 샘플 게시판",
+        "slug": "apidoc-sample-board",
+        "is_active": true,
+        "type": "basic",
+        "description": "",
+        "per_page": 20,
+        "per_page_mobile": 15,
+        "order_by": "created_at",
+        "order_direction": "DESC",
+        "categories": [],
+        "show_view_count": true,
+        "secret_mode": "{MASKED}",
+        "use_comment": true,
+        "use_reply": true,
+        "max_reply_depth": 5,
+        "use_report": true,
+        "comment_order": "ASC",
+        "max_comment_depth": 10,
+        "min_title_length": 2,
+        "max_title_length": 200,
+        "min_content_length": 10,
+        "max_content_length": 10000,
+        "min_comment_length": 2,
+        "max_comment_length": 1000,
+        "blocked_keywords": [],
+        "use_file_upload": true,
+        "max_file_size": 10,
+        "max_file_count": 5,
+        "allowed_extensions": [
+            "jpg",
+            "jpeg",
+            "png",
+            "gif",
+            "pdf",
+            "zip"
+        ],
+        "add_to_menu": null,
+        "new_display_hours": 24,
+        "board_managers": [],
+        "board_steps": [],
+        "board_manager_ids": [],
+        "board_step_ids": [],
+        "notify_author": true,
+        "notify_admin_on_post": true,
+        "created_at": "2026-07-08 10:41:34",
+        "updated_at": "2026-07-08 10:41:34",
+        "permissions": {
+            "admin_posts_read": {
+                "_key": "admin_posts_read",
+                "name": "admin.posts.read",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "admin_posts_write": {
+                "_key": "admin_posts_write",
+                "name": "admin.posts.write",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "admin_posts_read-secret": {
+                "_key": "admin_posts_read-secret",
+                "name": "admin.posts.read-secret",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "admin_comments_read": {
+                "_key": "admin_comments_read",
+                "name": "admin.comments.read",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "admin_comments_write": {
+                "_key": "admin_comments_write",
+                "name": "admin.comments.write",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "admin_attachments_upload": {
+                "_key": "admin_attachments_upload",
+                "name": "admin.attachments.upload",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "admin_attachments_download": {
+                "_key": "admin_attachments_download",
+                "name": "admin.attachments.download",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "admin_manage": {
+                "_key": "admin_manage",
+                "name": "admin.manage",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "posts_read": {
+                "_key": "posts_read",
+                "name": "posts.read",
+                "mode": "roles",
+                "roles": [
+                    "admin",
+                    "user",
+                    "guest"
+                ]
+            },
+            "posts_write": {
+                "_key": "posts_write",
+                "name": "posts.write",
+                "mode": "roles",
+                "roles": [
+                    "admin",
+                    "user"
+                ]
+            },
+            "posts_read-secret": {
+                "_key": "posts_read-secret",
+                "name": "posts.read-secret",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "comments_read": {
+                "_key": "comments_read",
+                "name": "comments.read",
+                "mode": "roles",
+                "roles": [
+                    "admin",
+                    "user",
+                    "guest"
+                ]
+            },
+            "comments_write": {
+                "_key": "comments_write",
+                "name": "comments.write",
+                "mode": "roles",
+                "roles": [
+                    "admin",
+                    "user"
+                ]
+            },
+            "attachments_upload": {
+                "_key": "attachments_upload",
+                "name": "attachments.upload",
+                "mode": "roles",
+                "roles": [
+                    "admin",
+                    "user"
+                ]
+            },
+            "attachments_download": {
+                "_key": "attachments_download",
+                "name": "attachments.download",
+                "mode": "roles",
+                "roles": [
+                    "admin",
+                    "user",
+                    "guest"
+                ]
+            },
+            "manager": {
+                "_key": "manager",
+                "name": "manager",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            }
+        },
+        "category_post_counts": null,
+        "posts_count": 0,
+        "user_abilities": null,
+        "abilities": {
+            "can_create": true,
+            "can_update": true,
+            "can_delete": true
+        }
+    }
+}
+```
 
 **에러 응답**
 
@@ -461,9 +1244,77 @@ _단건 응답: `data` 객체의 필드._
 
 > 이 엔드포인트는 확장이 파라미터를 추가할 수 있습니다 (`sirsoft-board.board.update_validation_rules`).
 
+**요청 예시**
+
+```http
+PUT /api/modules/sirsoft-board/admin/boards/1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+Content-Type: application/json
+
+{
+    "name": [
+        "예시 이름"
+    ],
+    "description": [
+        "예시 내용입니다."
+    ],
+    "is_active": true,
+    "type": "예시값",
+    "add_to_menu": true,
+    "per_page": 1,
+    "per_page_mobile": 1,
+    "order_by": "created_at",
+    "order_direction": "ASC",
+    "categories": [
+        "예시값"
+    ],
+    "show_view_count": true,
+    "secret_mode": "disabled",
+    "use_comment": true,
+    "use_reply": true,
+    "use_report": true,
+    "comment_order": "ASC",
+    "new_display_hours": 1,
+    "min_title_length": 1,
+    "max_title_length": 1,
+    "min_content_length": 1,
+    "max_content_length": 1,
+    "min_comment_length": 1,
+    "max_comment_length": 1,
+    "use_file_upload": true,
+    "max_file_size": 1,
+    "max_file_count": 1,
+    "allowed_extensions": [
+        "예시값"
+    ],
+    "board_manager_ids": [
+        "예시값"
+    ],
+    "board_step_ids": [
+        "예시값"
+    ],
+    "permissions": [
+        "예시값"
+    ],
+    "max_reply_depth": 1,
+    "max_comment_depth": 1,
+    "notify_admin_on_post": true,
+    "notify_author": true,
+    "blocked_keywords": [
+        "예시값"
+    ]
+}
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -491,9 +1342,54 @@ _단건 응답: `data` 객체의 필드._
 | --- | --- | --- | --- | --- | --- |
 | board | path | string | 예 | — | 대상 board의 식별자 |
 
+**요청 예시**
+
+```http
+POST /api/modules/sirsoft-board/admin/boards/1/add-to-menu HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+_단건 응답: `data` 객체의 필드._
+
+| 필드 | 타입 | 실측 예시값 | 용도/설명 |
+| --- | --- | --- | --- |
+| menu | object | `{"name":{"ko":"API 문서 샘플 게시판 게시판","en":"API Doc Sample Bo…` | 이 게시판용으로 새로 생성된 관리자 사이드바 메뉴 항목 (name/slug/url/icon/parent_id/order 등 Menu 레코드 전체) |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "관리자 메뉴에 추가되었습니다.",
+    "data": {
+        "menu": {
+            "name": {
+                "ko": "API 문서 샘플 게시판 게시판",
+                "en": "API Doc Sample Board Board"
+            },
+            "slug": "board-apidoc-sample-board",
+            "url": "/admin/board/apidoc-sample-board",
+            "icon": "fas fa-clipboard-list",
+            "parent_id": 15,
+            "is_active": true,
+            "extension_type": "module",
+            "extension_identifier": "sirsoft-board",
+            "order": 4,
+            "updated_at": "2026-07-08T06:01:45.000000Z",
+            "created_at": "2026-07-08T06:01:45.000000Z",
+            "id": 27
+        }
+    }
+}
+```
 
 **에러 응답**
 
@@ -518,6 +1414,15 @@ _단건 응답: `data` 객체의 필드._
 
 _요청 파라미터 없음._
 
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/boards HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
+
 **응답 필드** (`data` 내부)
 
 | 필드 | 타입 | 실측 예시값 | 용도/설명 |
@@ -528,6 +1433,33 @@ _요청 파라미터 없음._
 | description | string | `` | 게시판 설명 (다국어 JSON) |
 | posts_count | integer | `0` | posts 개수 (집계) |
 | abilities | object | `{"can_create":true,"can_update":true,"can_delete":true}` | 현재 사용자가 이 리소스에 수행 가능한 작업 불리언 맵 (can_update, can_delete 등 — 권한 맵 기반) |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "성공적으로 처리되었습니다.",
+    "data": [
+        {
+            "id": 1,
+            "name": "API 문서 샘플 게시판",
+            "slug": "apidoc-sample-board",
+            "description": "",
+            "posts_count": 0,
+            "abilities": {
+                "can_create": true,
+                "can_update": true,
+                "can_delete": true
+            }
+        }
+    ]
+}
+```
 
 **에러 응답**
 
@@ -548,6 +1480,15 @@ _대표 에러 없음 (공개 조회). <!-- TODO: 도메인 특이 에러가 있
 
 _요청 파라미터 없음._
 
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/boards/board-menu HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
+
 **응답 필드** (`data` 내부)
 
 | 필드 | 타입 | 실측 예시값 | 용도/설명 |
@@ -555,6 +1496,26 @@ _요청 파라미터 없음._
 | id | integer | `1` | 기본 키 (내부 식별자) |
 | name | string | `테스트 게시판` | 게시판명 (다국어 JSON) |
 | slug | string | `test` | 게시판 슬러그 (URL/테이블명) |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "성공적으로 처리되었습니다.",
+    "data": [
+        {
+            "id": 1,
+            "name": "API 문서 샘플 게시판",
+            "slug": "apidoc-sample-board"
+        }
+    ]
+}
+```
 
 **에러 응답**
 
@@ -575,11 +1536,55 @@ _대표 에러 없음 (공개 조회). <!-- TODO: 도메인 특이 에러가 있
 
 _요청 파라미터 없음._
 
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/boards/popular HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
+
 **응답 필드** (`data` 내부)
 
 
 
 <!-- 실측 응답에 필드 없음(빈 목록 등) — 데이터가 있는 상태로 재실측하거나 사람이 작성. -->
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "성공적으로 처리되었습니다.",
+    "data": [
+        {
+            "id": 1,
+            "board_slug": "apidoc-sample-board",
+            "board_name": "API 문서 샘플 게시판",
+            "title": "API 문서 샘플 게시글",
+            "excerpt": "API 레퍼런스 실측용 완전 샘플 게시글 본문입니다.",
+            "author": {
+                "id": 6,
+                "name": "API 문서 샘플 사용자",
+                "email": "apidoc-sample-user@example.com",
+                "is_guest": false,
+                "avatar": null,
+                "status": "active",
+                "status_label": "활성"
+            },
+            "view_count": 44,
+            "comment_count": 0,
+            "created_at": "2026-07-08 10:41:34",
+            "created_at_formatted": "4시간 전"
+        }
+    ]
+}
+```
 
 **에러 응답**
 
@@ -600,6 +1605,15 @@ _대표 에러 없음 (공개 조회). <!-- TODO: 도메인 특이 에러가 있
 
 _요청 파라미터 없음._
 
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/boards/popular-boards HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
+
 **응답 필드** (`data` 내부)
 
 | 필드 | 타입 | 실측 예시값 | 용도/설명 |
@@ -609,6 +1623,28 @@ _요청 파라미터 없음._
 | slug | string | `qna` | 게시판 슬러그 (URL/테이블명) |
 | description | string | `궁금한 점을 질문하고 답변을 받으세요` | 게시판 설명 (다국어 JSON) |
 | posts_count | integer | `40` | posts 개수 (집계) |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "성공적으로 처리되었습니다.",
+    "data": [
+        {
+            "id": 1,
+            "name": "API 문서 샘플 게시판",
+            "slug": "apidoc-sample-board",
+            "description": "",
+            "posts_count": 0
+        }
+    ]
+}
+```
 
 **에러 응답**
 
@@ -629,6 +1665,15 @@ _대표 에러 없음 (공개 조회). <!-- TODO: 도메인 특이 에러가 있
 
 _요청 파라미터 없음._
 
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/boards/posts/recent HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
+
 **응답 필드** (`data` 내부)
 
 | 필드 | 타입 | 실측 예시값 | 용도/설명 |
@@ -644,6 +1689,34 @@ _요청 파라미터 없음._
 | comment_count | integer | `0` | comment 개수 (집계) |
 | is_secret | boolean | `false` | secret 여부 |
 | is_new | boolean | `true` | new 여부 |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "성공적으로 처리되었습니다.",
+    "data": [
+        {
+            "id": 1,
+            "board_slug": "apidoc-sample-board",
+            "board_name": "API 문서 샘플 게시판",
+            "title": "API 문서 샘플 게시글",
+            "author_name": "API 문서 샘플 사용자",
+            "created_at": "2026-07-08 10:41:34",
+            "created_at_formatted": "4시간 전",
+            "view_count": 44,
+            "comment_count": 0,
+            "is_secret": "{MASKED}",
+            "is_new": true
+        }
+    ]
+}
+```
 
 **에러 응답**
 
@@ -664,6 +1737,15 @@ _대표 에러 없음 (공개 조회). <!-- TODO: 도메인 특이 에러가 있
 
 _요청 파라미터 없음._
 
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/boards/stats HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
+
 **응답 필드** (`data` 내부)
 
 _단건 응답: `data` 객체의 필드._
@@ -674,6 +1756,25 @@ _단건 응답: `data` 객체의 필드._
 | boards | integer | `10` | 활성 게시판 수 |
 | posts | integer | `116` | 전체 게시글 수 |
 | comments | integer | `321` | 전체 댓글 수 |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "성공적으로 처리되었습니다.",
+    "data": {
+        "users": 2,
+        "boards": 1,
+        "posts": 0,
+        "comments": 0
+    }
+}
+```
 
 **에러 응답**
 
@@ -695,6 +1796,15 @@ _대표 에러 없음 (공개 조회). <!-- TODO: 도메인 특이 에러가 있
 | 이름 | 위치 | 타입 | 필수 | 허용값 | 용도 |
 | --- | --- | --- | --- | --- | --- |
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
+
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/boards/apidoc-sample-board HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
 
 **응답 필드** (`data` 내부)
 
@@ -748,6 +1858,215 @@ _단건 응답: `data` 객체의 필드._
 | user_abilities | null | `null` | 현재 사용자의 게시판별 세부 권한 맵 (can_read/can_write/can_read_secret/can_manage 등 — include_user_abilities 요청 시에만 채워지며 미포함 시 null) |
 | abilities | object | `{"can_create":true,"can_update":true,"can_delete":true}` | 현재 사용자가 이 리소스에 수행 가능한 작업 불리언 맵 (can_update, can_delete 등 — 권한 맵 기반) |
 
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "성공적으로 처리되었습니다.",
+    "data": {
+        "id": 1,
+        "name": "API 문서 샘플 게시판",
+        "slug": "apidoc-sample-board",
+        "is_active": true,
+        "type": "basic",
+        "description": "",
+        "per_page": 20,
+        "per_page_mobile": 15,
+        "order_by": "created_at",
+        "order_direction": "DESC",
+        "categories": [],
+        "show_view_count": true,
+        "secret_mode": "{MASKED}",
+        "use_comment": true,
+        "use_reply": true,
+        "max_reply_depth": 5,
+        "use_report": true,
+        "comment_order": "ASC",
+        "max_comment_depth": 10,
+        "min_title_length": 2,
+        "max_title_length": 200,
+        "min_content_length": 10,
+        "max_content_length": 10000,
+        "min_comment_length": 2,
+        "max_comment_length": 1000,
+        "blocked_keywords": [],
+        "use_file_upload": true,
+        "max_file_size": 10,
+        "max_file_count": 5,
+        "allowed_extensions": [
+            "jpg",
+            "jpeg",
+            "png",
+            "gif",
+            "pdf",
+            "zip"
+        ],
+        "add_to_menu": null,
+        "new_display_hours": 24,
+        "board_managers": [],
+        "board_steps": [],
+        "board_manager_ids": [],
+        "board_step_ids": [],
+        "notify_author": true,
+        "notify_admin_on_post": true,
+        "created_at": "2026-07-08 10:41:34",
+        "updated_at": "2026-07-08 10:41:34",
+        "permissions": {
+            "admin_posts_read": {
+                "_key": "admin_posts_read",
+                "name": "admin.posts.read",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "admin_posts_write": {
+                "_key": "admin_posts_write",
+                "name": "admin.posts.write",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "admin_posts_read-secret": {
+                "_key": "admin_posts_read-secret",
+                "name": "admin.posts.read-secret",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "admin_comments_read": {
+                "_key": "admin_comments_read",
+                "name": "admin.comments.read",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "admin_comments_write": {
+                "_key": "admin_comments_write",
+                "name": "admin.comments.write",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "admin_attachments_upload": {
+                "_key": "admin_attachments_upload",
+                "name": "admin.attachments.upload",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "admin_attachments_download": {
+                "_key": "admin_attachments_download",
+                "name": "admin.attachments.download",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "admin_manage": {
+                "_key": "admin_manage",
+                "name": "admin.manage",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "posts_read": {
+                "_key": "posts_read",
+                "name": "posts.read",
+                "mode": "roles",
+                "roles": [
+                    "admin",
+                    "user",
+                    "guest"
+                ]
+            },
+            "posts_write": {
+                "_key": "posts_write",
+                "name": "posts.write",
+                "mode": "roles",
+                "roles": [
+                    "admin",
+                    "user"
+                ]
+            },
+            "posts_read-secret": {
+                "_key": "posts_read-secret",
+                "name": "posts.read-secret",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            },
+            "comments_read": {
+                "_key": "comments_read",
+                "name": "comments.read",
+                "mode": "roles",
+                "roles": [
+                    "admin",
+                    "user",
+                    "guest"
+                ]
+            },
+            "comments_write": {
+                "_key": "comments_write",
+                "name": "comments.write",
+                "mode": "roles",
+                "roles": [
+                    "admin",
+                    "user"
+                ]
+            },
+            "attachments_upload": {
+                "_key": "attachments_upload",
+                "name": "attachments.upload",
+                "mode": "roles",
+                "roles": [
+                    "admin",
+                    "user"
+                ]
+            },
+            "attachments_download": {
+                "_key": "attachments_download",
+                "name": "attachments.download",
+                "mode": "roles",
+                "roles": [
+                    "admin",
+                    "user",
+                    "guest"
+                ]
+            },
+            "manager": {
+                "_key": "manager",
+                "name": "manager",
+                "mode": "roles",
+                "roles": [
+                    "admin"
+                ]
+            }
+        },
+        "category_post_counts": null,
+        "posts_count": 0,
+        "user_abilities": null,
+        "abilities": {
+            "can_create": true,
+            "can_update": true,
+            "can_delete": true
+        }
+    }
+}
+```
+
 **에러 응답**
 
 | 상태코드 | 의미 | 발생 조건 |
@@ -772,9 +2091,22 @@ _단건 응답: `data` 객체의 필드._
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
 | hash | path | string | 예 | — | 대상 리소스의 해시 식별자 |
 
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/boards/apidoc-sample-board/attachment/apidocsmpl1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: http-404 — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-404 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -801,9 +2133,22 @@ _단건 응답: `data` 객체의 필드._
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
 | hash | path | string | 예 | — | 대상 리소스의 해시 식별자 |
 
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/boards/apidoc-sample-board/attachment/apidocsmpl1/preview HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: http-404 — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-404 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -834,9 +2179,42 @@ _단건 응답: `data` 객체의 필드._
 
 > 이 엔드포인트는 확장이 파라미터를 추가할 수 있습니다 (`sirsoft-board.attachment.upload_validation_rules`).
 
+**요청 예시**
+
+```http
+POST /api/modules/sirsoft-board/boards/apidoc-sample-board/attachments HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+Content-Type: multipart/form-data; boundary=----G7ExampleBoundary
+
+------G7ExampleBoundary
+Content-Disposition: form-data; name="file"; filename="example.pdf"
+Content-Type: application/octet-stream
+
+(바이너리 파일 내용)
+------G7ExampleBoundary
+Content-Disposition: form-data; name="post_id"
+
+1
+------G7ExampleBoundary
+Content-Disposition: form-data; name="collection"
+
+예시값
+------G7ExampleBoundary
+Content-Disposition: form-data; name="temp_key"
+
+예시값
+------G7ExampleBoundary--
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -866,9 +2244,29 @@ _단건 응답: `data` 객체의 필드._
 
 > 이 엔드포인트는 확장이 파라미터를 추가할 수 있습니다 (`sirsoft-board.attachment.reorder_validation_rules`).
 
+**요청 예시**
+
+```http
+PATCH /api/modules/sirsoft-board/boards/apidoc-sample-board/attachments/reorder HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+Content-Type: application/json
+
+{
+    "order": [
+        "예시값"
+    ]
+}
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -896,9 +2294,34 @@ _단건 응답: `data` 객체의 필드._
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
 | id | path | string | 예 | — | 대상 리소스의 식별자 |
 
+**요청 예시**
+
+```http
+DELETE /api/modules/sirsoft-board/boards/apidoc-sample-board/attachments/1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
+
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+
+<!-- 실측 응답에 필드 없음(빈 목록 등) — 데이터가 있는 상태로 재실측하거나 사람이 작성. -->
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "파일이 삭제되었습니다.",
+    "data": null
+}
+```
 
 **에러 응답**
 
@@ -927,9 +2350,28 @@ _단건 응답: `data` 객체의 필드._
 | reason_type | body | string | 예 | — | 신고 사유 유형 (ReportReasonType Enum 값 중 하나 — 스팸/욕설 등) |
 | reason_detail | body | string | 예 | min 1, max 1000 | 신고 사유 상세 설명 (1~1000자) |
 
+**요청 예시**
+
+```http
+POST /api/modules/sirsoft-board/boards/apidoc-sample-board/comments/1/reports HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+Content-Type: application/json
+
+{
+    "reason_type": "예시값",
+    "reason_detail": "예시값"
+}
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -957,9 +2399,22 @@ _단건 응답: `data` 객체의 필드._
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
 | commentId | path | string | 예 | — | 대상 comment의 식별자 |
 
+**요청 예시**
+
+```http
+POST /api/modules/sirsoft-board/boards/apidoc-sample-board/comments/1/verify-password HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -984,6 +2439,15 @@ _단건 응답: `data` 객체의 필드._
 | 이름 | 위치 | 타입 | 필수 | 허용값 | 용도 |
 | --- | --- | --- | --- | --- | --- |
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
+
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/boards/apidoc-sample-board/posts HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
 
 **응답 필드** (`data` 내부)
 
@@ -1021,6 +2485,106 @@ _목록 응답: `data.data[]` 배열 항목의 필드 + `data.pagination`._
 | number | integer | `1` | 목록에서의 순번 (페이지네이션 반영 행 번호 — HasRowNumber 파생) |
 | show_category | boolean | `false` | 게시판에 분류가 설정돼 있어 목록에 분류 컬럼을 노출할지 여부 |
 
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "게시글 목록을 조회했습니다.",
+    "data": {
+        "data": [
+            {
+                "id": 1,
+                "category": null,
+                "author": {
+                    "uuid": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+                    "name": "API 문서 샘플 사용자",
+                    "email": "apidoc-sample-user@example.com",
+                    "avatar": null,
+                    "status": "active",
+                    "status_label": "활성",
+                    "is_guest": false
+                },
+                "is_notice": false,
+                "is_secret": "{MASKED}",
+                "content_mode": "html",
+                "is_new": true,
+                "status": "published",
+                "status_label": "게시됨",
+                "view_count": 44,
+                "comment_count": 0,
+                "reply_count": 0,
+                "attachment_count": 0,
+                "has_attachment": false,
+                "thumbnail": "/api/modules/sirsoft-board/boards/apidoc-sample-board/attachment/apidocsmpl1/preview",
+                "parent_id": null,
+                "depth": 0,
+                "is_reply": false,
+                "created_at": "2026-07-08 10:41:34",
+                "created_at_formatted": "4시간 전",
+                "is_author": true,
+                "is_guest_post": false,
+                "slug": "apidoc-sample-board",
+                "title": "API 문서 샘플 게시글",
+                "deleted_at": null,
+                "content_preview": "API 레퍼런스 실측용 완전 샘플 게시글 본문입니다.",
+                "row_type": "normal",
+                "number": 1,
+                "show_category": false
+            }
+        ],
+        "pagination": {
+            "total": 1,
+            "all_total": 1,
+            "count": 1,
+            "per_page": 25,
+            "current_page": 1,
+            "last_page": 1,
+            "from": 1,
+            "to": 1,
+            "has_more_pages": false
+        },
+        "board": {
+            "slug": "apidoc-sample-board",
+            "name": "API 문서 샘플 게시판",
+            "description": "",
+            "type": "basic",
+            "categories": [],
+            "show_category": false,
+            "settings": {
+                "use_file_upload": true,
+                "use_comment": true,
+                "use_reply": true,
+                "use_report": true,
+                "secret_mode": "{MASKED}",
+                "show_view_count": true,
+                "per_page": 20,
+                "posts_per_page": 20,
+                "posts_per_page_mobile": 15,
+                "new_display_hours": 24,
+                "order_by": "created_at",
+                "order_direction": "DESC"
+            }
+        },
+        "abilities": {
+            "can_read": true,
+            "can_write": true,
+            "can_read_secret": "{MASKED}",
+            "can_read_comments": true,
+            "can_write_comments": true,
+            "can_upload": true,
+            "can_download": true,
+            "can_manage": true,
+            "can_view_deleted": true
+        }
+    }
+}
+```
+
 **에러 응답**
 
 | 상태코드 | 의미 | 발생 조건 |
@@ -1047,9 +2611,22 @@ _목록 응답: `data.data[]` 배열 항목의 필드 + `data.pagination`._
 
 > 이 엔드포인트는 확장이 파라미터를 추가할 수 있습니다 (`sirsoft-board.user_post.store_validation_rules`).
 
+**요청 예시**
+
+```http
+POST /api/modules/sirsoft-board/boards/apidoc-sample-board/posts HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -1076,6 +2653,15 @@ _목록 응답: `data.data[]` 배열 항목의 필드 + `data.pagination`._
 | --- | --- | --- | --- | --- | --- |
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
 
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/boards/apidoc-sample-board/posts/form-data HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
+
 **응답 필드** (`data` 내부)
 
 _단건 응답: `data` 객체의 필드._
@@ -1089,6 +2675,28 @@ _단건 응답: `data` 객체의 필드._
 | is_notice | boolean | `false` | notice 여부 |
 | is_secret | boolean | `false` | secret 여부 |
 | parent_id | null | `null` | parent 식별자 (연관 리소스 참조) |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "게시글 폼 데이터를 조회했습니다.",
+    "data": {
+        "title": "",
+        "content": "",
+        "content_mode": "text",
+        "category": null,
+        "is_notice": false,
+        "is_secret": "{MASKED}",
+        "parent_id": null
+    }
+}
+```
 
 **에러 응답**
 
@@ -1114,6 +2722,15 @@ _단건 응답: `data` 객체의 필드._
 | --- | --- | --- | --- | --- | --- |
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
 
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/boards/apidoc-sample-board/posts/form-meta HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
+
 **응답 필드** (`data` 내부)
 
 _단건 응답: `data` 객체의 필드._
@@ -1121,6 +2738,88 @@ _단건 응답: `data` 객체의 필드._
 | 필드 | 타입 | 실측 예시값 | 용도/설명 |
 | --- | --- | --- | --- |
 | board | object | `{"id":12,"name":"API 문서 샘플 게시판","slug":"apidoc-sample-boa…` | 글쓰기/수정 폼 렌더링용 게시판 메타 (id/name/slug/type + 게시판 설정과 현재 사용자 권한(user_abilities) 등) |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "게시글 폼 메타 데이터를 조회했습니다.",
+    "data": {
+        "board": {
+            "id": 1,
+            "name": "API 문서 샘플 게시판",
+            "slug": "apidoc-sample-board",
+            "is_active": true,
+            "type": "basic",
+            "description": "",
+            "per_page": 20,
+            "per_page_mobile": 15,
+            "order_by": "created_at",
+            "order_direction": "DESC",
+            "categories": [],
+            "show_view_count": true,
+            "secret_mode": "{MASKED}",
+            "use_comment": true,
+            "use_reply": true,
+            "max_reply_depth": 5,
+            "use_report": true,
+            "comment_order": "ASC",
+            "max_comment_depth": 10,
+            "min_title_length": 2,
+            "max_title_length": 200,
+            "min_content_length": 10,
+            "max_content_length": 10000,
+            "min_comment_length": 2,
+            "max_comment_length": 1000,
+            "blocked_keywords": [],
+            "use_file_upload": true,
+            "max_file_size": 10,
+            "max_file_count": 5,
+            "allowed_extensions": [
+                "jpg",
+                "jpeg",
+                "png",
+                "gif",
+                "pdf",
+                "zip"
+            ],
+            "add_to_menu": null,
+            "new_display_hours": 24,
+            "board_managers": [],
+            "board_steps": [],
+            "board_manager_ids": [],
+            "board_step_ids": [],
+            "notify_author": true,
+            "notify_admin_on_post": true,
+            "created_at": "2026-07-08 10:41:34",
+            "updated_at": "2026-07-08 10:41:34",
+            "permissions": null,
+            "category_post_counts": null,
+            "posts_count": 0,
+            "user_abilities": {
+                "can_read": true,
+                "can_write": true,
+                "can_read_secret": "{MASKED}",
+                "can_read_comments": true,
+                "can_write_comments": true,
+                "can_upload": true,
+                "can_download": true,
+                "can_manage": true
+            },
+            "abilities": {
+                "can_create": true,
+                "can_update": true,
+                "can_delete": true
+            }
+        }
+    }
+}
+```
 
 **에러 응답**
 
@@ -1147,9 +2846,34 @@ _단건 응답: `data` 객체의 필드._
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
 | id | path | string | 예 | — | 대상 리소스의 식별자 |
 
+**요청 예시**
+
+```http
+DELETE /api/modules/sirsoft-board/boards/apidoc-sample-board/posts/1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
+
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+
+<!-- 실측 응답에 필드 없음(빈 목록 등) — 데이터가 있는 상태로 재실측하거나 사람이 작성. -->
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "게시글이 삭제되었습니다.",
+    "data": null
+}
+```
 
 **에러 응답**
 
@@ -1175,6 +2899,15 @@ _단건 응답: `data` 객체의 필드._
 | --- | --- | --- | --- | --- | --- |
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
 | id | path | string | 예 | — | 대상 리소스의 식별자 |
+
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/boards/apidoc-sample-board/posts/1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
 
 **응답 필드** (`data` 내부)
 
@@ -1222,6 +2955,175 @@ _단건 응답: `data` 객체의 필드._
 | is_owner | boolean | `true` | 현재 인증 사용자가 이 리소스의 소유자인지 여부 (BaseApiResource 표준 메타) |
 | abilities | object | `{"can_read":true,"can_write":true,"can_read_secret":true,…` | 현재 사용자가 이 리소스에 수행 가능한 작업 불리언 맵 (can_update, can_delete 등 — 권한 맵 기반) |
 
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "게시글 목록을 조회했습니다.",
+    "data": {
+        "id": 1,
+        "category": null,
+        "author": {
+            "uuid": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+            "name": "API 문서 샘플 사용자",
+            "email": "apidoc-sample-user@example.com",
+            "avatar": null,
+            "status": "active",
+            "status_label": "활성",
+            "is_guest": false
+        },
+        "is_notice": false,
+        "is_secret": "{MASKED}",
+        "content_mode": "html",
+        "is_new": true,
+        "status": "published",
+        "status_label": "게시됨",
+        "view_count": 44,
+        "comment_count": 0,
+        "reply_count": 0,
+        "attachment_count": 0,
+        "has_attachment": false,
+        "thumbnail": "/api/modules/sirsoft-board/boards/apidoc-sample-board/attachment/apidocsmpl1/preview",
+        "parent_id": null,
+        "depth": 0,
+        "is_reply": false,
+        "created_at": "2026-07-08 10:41:34",
+        "created_at_formatted": "4시간 전",
+        "is_author": true,
+        "is_guest_post": false,
+        "title": "API 문서 샘플 게시글",
+        "content": "<p>API 레퍼런스 실측용 완전 샘플 게시글 본문입니다.</p>",
+        "user_id": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+        "trigger_type": "user",
+        "updated_at": "2026-07-08 15:01:44",
+        "deleted_at": null,
+        "ip_address": "127.0.0.1",
+        "action_logs": [],
+        "board": {
+            "slug": "apidoc-sample-board",
+            "name": "API 문서 샘플 게시판",
+            "type": "basic",
+            "use_comment": true,
+            "use_reply": true,
+            "use_report": true,
+            "show_view_count": true,
+            "max_reply_depth": 5,
+            "max_comment_depth": 10,
+            "report_types": [
+                {
+                    "value": "abuse",
+                    "label": "욕설/비방"
+                },
+                {
+                    "value": "hate_speech",
+                    "label": "혐오 발언"
+                },
+                {
+                    "value": "spam",
+                    "label": "스팸/광고"
+                },
+                {
+                    "value": "copyright",
+                    "label": "저작권 침해"
+                },
+                {
+                    "value": "privacy",
+                    "label": "개인정보 노출"
+                },
+                {
+                    "value": "misinformation",
+                    "label": "허위정보"
+                },
+                {
+                    "value": "sexual",
+                    "label": "성적인 콘텐츠"
+                },
+                {
+                    "value": "violence",
+                    "label": "폭력적인 콘텐츠"
+                },
+                {
+                    "value": "other",
+                    "label": "기타"
+                }
+            ]
+        },
+        "navigation": null,
+        "parent": null,
+        "comments": [
+            {
+                "id": 1,
+                "post_id": 1,
+                "parent_id": null,
+                "content": "API 문서 샘플 댓글입니다.",
+                "author": {
+                    "uuid": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+                    "name": "API 문서 샘플 사용자",
+                    "email": "apidoc-sample-user@example.com",
+                    "avatar": null,
+                    "status": "active",
+                    "status_label": "활성",
+                    "is_guest": false
+                },
+                "is_secret": "{MASKED}",
+                "status": "published",
+                "status_label": "게시됨",
+                "depth": 0,
+                "replies_count": 0,
+                "created_at": "2026-07-08 10:41:34",
+                "created_at_formatted": "4시간 전",
+                "updated_at": "2026-07-08 10:41:34",
+                "deleted_at": null,
+                "is_cascade_deleted": false,
+                "ip_address": null,
+                "action_logs": [],
+                "is_author": true,
+                "is_guest_comment": false,
+                "is_already_reported": false,
+                "is_owner": true,
+                "abilities": {
+                    "can_write": true
+                }
+            }
+        ],
+        "attachments": [
+            {
+                "id": 1,
+                "hash": "apidocsmpl1",
+                "original_filename": "apidoc-sample.png",
+                "mime_type": "image/png",
+                "size": 2048,
+                "size_formatted": "2 KB",
+                "collection": "default",
+                "order": 0,
+                "download_url": "/api/modules/sirsoft-board/boards/apidoc-sample-board/attachment/apidocsmpl1",
+                "preview_url": "/api/modules/sirsoft-board/boards/apidoc-sample-board/attachment/apidocsmpl1/preview",
+                "is_image": true,
+                "meta": null
+            }
+        ],
+        "replies": [],
+        "is_already_reported": false,
+        "is_owner": true,
+        "abilities": {
+            "can_read": true,
+            "can_write": true,
+            "can_read_secret": "{MASKED}",
+            "can_read_comments": true,
+            "can_write_comments": true,
+            "can_upload": true,
+            "can_download": true,
+            "can_manage": true
+        }
+    }
+}
+```
+
 **에러 응답**
 
 | 상태코드 | 의미 | 발생 조건 |
@@ -1249,9 +3151,179 @@ _단건 응답: `data` 객체의 필드._
 
 > 이 엔드포인트는 확장이 파라미터를 추가할 수 있습니다 (`sirsoft-board.user_post.update_validation_rules`).
 
+**요청 예시**
+
+```http
+PUT /api/modules/sirsoft-board/boards/apidoc-sample-board/posts/1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
+
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+_단건 응답: `data` 객체의 필드._
+
+| 필드 | 타입 | 실측 예시값 | 용도/설명 |
+| --- | --- | --- | --- |
+| id | integer | `1` | 기본 키 (내부 식별자) |
+| category | null | `null` | 게시글이 속한 분류(카테고리) 이름 (분류 미지정 시 null) |
+| author | object | `{"uuid":"a234c2b1-cde8-437f-b28b-23323be2b98d","name":"AP…` | 작성자 사용자 객체 (uuid/name — author 관계 파생) |
+| is_notice | boolean | `false` | notice 여부 |
+| is_secret | boolean | `false` | secret 여부 |
+| content_mode | string | `html` | 본문 편집 모드 (html: HTML 에디터 / text: 일반 텍스트 — 미지정 시 text) |
+| is_new | boolean | `true` | new 여부 |
+| status | string | `published` | 상태 값 (도메인별 상태 집합 — 사람이 읽는 라벨은 status_label, UI 변형은 status_variant 참조) |
+| status_label | string | `게시됨` | 상태의 사람이 읽는 라벨 (상태 Enum label() 산물) |
+| view_count | integer | `44` | view 개수 (집계) |
+| comment_count | integer | `0` | comment 개수 (집계) |
+| reply_count | integer | `0` | reply 개수 (집계) |
+| attachment_count | integer | `0` | attachment 개수 (집계) |
+| has_attachment | boolean | `false` | attachment 여부 |
+| thumbnail | null | `null` | 썸네일 이미지 URL/경로 |
+| parent_id | null | `null` | parent 식별자 (연관 리소스 참조) |
+| depth | integer | `0` | 계층 트리에서의 깊이 (0 = 최상위, 하위로 갈수록 증가) |
+| is_reply | boolean | `false` | reply 여부 |
+| created_at | string | `2026-07-08 10:41:34` | 생성 일시 |
+| created_at_formatted | string | `4시간 전` | `created_at` 값의 표시용 포맷 문자열 (통화/용량/일시 등 로케일·단위 포맷) |
+| is_author | boolean | `true` | author 여부 |
+| is_guest_post | boolean | `false` | guest post 여부 |
+| title | string | `API 문서 샘플 게시글` | 제목 |
+| content | string | `<p>API 레퍼런스 실측용 완전 샘플 게시글 본문입니다.</p>` | 본문 내용 |
+| user_id | string | `a234c2b1-cde8-437f-b28b-23323be2b98d` | user 식별자 (연관 리소스 참조) |
+| trigger_type | string | `user` | 동작을 유발한 방식/주체 구분 값 |
+| updated_at | string | `2026-07-08 15:01:44` | 최종 수정 일시 |
+| deleted_at | null | `null` | 소프트 삭제 일시 (미삭제 시 null) |
+| ip_address | string | `127.0.0.1` | 요청/행위가 발생한 IP 주소 |
+| action_logs | array | `[]` | 게시글 블라인드/복원/삭제 등 운영 처리 이력 (action/reason/admin_name/created_at — admin.manage 권한 보유자에게만 노출, 비권한자는 null) |
+| board | object | `{"slug":"apidoc-sample-board","name":"API 문서 샘플 게시판","typ…` | 소속 게시판 요약 정보 (slug/name/type/댓글·답변·신고 사용 여부·최대 깊이·신고 유형 목록 등 — board 관계 로드 시에만 채워지며 미로드 시 null) |
+| navigation | null | `null` | 이전/다음 글 이동 정보 (별도 navigation 조회로 채워지며, 이 응답에는 기본적으로 미포함되어 null) |
+| parent | null | `null` | 상위 항목 객체 (parent 관계 파생) |
+| comments | null | `null` | 게시글 댓글 목록 (comments 관계 로드 시 CommentResource 컬렉션으로 채워지며, 미로드 시 null) |
+| attachments | null | `null` | 게시글 첨부파일 목록 (attachments 관계 로드 시 권한·비밀글·삭제 정책에 따라 필터링된 AttachmentResource 컬렉션, 미로드 시 null) |
+| replies | null | `null` | 이 게시글에 달린 답변글 목록 (replies 관계 로드 시 동일 PostResource 컬렉션으로 채워지며, 미로드 시 null) |
+| is_already_reported | boolean | `false` | already reported 여부 |
+| is_owner | boolean | `true` | 현재 인증 사용자가 이 리소스의 소유자인지 여부 (BaseApiResource 표준 메타) |
+| abilities | object | `{"can_read":true,"can_write":true,"can_read_secret":true,…` | 현재 사용자가 이 리소스에 수행 가능한 작업 불리언 맵 (can_update, can_delete 등 — 권한 맵 기반) |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "게시글이 수정되었습니다.",
+    "data": {
+        "id": 1,
+        "category": null,
+        "author": {
+            "uuid": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+            "name": "API 문서 샘플 사용자",
+            "email": "apidoc-sample-user@example.com",
+            "avatar": null,
+            "status": "active",
+            "status_label": "활성",
+            "is_guest": false
+        },
+        "is_notice": false,
+        "is_secret": "{MASKED}",
+        "content_mode": "html",
+        "is_new": true,
+        "status": "published",
+        "status_label": "게시됨",
+        "view_count": 44,
+        "comment_count": 0,
+        "reply_count": 0,
+        "attachment_count": 0,
+        "has_attachment": false,
+        "thumbnail": null,
+        "parent_id": null,
+        "depth": 0,
+        "is_reply": false,
+        "created_at": "2026-07-08 10:41:34",
+        "created_at_formatted": "4시간 전",
+        "is_author": true,
+        "is_guest_post": false,
+        "title": "API 문서 샘플 게시글",
+        "content": "<p>API 레퍼런스 실측용 완전 샘플 게시글 본문입니다.</p>",
+        "user_id": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+        "trigger_type": "user",
+        "updated_at": "2026-07-08 15:01:44",
+        "deleted_at": null,
+        "ip_address": "127.0.0.1",
+        "action_logs": [],
+        "board": {
+            "slug": "apidoc-sample-board",
+            "name": "API 문서 샘플 게시판",
+            "type": "basic",
+            "use_comment": true,
+            "use_reply": true,
+            "use_report": true,
+            "show_view_count": true,
+            "max_reply_depth": 5,
+            "max_comment_depth": 10,
+            "report_types": [
+                {
+                    "value": "abuse",
+                    "label": "욕설/비방"
+                },
+                {
+                    "value": "hate_speech",
+                    "label": "혐오 발언"
+                },
+                {
+                    "value": "spam",
+                    "label": "스팸/광고"
+                },
+                {
+                    "value": "copyright",
+                    "label": "저작권 침해"
+                },
+                {
+                    "value": "privacy",
+                    "label": "개인정보 노출"
+                },
+                {
+                    "value": "misinformation",
+                    "label": "허위정보"
+                },
+                {
+                    "value": "sexual",
+                    "label": "성적인 콘텐츠"
+                },
+                {
+                    "value": "violence",
+                    "label": "폭력적인 콘텐츠"
+                },
+                {
+                    "value": "other",
+                    "label": "기타"
+                }
+            ]
+        },
+        "navigation": null,
+        "parent": null,
+        "comments": null,
+        "attachments": null,
+        "replies": null,
+        "is_already_reported": false,
+        "is_owner": true,
+        "abilities": {
+            "can_read": true,
+            "can_write": true,
+            "can_read_secret": "{MASKED}",
+            "can_read_comments": true,
+            "can_write_comments": true,
+            "can_upload": true,
+            "can_download": true,
+            "can_manage": true
+        }
+    }
+}
+```
 
 **에러 응답**
 
@@ -1279,6 +3351,15 @@ _단건 응답: `data` 객체의 필드._
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
 | id | path | string | 예 | — | 대상 리소스의 식별자 |
 
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/boards/apidoc-sample-board/posts/1/navigation HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
+
 **응답 필드** (`data` 내부)
 
 _단건 응답: `data` 객체의 필드._
@@ -1287,6 +3368,23 @@ _단건 응답: `data` 객체의 필드._
 | --- | --- | --- | --- |
 | prev | null | `null` | 정렬 기준상 이전 글 정보 (없거나 공지·답글·조회 실패 시 null) |
 | next | null | `null` | 정렬 기준상 다음 글 정보 (없거나 공지·답글·조회 실패 시 null) |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "게시글 목록을 조회했습니다.",
+    "data": {
+        "prev": null,
+        "next": null
+    }
+}
+```
 
 **에러 응답**
 
@@ -1314,9 +3412,27 @@ _단건 응답: `data` 객체의 필드._
 | id | path | string | 예 | — | 대상 리소스의 식별자 |
 | password | body | string | 예 | — | 비밀번호 |
 
+**요청 예시**
+
+```http
+POST /api/modules/sirsoft-board/boards/apidoc-sample-board/posts/1/verify-password HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+Content-Type: application/json
+
+{
+    "password": "Password123!"
+}
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-400 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -1345,9 +3461,27 @@ _단건 응답: `data` 객체의 필드._
 | id | path | string | 예 | — | 대상 리소스의 식별자 |
 | password | body | string | 예 | — | 비밀번호 |
 
+**요청 예시**
+
+```http
+POST /api/modules/sirsoft-board/boards/apidoc-sample-board/posts/1/verify-password-for-modify HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+Content-Type: application/json
+
+{
+    "password": "Password123!"
+}
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-400 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -1374,6 +3508,15 @@ _단건 응답: `data` 객체의 필드._
 | --- | --- | --- | --- | --- | --- |
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
 | postId | path | string | 예 | — | 대상 post의 식별자 |
+
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/boards/apidoc-sample-board/posts/1/comments HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
 
 **응답 필드** (`data` 내부)
 
@@ -1402,6 +3545,55 @@ _단건 응답: `data` 객체의 필드._
 | is_owner | boolean | `true` | 현재 인증 사용자가 이 리소스의 소유자인지 여부 (BaseApiResource 표준 메타) |
 | abilities | object | `{"can_write":true}` | 현재 사용자가 이 리소스에 수행 가능한 작업 불리언 맵 (can_update, can_delete 등 — 권한 맵 기반) |
 
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "sirsoft-board::messages.comments.index_success",
+    "data": [
+        {
+            "id": 1,
+            "post_id": 1,
+            "parent_id": null,
+            "content": "API 문서 샘플 댓글입니다.",
+            "author": {
+                "uuid": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+                "name": "API 문서 샘플 사용자",
+                "email": "apidoc-sample-user@example.com",
+                "avatar": null,
+                "status": "active",
+                "status_label": "활성",
+                "is_guest": false
+            },
+            "is_secret": "{MASKED}",
+            "status": "published",
+            "status_label": "게시됨",
+            "depth": 0,
+            "replies_count": 0,
+            "created_at": "2026-07-08 10:41:34",
+            "created_at_formatted": "4시간 전",
+            "updated_at": "2026-07-08 10:41:34",
+            "deleted_at": null,
+            "is_cascade_deleted": false,
+            "ip_address": null,
+            "action_logs": [],
+            "is_author": true,
+            "is_guest_comment": false,
+            "is_already_reported": false,
+            "is_owner": true,
+            "abilities": {
+                "can_write": true
+            }
+        }
+    ]
+}
+```
+
 **에러 응답**
 
 | 상태코드 | 의미 | 발생 조건 |
@@ -1429,9 +3621,22 @@ _단건 응답: `data` 객체의 필드._
 
 > 이 엔드포인트는 확장이 파라미터를 추가할 수 있습니다 (`sirsoft-board.comment.store_validation_rules`).
 
+**요청 예시**
+
+```http
+POST /api/modules/sirsoft-board/boards/apidoc-sample-board/posts/1/comments HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -1460,9 +3665,34 @@ _단건 응답: `data` 객체의 필드._
 | postId | path | string | 예 | — | 대상 post의 식별자 |
 | commentId | path | string | 예 | — | 대상 comment의 식별자 |
 
+**요청 예시**
+
+```http
+DELETE /api/modules/sirsoft-board/boards/apidoc-sample-board/posts/1/comments/1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
+
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+
+<!-- 실측 응답에 필드 없음(빈 목록 등) — 데이터가 있는 상태로 재실측하거나 사람이 작성. -->
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "댓글이 삭제되었습니다.",
+    "data": null
+}
+```
 
 **에러 응답**
 
@@ -1492,9 +3722,22 @@ _단건 응답: `data` 객체의 필드._
 
 > 이 엔드포인트는 확장이 파라미터를 추가할 수 있습니다 (`sirsoft-board.comment.update_validation_rules`).
 
+**요청 예시**
+
+```http
+PUT /api/modules/sirsoft-board/boards/apidoc-sample-board/posts/1/comments/1 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생략 가능)
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -1524,9 +3767,28 @@ _단건 응답: `data` 객체의 필드._
 | reason_type | body | string | 예 | — | 신고 사유 유형 (ReportReasonType Enum 값 중 하나 — 스팸/욕설 등) |
 | reason_detail | body | string | 예 | min 1, max 1000 | 신고 사유 상세 설명 (1~1000자) |
 
+**요청 예시**
+
+```http
+POST /api/modules/sirsoft-board/boards/apidoc-sample-board/posts/1/reports HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+Content-Type: application/json
+
+{
+    "reason_type": "예시값",
+    "reason_detail": "예시값"
+}
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 

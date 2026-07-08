@@ -27,6 +27,15 @@
 
 _요청 파라미터 없음._
 
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/admin/board-types HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
 | 필드 | 타입 | 실측 예시값 | 용도/설명 |
@@ -34,6 +43,45 @@ _요청 파라미터 없음._
 | id | integer | `1` | 기본 키 (내부 식별자) |
 | slug | string | `basic` | 유형 식별자 (basic, card, gallery 등) |
 | name | object | `{"ko":"기본형","en":"Basic List","ja":"基本形"}` | 유형명 (다국어: {"ko": "기본형", "en": "Basic List"}) |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "게시판 유형 목록을 조회했습니다.",
+    "data": [
+        {
+            "id": 2,
+            "slug": "basic",
+            "name": {
+                "ko": "기본형",
+                "en": "Basic List"
+            }
+        },
+        {
+            "id": 3,
+            "slug": "gallery",
+            "name": {
+                "ko": "갤러리형",
+                "en": "Gallery"
+            }
+        },
+        {
+            "id": 4,
+            "slug": "card",
+            "name": {
+                "ko": "카드형",
+                "en": "Card"
+            }
+        }
+    ]
+}
+```
 
 **에러 응답**
 
@@ -60,9 +108,28 @@ _요청 파라미터 없음._
 | slug | body | string | 예 | max 50 | URL 친화 식별자 (slug) |
 | name | body | string | 예 | — | 대상의 이름/명칭 |
 
+**요청 예시**
+
+```http
+POST /api/modules/sirsoft-board/admin/board-types HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+Content-Type: application/json
+
+{
+    "slug": "example-key",
+    "name": "예시 이름"
+}
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -89,9 +156,22 @@ _요청 파라미터 없음._
 | --- | --- | --- | --- | --- | --- |
 | id | path | string | 예 | — | 대상 리소스의 식별자 |
 
+**요청 예시**
+
+```http
+DELETE /api/modules/sirsoft-board/admin/board-types/2 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 
@@ -119,9 +199,27 @@ _요청 파라미터 없음._
 | id | path | string | 예 | — | 대상 리소스의 식별자 |
 | name | body | string | 예 | — | 대상의 이름/명칭 |
 
+**요청 예시**
+
+```http
+PUT /api/modules/sirsoft-board/admin/board-types/2 HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+Content-Type: application/json
+
+{
+    "name": "예시 이름"
+}
+```
+
 **응답 필드** (`data` 내부)
 
 <!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+
+**응답 예시**
+
+<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
 
 **에러 응답**
 

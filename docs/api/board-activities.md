@@ -27,6 +27,15 @@
 
 _요청 파라미터 없음._
 
+**요청 예시**
+
+```http
+GET /api/modules/sirsoft-board/me/board-activities HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer {YOUR_TOKEN}
+```
+
 **응답 필드** (`data` 내부)
 
 _목록 응답: `data.data[]` 배열 항목의 필드._
@@ -46,6 +55,75 @@ _목록 응답: `data.data[]` 배열 항목의 필드._
 | created_at | string | `2026-07-07 09:34:50` | 생성 일시 |
 | created_at_formatted | string | `4시간 전` | `created_at` 값의 표시용 포맷 문자열 (통화/용량/일시 등 로케일·단위 포맷) |
 | content_plain | string | `API 레퍼런스 실측용 완전 샘플 게시글 본문입니다.` | 게시글 본문의 순수 텍스트입니다. HTML 모드 글은 태그를 제거한 평문으로 변환되며, 목록 미리보기용으로 사용합니다. |
+
+**응답 예시**
+
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "내 활동 게시글을 조회했습니다.",
+    "data": {
+        "current_page": 1,
+        "data": [
+            {
+                "id": 1,
+                "board_slug": "apidoc-sample-board",
+                "board_name": "API 문서 샘플 게시판",
+                "activity_type": "authored",
+                "activity_count": 0,
+                "title": "API 문서 샘플 게시글",
+                "is_secret": "{MASKED}",
+                "status": "published",
+                "view_count": 44,
+                "comment_count": 0,
+                "created_at": "2026-07-08 10:41:34",
+                "created_at_formatted": "4시간 전",
+                "content_plain": "API 레퍼런스 실측용 완전 샘플 게시글 본문입니다."
+            }
+        ],
+        "first_page_url": "https://api.example.com/api/modules/sirsoft-board/me/board-activities?page=1",
+        "from": 1,
+        "last_page": 1,
+        "last_page_url": "https://api.example.com/api/modules/sirsoft-board/me/board-activities?page=1",
+        "links": [
+            {
+                "url": null,
+                "label": "pagination.previous",
+                "page": null,
+                "active": false
+            },
+            {
+                "url": "https://api.example.com/api/modules/sirsoft-board/me/board-activities?page=1",
+                "label": "1",
+                "page": 1,
+                "active": true
+            },
+            {
+                "url": null,
+                "label": "pagination.next",
+                "page": null,
+                "active": false
+            }
+        ],
+        "next_page_url": null,
+        "path": "https://api.example.com/api/modules/sirsoft-board/me/board-activities",
+        "per_page": 25,
+        "prev_page_url": null,
+        "to": 1,
+        "total": 1,
+        "query": {
+            "board_slug": "",
+            "search": "",
+            "sort": "latest",
+            "activity_type": ""
+        }
+    }
+}
+```
 
 **에러 응답**
 
