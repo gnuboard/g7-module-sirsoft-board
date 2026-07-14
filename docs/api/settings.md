@@ -8,8 +8,8 @@
 
 ```text
 1. 이 문서는 실제 API 호출로 실측한 Settings 엔드포인트 레퍼런스입니다
-2. 각 엔드포인트: 메서드/URI/권한 + 요청 파라미터 표 + 실측 응답 필드 표
-3. 응답 필드의 예시값은 실제 호출 응답에서 관측된 값입니다
+2. 각 엔드포인트: 메서드/URI/권한 + 요청 파라미터 표 + 요청 예시(raw HTTP) + 실측 응답 필드 표 + 응답 예시(envelope)
+3. 응답 필드의 예시값·응답 예시 JSON 은 실제 호출 응답에서 관측된 값입니다
 4. 갱신: 코드 변경 후 php artisan api:docgen 재실행
 5. 설명(TODO) 칸은 사람이 채웁니다
 ```
@@ -363,10 +363,36 @@ HTTP/1.1 200
 | notifications | body | array | 아니오 | — | 알림 채널 설정. `channels` 배열의 각 항목에 채널 식별자(id), 활성화 여부(is_active), 정렬 순서(sort_order)를 담아 저장합니다. |
 | basic_defaults | body | array | 아니오 | — | 기본 설정 카테고리 값. 게시판 타입·페이지당 글 수·정렬·댓글/답글·길이 제한·파일 업로드·기본 권한 등 basic_defaults 하위 키를 저장합니다. `basic_defaults.allowed_extensions` 는 `basic_defaults.use_file_upload` 가 `true` 일 때만 최소 1개가 필수이며, `false`/`null` 이면 검증에서 제외되어 빈 배열도 허용됩니다. `min_title_length`·`min_comment_length`·`new_display_hours` 의 하한은 `config('sirsoft-board.limits')` 선언을 따르며 `0` 을 허용합니다. |
 | report_policy | body | array | 아니오 | — | 신고 정책 카테고리 값. 자동 숨김 임계치/대상, 일일 신고 한도, 거부 누적 제한, 관리자·작성자 신고 알림 설정을 저장합니다. |
+| report_policy.auto_hide_threshold | body | integer | 아니오 | min 0, max 100 | <!-- TODO: 용도 --> |
+| report_policy.auto_hide_target | body | string | 아니오 | `post`, `comment`, `both` | <!-- TODO: 용도 --> |
+| report_policy.daily_report_limit | body | integer | 아니오 | min 0, max 100 | <!-- TODO: 용도 --> |
+| report_policy.rejection_limit_count | body | integer | 아니오 | min 0, max 50 | <!-- TODO: 용도 --> |
+| report_policy.rejection_limit_days | body | integer | 아니오 | min 1, max 365 | <!-- TODO: 용도 --> |
+| report_policy.notify_admin_on_report | body | boolean | 아니오 | — | <!-- TODO: 용도 --> |
+| report_policy.notify_admin_on_report_scope | body | string | 아니오 | `per_case`, `per_report` | <!-- TODO: 용도 --> |
+| report_policy.notify_admin_on_report_channels | body | array | 아니오 | — | <!-- TODO: 용도 --> |
+| report_policy.notify_author_on_report_action | body | boolean | 아니오 | — | <!-- TODO: 용도 --> |
+| report_policy.notify_author_on_report_action_channels | body | array | 아니오 | — | <!-- TODO: 용도 --> |
 | report_permissions | body | array | 아니오 | — | 신고 관리 권한 역할. `view_roles`(조회 역할)와 `manage_roles`(관리 역할)의 역할 식별자 배열이며, 포함 시 설정 저장과 별개로 DB 권한 역할이 동기화됩니다. |
+| report_permissions.view_roles | body | array | 아니오 | min 1 | <!-- TODO: 용도 --> |
+| report_permissions.manage_roles | body | array | 아니오 | min 1 | <!-- TODO: 용도 --> |
 | display | body | array | 아니오 | — | 표시 설정 카테고리 값. 날짜 표시 형식(date_display_format: standard/relative) 등을 저장합니다. |
+| display.date_display_format | body | string | 아니오 | `standard`, `relative` | <!-- TODO: 용도 --> |
 | spam_security | body | array | 아니오 | — | 스팸·보안 카테고리 값. 글·댓글·신고 작성 쿨다운 시간(초)과 조회수 캐시 TTL을 저장합니다. |
+| spam_security.post_cooldown_seconds | body | integer | 아니오 | min 0, max 3600 | <!-- TODO: 용도 --> |
+| spam_security.comment_cooldown_seconds | body | integer | 아니오 | min 0, max 3600 | <!-- TODO: 용도 --> |
+| spam_security.report_cooldown_seconds | body | integer | 아니오 | min 0, max 3600 | <!-- TODO: 용도 --> |
+| spam_security.view_count_cache_ttl | body | integer | 아니오 | min 60, max 604800 | <!-- TODO: 용도 --> |
 | seo | body | array | 아니오 | — | SEO 설정 카테고리 값. 게시판 목록/개별/글 상세 페이지의 메타 제목·설명 템플릿과 각 페이지 SEO 활성화 여부를 저장합니다. |
+| seo.meta_boards_title | body | string | 아니오 | max 500 | <!-- TODO: 용도 --> |
+| seo.meta_boards_description | body | string | 아니오 | max 1000 | <!-- TODO: 용도 --> |
+| seo.meta_board_title | body | string | 아니오 | max 500 | <!-- TODO: 용도 --> |
+| seo.meta_board_description | body | string | 아니오 | max 1000 | <!-- TODO: 용도 --> |
+| seo.meta_post_title | body | string | 아니오 | max 500 | <!-- TODO: 용도 --> |
+| seo.meta_post_description | body | string | 아니오 | max 1000 | <!-- TODO: 용도 --> |
+| seo.seo_boards | body | boolean | 아니오 | — | <!-- TODO: 용도 --> |
+| seo.seo_board | body | boolean | 아니오 | — | <!-- TODO: 용도 --> |
+| seo.seo_post_detail | body | boolean | 아니오 | — | <!-- TODO: 용도 --> |
 
 **요청 예시**
 
@@ -382,24 +408,95 @@ Content-Type: application/json
     "notifications": [
         "예시값"
     ],
+    "notifications.channels": [
+        "예시값"
+    ],
     "basic_defaults": [
+        "예시값"
+    ],
+    "basic_defaults.type": "예시값",
+    "basic_defaults.per_page": 1,
+    "basic_defaults.per_page_mobile": 1,
+    "basic_defaults.order_by": "created_at",
+    "basic_defaults.order_direction": "ASC",
+    "basic_defaults.secret_mode": "disabled",
+    "basic_defaults.use_comment": true,
+    "basic_defaults.use_reply": true,
+    "basic_defaults.max_reply_depth": 1,
+    "basic_defaults.max_comment_depth": 1,
+    "basic_defaults.comment_order": "ASC",
+    "basic_defaults.show_view_count": true,
+    "basic_defaults.use_report": true,
+    "basic_defaults.min_title_length": 1,
+    "basic_defaults.max_title_length": 1,
+    "basic_defaults.min_content_length": 1,
+    "basic_defaults.max_content_length": 1,
+    "basic_defaults.min_comment_length": 1,
+    "basic_defaults.max_comment_length": 1,
+    "basic_defaults.use_file_upload": true,
+    "basic_defaults.max_file_size": 1,
+    "basic_defaults.max_file_count": 1,
+    "basic_defaults.blocked_keywords": [
+        "예시값"
+    ],
+    "basic_defaults.allowed_extensions": [
+        "예시값"
+    ],
+    "basic_defaults.notify_admin_on_post": true,
+    "basic_defaults.notify_author": true,
+    "basic_defaults.new_display_hours": 1,
+    "basic_defaults.default_board_permissions": [
         "예시값"
     ],
     "report_policy": [
         "예시값"
     ],
+    "report_policy.auto_hide_threshold": 1,
+    "report_policy.auto_hide_target": "post",
+    "report_policy.daily_report_limit": 1,
+    "report_policy.rejection_limit_count": 1,
+    "report_policy.rejection_limit_days": 1,
+    "report_policy.notify_admin_on_report": true,
+    "report_policy.notify_admin_on_report_scope": "per_case",
+    "report_policy.notify_admin_on_report_channels": [
+        "예시값"
+    ],
+    "report_policy.notify_author_on_report_action": true,
+    "report_policy.notify_author_on_report_action_channels": [
+        "예시값"
+    ],
     "report_permissions": [
+        "예시값"
+    ],
+    "report_permissions.view_roles": [
+        "예시값"
+    ],
+    "report_permissions.manage_roles": [
         "예시값"
     ],
     "display": [
         "예시값"
     ],
+    "display.date_display_format": "standard",
     "spam_security": [
         "예시값"
     ],
+    "spam_security.post_cooldown_seconds": 1,
+    "spam_security.comment_cooldown_seconds": 1,
+    "spam_security.report_cooldown_seconds": 1,
+    "spam_security.view_count_cache_ttl": 1,
     "seo": [
         "예시값"
-    ]
+    ],
+    "seo.meta_boards_title": "예시 제목",
+    "seo.meta_boards_description": "예시 내용입니다.",
+    "seo.meta_board_title": "예시 제목",
+    "seo.meta_board_description": "예시 내용입니다.",
+    "seo.meta_post_title": "예시 제목",
+    "seo.meta_post_description": "예시 내용입니다.",
+    "seo.seo_boards": true,
+    "seo.seo_board": true,
+    "seo.seo_post_detail": true
 }
 ```
 
@@ -719,7 +816,7 @@ Content-Type: application/json
 
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+<!-- 실측 제외: http-422 — 응답 필드는 사람이 작성하세요. -->
 
 **응답 예시**
 
@@ -759,7 +856,7 @@ Authorization: Bearer {YOUR_TOKEN}
 
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: write-method — 응답 필드는 사람이 작성하세요. -->
+<!-- 실측 제외: side-effectful-write — 응답 필드는 사람이 작성하세요. -->
 
 **응답 예시**
 
