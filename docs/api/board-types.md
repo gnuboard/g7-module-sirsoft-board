@@ -125,11 +125,30 @@ Content-Type: application/json
 
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: http-422 — 응답 필드는 사람이 작성하세요. -->
+_단건 응답: `data` 객체의 필드._
+
+| 필드 | 타입 | 실측 예시값 | 용도/설명 |
+| --- | --- | --- | --- |
+| id | integer | `5` | 게시판 유형 ID (기본 키) |
+| slug | string | `notice-board` | 유형 식별자 (basic, card, gallery 등) — 소문자로 시작하는 소문자/숫자/하이픈 조합 |
+| name | object | `{"ko":"공지형","en":"Notice"}` | 유형명 (다국어: `{"ko": "기본형", "en": "Basic List"}`) |
 
 **응답 예시**
 
-<!-- 실측 제외: http-422 — 응답 예시는 사람이 작성하세요. -->
+```json
+{
+    "success": true,
+    "message": "게시판 유형이 생성되었습니다.",
+    "data": {
+        "id": 5,
+        "slug": "notice-board",
+        "name": {
+            "ko": "공지형",
+            "en": "Notice"
+        }
+    }
+}
+```
 
 **에러 응답**
 
@@ -167,11 +186,17 @@ Authorization: Bearer {YOUR_TOKEN}
 
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: unresolved-path-param — 응답 필드는 사람이 작성하세요. -->
+_이 엔드포인트는 `data` 를 반환하지 않습니다 (성공 메시지만)._
 
 **응답 예시**
 
-<!-- 실측 제외: unresolved-path-param — 응답 예시는 사람이 작성하세요. -->
+```json
+{
+    "success": true,
+    "message": "게시판 유형이 삭제되었습니다.",
+    "data": null
+}
+```
 
 **에러 응답**
 
@@ -179,7 +204,8 @@ Authorization: Bearer {YOUR_TOKEN}
 | --- | --- | --- |
 | 401 | Unauthenticated | 유효한 Bearer 토큰이 없거나 만료된 경우 |
 | 403 | Forbidden | 요구 권한(`sirsoft-board.boards.create`)이 없는 경우 |
-| 404 | Not Found | path 파라미터에 해당하는 리소스가 없는 경우 |
+| 404 | Not Found | 해당 `id` 의 게시판 유형이 없는 경우 (`게시판 유형을 찾을 수 없습니다.`) |
+| 422 | Unprocessable Entity | 해당 유형을 사용 중인 게시판이 있는 경우 (`:count개 게시판에서 사용 중인 유형은 삭제할 수 없습니다.`) 또는 게시판 기본 유형(`basic_defaults.type`)으로 설정된 경우 (`기본값으로 설정된 유형은 삭제할 수 없습니다.`) |
 
 <!-- @generated:end -->
 
@@ -215,11 +241,30 @@ Content-Type: application/json
 
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: unresolved-path-param — 응답 필드는 사람이 작성하세요. -->
+_단건 응답: `data` 객체의 필드._
+
+| 필드 | 타입 | 실측 예시값 | 용도/설명 |
+| --- | --- | --- | --- |
+| id | integer | `2` | 게시판 유형 ID (기본 키) |
+| slug | string | `basic` | 유형 식별자 (basic, card, gallery 등) — 수정되지 않음 |
+| name | object | `{"ko":"기본형","en":"Basic List"}` | 유형명 (다국어: `{"ko": "기본형", "en": "Basic List"}`) |
 
 **응답 예시**
 
-<!-- 실측 제외: unresolved-path-param — 응답 예시는 사람이 작성하세요. -->
+```json
+{
+    "success": true,
+    "message": "게시판 유형이 수정되었습니다.",
+    "data": {
+        "id": 2,
+        "slug": "basic",
+        "name": {
+            "ko": "기본형",
+            "en": "Basic List"
+        }
+    }
+}
+```
 
 **에러 응답**
 

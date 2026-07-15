@@ -82,11 +82,46 @@ Content-Disposition: form-data; name="temp_key"
 
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: unresolved-path-param — 응답 필드는 사람이 작성하세요. -->
+_단건 응답: `data` 객체의 필드. FileUploader 컴포넌트 호환을 위해 파일 메타는 `data.data` 로 한 번 더 감싸집니다._
+
+| 필드 | 타입 | 실측 예시값 | 용도/설명 |
+| --- | --- | --- | --- |
+| data | object | `{"id":1,"hash":"apidocsmpl1", ...}` | 업로드된 첨부파일 메타 객체 (아래 하위 필드) |
+| data.id | integer | `1` | 첨부파일 기본 키 (게시판별 첨부 테이블의 내부 식별자) |
+| data.hash | string | `apidocsmpl1` | 첨부파일 해시 식별자 (다운로드/미리보기 URL 에 사용) |
+| data.original_filename | string | `apidoc-sample.png` | 사용자가 업로드한 원본 파일명 |
+| data.stored_filename | string | `—` | 스토리지에 실제 저장된 파일명 (충돌 방지용 내부 파일명) |
+| data.mime_type | string | `image/png` | 업로드 파일의 MIME 타입 |
+| data.size | integer | `2048` | 파일 크기 (바이트) |
+| data.url | string | `/api/modules/sirsoft-board/boards/apidoc-sample-board/attachment/apidocsmpl1` | 첨부파일 접근 URL (`AttachmentService::getUrl()` 산물) |
+| data.order | integer | `0` | 첨부파일 표시 순서 (0 부터 오름차순) |
+| data.created_at | string | `2026-07-08 10:41:34` | 업로드(생성) 일시 |
 
 **응답 예시**
 
-<!-- 실측 제외: unresolved-path-param — 응답 예시는 사람이 작성하세요. -->
+```http
+HTTP/1.1 201
+```
+
+```json
+{
+    "success": true,
+    "message": "파일이 업로드되었습니다.",
+    "data": {
+        "data": {
+            "id": 1,
+            "hash": "apidocsmpl1",
+            "original_filename": "apidoc-sample.png",
+            "stored_filename": "apidocsmpl1.png",
+            "mime_type": "image/png",
+            "size": 2048,
+            "url": "/api/modules/sirsoft-board/boards/apidoc-sample-board/attachment/apidocsmpl1",
+            "order": 0,
+            "created_at": "2026-07-08 10:41:34"
+        }
+    }
+}
+```
 
 **에러 응답**
 
@@ -94,8 +129,9 @@ Content-Disposition: form-data; name="temp_key"
 | --- | --- | --- |
 | 401 | Unauthenticated | 유효한 Bearer 토큰이 없거나 만료된 경우 |
 | 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.admin.attachments.upload`)이 없는 경우 |
-| 404 | Not Found | path 파라미터에 해당하는 리소스가 없는 경우 |
+| 404 | Not Found | path 파라미터에 해당하는 리소스가 없는 경우 (슬러그에 해당하는 게시판 없음 — `게시판을 찾을 수 없습니다.`) |
 | 422 | Unprocessable Entity | 요청 파라미터가 검증 규칙을 위반한 경우 (`error.errors` 에 필드별 메시지) |
+| 500 | Internal Server Error | 업로드 처리 실패 (`파일 업로드에 실패했습니다.`) |
 
 <!-- @generated:end -->
 
@@ -128,11 +164,17 @@ Authorization: Bearer {YOUR_TOKEN}
 
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: unresolved-path-param — 응답 필드는 사람이 작성하세요. -->
+_이 엔드포인트는 JSON 봉투를 반환하지 않습니다. 성공 시 파일 본문을 그대로 내려주는 `StreamedResponse`(바이너리 스트림)이며, `data` 구조가 없습니다. 실패 시에만 JSON 에러 봉투가 반환됩니다._
 
 **응답 예시**
 
-<!-- 실측 제외: unresolved-path-param — 응답 예시는 사람이 작성하세요. -->
+```http
+HTTP/1.1 200
+Content-Type: image/png
+Content-Disposition: attachment; filename="apidoc-sample.png"
+
+(바이너리 파일 내용)
+```
 
 **에러 응답**
 
@@ -140,7 +182,8 @@ Authorization: Bearer {YOUR_TOKEN}
 | --- | --- | --- |
 | 401 | Unauthenticated | 유효한 Bearer 토큰이 없거나 만료된 경우 |
 | 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.admin.attachments.download`)이 없는 경우 |
-| 404 | Not Found | path 파라미터에 해당하는 리소스가 없는 경우 |
+| 404 | Not Found | 슬러그에 해당하는 게시판이 없거나(`게시판을 찾을 수 없습니다.`), 해시에 해당하는 첨부가 없거나(`파일을 찾을 수 없습니다.`), 실제 파일이 스토리지에 없는 경우 |
+| 500 | Internal Server Error | 다운로드 처리 실패 (`파일 다운로드에 실패했습니다.`) |
 
 <!-- @generated:end -->
 
@@ -180,11 +223,21 @@ Content-Type: application/json
 
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: unresolved-path-param — 응답 필드는 사람이 작성하세요. -->
+_이 엔드포인트는 `data` 를 반환하지 않습니다 (성공 메시지만 — `data` 는 `null`)._
 
 **응답 예시**
 
-<!-- 실측 제외: unresolved-path-param — 응답 예시는 사람이 작성하세요. -->
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "첨부파일 순서가 변경되었습니다.",
+    "data": null
+}
+```
 
 **에러 응답**
 
@@ -192,8 +245,9 @@ Content-Type: application/json
 | --- | --- | --- |
 | 401 | Unauthenticated | 유효한 Bearer 토큰이 없거나 만료된 경우 |
 | 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.admin.attachments.upload`)이 없는 경우 |
-| 404 | Not Found | path 파라미터에 해당하는 리소스가 없는 경우 |
+| 404 | Not Found | 슬러그에 해당하는 게시판이 없는 경우 (`게시판을 찾을 수 없습니다.`) |
 | 422 | Unprocessable Entity | 요청 파라미터가 검증 규칙을 위반한 경우 (`error.errors` 에 필드별 메시지) |
+| 500 | Internal Server Error | 순서 변경 처리 실패 (`첨부파일 순서 변경에 실패했습니다.`) |
 
 <!-- @generated:end -->
 
@@ -224,7 +278,7 @@ Authorization: Bearer {YOUR_TOKEN}
 
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: unresolved-path-param — 응답 필드는 사람이 작성하세요. -->
+_이 엔드포인트는 `data` 를 반환하지 않습니다 (성공 메시지만 — `data` 는 `null`)._
 
 **응답 예시**
 
@@ -264,11 +318,14 @@ HTTP/1.1 200
 | 이름 | 위치 | 타입 | 필수 | 허용값 | 용도 |
 | --- | --- | --- | --- | --- | --- |
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
+| page | query | integer | 아니오 | min 1 | 조회할 페이지 번호 (1부터 시작) |
+| per_page | query | integer | 아니오 | min 1, max 100 | 페이지당 항목 수 |
+| search | query | string | 아니오 | max 255 | 검색어 (지정한 검색 대상 필드에서 부분 일치) |
 
 **요청 예시**
 
 ```http
-GET /api/modules/sirsoft-board/admin/board/{slug}/posts HTTP/1.1
+GET /api/modules/sirsoft-board/admin/board/{slug}/posts?page=1&per_page=1&search=%EC%98%88%EC%8B%9C%EA%B0%92 HTTP/1.1
 Host: api.example.com
 Accept: application/json
 Authorization: Bearer {YOUR_TOKEN}
@@ -412,6 +469,7 @@ HTTP/1.1 200
 | 401 | Unauthenticated | 유효한 Bearer 토큰이 없거나 만료된 경우 |
 | 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.admin.posts.read`)이 없는 경우 |
 | 404 | Not Found | path 파라미터에 해당하는 리소스가 없는 경우 |
+| 422 | Unprocessable Entity | 요청 파라미터가 검증 규칙을 위반한 경우 (`error.errors` 에 필드별 메시지) |
 
 <!-- @generated:end -->
 
@@ -443,11 +501,120 @@ Authorization: Bearer {YOUR_TOKEN}
 
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: unresolved-path-param — 응답 필드는 사람이 작성하세요. -->
+_단건 응답: `data` 객체의 필드 (`PostResource` — 게시글 수정(PUT) 응답과 동일한 구조)._
+
+| 필드 | 타입 | 실측 예시값 | 용도/설명 |
+| --- | --- | --- | --- |
+| id | integer | `1` | 기본 키 (내부 식별자) |
+| category | null | `null` | 게시글 분류(카테고리) 문자열. 게시판이 카테고리를 쓰지 않거나 미지정 시 null (최대 50자). |
+| author | object | `{"uuid":"a234c2b1-…","name":"API 문서 샘플 사용자"}` | 작성자 사용자 객체 (uuid/name — author 관계 파생) |
+| is_notice | boolean | `false` | 공지 게시글 여부 |
+| is_secret | boolean | `false` | 비밀글 여부 |
+| content_mode | string | `html` | 본문 편집 모드. `html`(위지윅/HTML) 또는 `text`(평문). |
+| is_new | boolean | `true` | 신규(NEW) 표시 대상 여부 (게시판 `new_display_hours` 기준) |
+| status | string | `published` | 게시글 상태 코드. `published` / `blinded` / `deleted` 중 하나. |
+| status_label | string | `게시됨` | 상태의 사람이 읽는 라벨 (상태 Enum label() 산물) |
+| view_count | integer | `0` | 조회수 (집계) |
+| comment_count | integer | `0` | 댓글 수 (집계) |
+| reply_count | integer | `0` | 답변글 수 (집계) |
+| attachment_count | integer | `0` | 첨부파일 수 (집계) |
+| has_attachment | boolean | `false` | 첨부파일 보유 여부 |
+| thumbnail | null | `null` | 썸네일 이미지 URL/경로 (없으면 null) |
+| parent_id | null | `null` | 원글 ID (답변글일 때만 값 존재) |
+| depth | integer | `0` | 계층 트리에서의 깊이 (0 = 최상위) |
+| is_reply | boolean | `false` | 답변글 여부 |
+| created_at | string | `2026-07-08 10:41:34` | 생성 일시 |
+| created_at_formatted | string | `방금 전` | `created_at` 값의 표시용 포맷 문자열 |
+| is_author | boolean | `true` | 현재 사용자가 작성자인지 여부 |
+| is_guest_post | boolean | `false` | 비회원 작성 게시글 여부 |
+| title | string | `API 문서 샘플 게시글` | 제목 |
+| content | string | `<p>API 레퍼런스 실측용 완전 샘플 게시글 본문입니다.</p>` | 본문 내용 |
+| user_id | string | `a234c2b1-cde8-437f-b28b-23323be2b98d` | 작성자 사용자 식별자 |
+| trigger_type | string | `user` | 상태 변경을 유발한 주체 (`report`/`admin`/`system`/`auto_hide`/`user`/`cascade`) |
+| updated_at | string | `2026-07-08 10:41:34` | 최종 수정 일시 |
+| deleted_at | null | `null` | 소프트 삭제 일시 (미삭제 시 null) |
+| ip_address | string | `127.0.0.1` | 작성 요청이 발생한 IP 주소 |
+| action_logs | array | `[]` | 블라인드/복원/삭제 처리 이력 목록. `admin.manage` 권한 보유자에게만 노출. |
+| board | null | `null` | 소속 게시판 정보 객체. board 관계 미로드 시 null. |
+| navigation | null | `null` | 이전/다음 게시글 이동 정보. 쓰기 응답에서는 계산하지 않아 null. |
+| parent | null | `null` | 원글 객체 (parent 관계 파생) |
+| comments | null | `null` | 댓글 목록. comments 관계 미로드 시 null. |
+| attachments | null | `null` | 첨부파일 목록. attachments 관계 미로드 시 null. |
+| replies | null | `null` | 답변글 목록. replies 관계 미로드 시 null. |
+| is_already_reported | boolean | `false` | 현재 사용자가 이미 신고한 게시글인지 여부 |
+| is_owner | boolean | `true` | 현재 인증 사용자가 이 리소스의 소유자인지 여부 (BaseApiResource 표준 메타) |
+| abilities | object | `{"can_read":true,"can_write":true,…}` | 현재 사용자가 이 리소스에 수행 가능한 작업 불리언 맵 |
 
 **응답 예시**
 
-<!-- 실측 제외: unresolved-path-param — 응답 예시는 사람이 작성하세요. -->
+```http
+HTTP/1.1 201
+```
+
+```json
+{
+    "success": true,
+    "message": "게시글이 등록되었습니다.",
+    "data": {
+        "id": 1,
+        "category": null,
+        "author": {
+            "uuid": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+            "name": "API 문서 샘플 사용자",
+            "email": "apidoc-sample-user@example.com",
+            "avatar": null,
+            "status": "active",
+            "status_label": "활성",
+            "is_guest": false
+        },
+        "is_notice": false,
+        "is_secret": false,
+        "content_mode": "html",
+        "is_new": true,
+        "status": "published",
+        "status_label": "게시됨",
+        "view_count": 0,
+        "comment_count": 0,
+        "reply_count": 0,
+        "attachment_count": 0,
+        "has_attachment": false,
+        "thumbnail": null,
+        "parent_id": null,
+        "depth": 0,
+        "is_reply": false,
+        "created_at": "2026-07-08 10:41:34",
+        "created_at_formatted": "방금 전",
+        "is_author": true,
+        "is_guest_post": false,
+        "title": "API 문서 샘플 게시글",
+        "content": "<p>API 레퍼런스 실측용 완전 샘플 게시글 본문입니다.</p>",
+        "user_id": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+        "trigger_type": "user",
+        "updated_at": "2026-07-08 10:41:34",
+        "deleted_at": null,
+        "ip_address": "127.0.0.1",
+        "action_logs": [],
+        "board": null,
+        "navigation": null,
+        "parent": null,
+        "comments": null,
+        "attachments": null,
+        "replies": null,
+        "is_already_reported": false,
+        "is_owner": true,
+        "abilities": {
+            "can_read": true,
+            "can_write": true,
+            "can_read_secret": true,
+            "can_read_comments": true,
+            "can_write_comments": true,
+            "can_upload": true,
+            "can_download": true,
+            "can_manage": true
+        }
+    }
+}
+```
 
 **에러 응답**
 
@@ -456,7 +623,8 @@ Authorization: Bearer {YOUR_TOKEN}
 | 401 | Unauthenticated | 유효한 Bearer 토큰이 없거나 만료된 경우 |
 | 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.admin.posts.write`)이 없는 경우 |
 | 404 | Not Found | path 파라미터에 해당하는 리소스가 없는 경우 |
-| 422 | Unprocessable Entity | 요청 파라미터가 검증 규칙을 위반한 경우 (`error.errors` 에 필드별 메시지) |
+| 422 | Unprocessable Entity | 요청 파라미터가 검증 규칙을 위반한 경우 (`error.errors` 에 필드별 메시지). 제목/본문 길이, 금지 키워드, 작성 쿨다운, 원글(`parent_id`) 유효성 위반 포함 |
+| 500 | Internal Server Error | 게시글 생성 처리 실패 (`게시글 등록에 실패했습니다.`) |
 
 <!-- @generated:end -->
 
@@ -474,11 +642,13 @@ Authorization: Bearer {YOUR_TOKEN}
 | 이름 | 위치 | 타입 | 필수 | 허용값 | 용도 |
 | --- | --- | --- | --- | --- | --- |
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
+| post_id | query | integer | 아니오 | min 1 | post 식별자 |
+| parent_id | query | integer | 아니오 | min 1 | parent 식별자 |
 
 **요청 예시**
 
 ```http
-GET /api/modules/sirsoft-board/admin/board/{slug}/posts/form-data HTTP/1.1
+GET /api/modules/sirsoft-board/admin/board/{slug}/posts/form-data?post_id=1&parent_id=1 HTTP/1.1
 Host: api.example.com
 Accept: application/json
 Authorization: Bearer {YOUR_TOKEN}
@@ -527,6 +697,7 @@ HTTP/1.1 200
 | 401 | Unauthenticated | 유효한 Bearer 토큰이 없거나 만료된 경우 |
 | 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.admin.posts.write`)이 없는 경우 |
 | 404 | Not Found | path 파라미터에 해당하는 리소스가 없는 경우 |
+| 422 | Unprocessable Entity | 요청 파라미터가 검증 규칙을 위반한 경우 (`error.errors` 에 필드별 메시지). 제목/본문 길이, 금지 키워드, 작성 쿨다운, 원글(`parent_id`) 유효성 위반 포함 |
 
 <!-- @generated:end -->
 
@@ -808,7 +979,7 @@ HTTP/1.1 200
 | 상태코드 | 의미 | 발생 조건 |
 | --- | --- | --- |
 | 401 | Unauthenticated | 유효한 Bearer 토큰이 없거나 만료된 경우 |
-| 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.admin.posts.write|sirsoft-board.{slug}.admin.manage`)이 없는 경우 |
+| 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.admin.posts.write\|sirsoft-board.{slug}.admin.manage`)이 없는 경우 |
 | 404 | Not Found | path 파라미터에 해당하는 리소스가 없는 경우 |
 
 <!-- @generated:end -->
@@ -1425,11 +1596,127 @@ Content-Type: application/json
 
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: side-effectful-write — 응답 필드는 사람이 작성하세요. -->
+_단건 응답: `data` 객체의 필드 (`PostResource` — 복원된 게시글. 게시글 수정(PUT) 응답과 동일한 구조이며, `status` 가 `published` 로 되돌아가고 `action_logs` 에 `restore` 이력이 1건 추가됩니다)._
+
+| 필드 | 타입 | 실측 예시값 | 용도/설명 |
+| --- | --- | --- | --- |
+| id | integer | `1` | 기본 키 (내부 식별자) |
+| category | null | `null` | 게시글 분류(카테고리) 문자열 (미지정 시 null) |
+| author | object | `{"uuid":"a234c2b1-…","name":"API 문서 샘플 사용자"}` | 작성자 사용자 객체 (uuid/name — author 관계 파생) |
+| is_notice | boolean | `false` | 공지 게시글 여부 |
+| is_secret | boolean | `false` | 비밀글 여부 |
+| content_mode | string | `html` | 본문 편집 모드 (`html` / `text`) |
+| is_new | boolean | `true` | 신규(NEW) 표시 대상 여부 |
+| status | string | `published` | 복원 후 게시글 상태 (`published` 로 되돌아감) |
+| status_label | string | `게시됨` | 상태의 사람이 읽는 라벨 |
+| view_count | integer | `44` | 조회수 (집계) |
+| comment_count | integer | `0` | 댓글 수 (집계) |
+| reply_count | integer | `0` | 답변글 수 (집계) |
+| attachment_count | integer | `0` | 첨부파일 수 (집계) |
+| has_attachment | boolean | `false` | 첨부파일 보유 여부 |
+| thumbnail | null | `null` | 썸네일 이미지 URL/경로 |
+| parent_id | null | `null` | 원글 ID (답변글일 때만 값 존재) |
+| depth | integer | `0` | 계층 트리에서의 깊이 |
+| is_reply | boolean | `false` | 답변글 여부 |
+| created_at | string | `2026-07-08 10:41:34` | 생성 일시 |
+| created_at_formatted | string | `4시간 전` | `created_at` 값의 표시용 포맷 문자열 |
+| is_author | boolean | `true` | 현재 사용자가 작성자인지 여부 |
+| is_guest_post | boolean | `false` | 비회원 작성 게시글 여부 |
+| title | string | `API 문서 샘플 게시글` | 제목 |
+| content | string | `<p>API 레퍼런스 실측용 완전 샘플 게시글 본문입니다.</p>` | 본문 내용 |
+| user_id | string | `a234c2b1-cde8-437f-b28b-23323be2b98d` | 작성자 사용자 식별자 |
+| trigger_type | string | `admin` | 상태 변경을 유발한 주체 (복원은 관리자 직권이므로 `admin`) |
+| updated_at | string | `2026-07-08 15:01:45` | 최종 수정 일시 |
+| deleted_at | null | `null` | 소프트 삭제 일시 (복원 후 null) |
+| ip_address | string | `127.0.0.1` | 작성 요청이 발생한 IP 주소 |
+| action_logs | array | `[{"action":"restore","reason":null,"admin_name":"API 문서 샘플 사용자","created_at":"2026-07-08 06:01:45"}]` | 블라인드/복원/삭제 처리 이력 목록. `admin.manage` 권한 보유자에게만 노출. |
+| board | null | `null` | 소속 게시판 정보 객체 (관계 미로드 시 null) |
+| navigation | null | `null` | 이전/다음 게시글 이동 정보 (쓰기 응답은 미계산 → null) |
+| parent | null | `null` | 원글 객체 (parent 관계 파생) |
+| comments | null | `null` | 댓글 목록 (관계 미로드 시 null) |
+| attachments | null | `null` | 첨부파일 목록 (관계 미로드 시 null) |
+| replies | null | `null` | 답변글 목록 (관계 미로드 시 null) |
+| is_already_reported | boolean | `false` | 현재 사용자가 이미 신고한 게시글인지 여부 |
+| is_owner | boolean | `true` | 현재 인증 사용자가 이 리소스의 소유자인지 여부 |
+| abilities | object | `{"can_read":true,"can_write":true,…}` | 현재 사용자가 이 리소스에 수행 가능한 작업 불리언 맵 |
 
 **응답 예시**
 
-<!-- 실측 제외: side-effectful-write — 응답 예시는 사람이 작성하세요. -->
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "게시글이 복원되었습니다.",
+    "data": {
+        "id": 1,
+        "category": null,
+        "author": {
+            "uuid": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+            "name": "API 문서 샘플 사용자",
+            "email": "apidoc-sample-user@example.com",
+            "avatar": null,
+            "status": "active",
+            "status_label": "활성",
+            "is_guest": false
+        },
+        "is_notice": false,
+        "is_secret": false,
+        "content_mode": "html",
+        "is_new": true,
+        "status": "published",
+        "status_label": "게시됨",
+        "view_count": 44,
+        "comment_count": 0,
+        "reply_count": 0,
+        "attachment_count": 0,
+        "has_attachment": false,
+        "thumbnail": null,
+        "parent_id": null,
+        "depth": 0,
+        "is_reply": false,
+        "created_at": "2026-07-08 10:41:34",
+        "created_at_formatted": "4시간 전",
+        "is_author": true,
+        "is_guest_post": false,
+        "title": "API 문서 샘플 게시글",
+        "content": "<p>API 레퍼런스 실측용 완전 샘플 게시글 본문입니다.</p>",
+        "user_id": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+        "trigger_type": "admin",
+        "updated_at": "2026-07-08 15:01:45",
+        "deleted_at": null,
+        "ip_address": "127.0.0.1",
+        "action_logs": [
+            {
+                "action": "restore",
+                "reason": null,
+                "admin_name": "API 문서 샘플 사용자",
+                "created_at": "2026-07-08 06:01:45"
+            }
+        ],
+        "board": null,
+        "navigation": null,
+        "parent": null,
+        "comments": null,
+        "attachments": null,
+        "replies": null,
+        "is_already_reported": false,
+        "is_owner": true,
+        "abilities": {
+            "can_read": true,
+            "can_write": true,
+            "can_read_secret": true,
+            "can_read_comments": true,
+            "can_write_comments": true,
+            "can_upload": true,
+            "can_download": true,
+            "can_manage": true
+        }
+    }
+}
+```
 
 **에러 응답**
 
@@ -1437,8 +1724,9 @@ Content-Type: application/json
 | --- | --- | --- |
 | 401 | Unauthenticated | 유효한 Bearer 토큰이 없거나 만료된 경우 |
 | 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.admin.manage`)이 없는 경우 |
-| 404 | Not Found | path 파라미터에 해당하는 리소스가 없는 경우 |
-| 422 | Unprocessable Entity | 요청 파라미터가 검증 규칙을 위반한 경우 (`error.errors` 에 필드별 메시지) |
+| 404 | Not Found | 슬러그에 해당하는 게시판 또는 ID 에 해당하는 게시글이 없는 경우 (`존재하지 않는 게시글입니다.`) |
+| 422 | Unprocessable Entity | 요청 파라미터가 검증 규칙을 위반한 경우 (`reason` 이 1000자를 초과하는 등) |
+| 500 | Internal Server Error | 복원 처리 실패 (`게시글 복원에 실패했습니다.`) |
 
 <!-- @generated:end -->
 
@@ -1471,20 +1759,91 @@ Authorization: Bearer {YOUR_TOKEN}
 
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: unresolved-path-param — 응답 필드는 사람이 작성하세요. -->
+_단건 응답: `data` 객체의 필드 (`CommentResource`)._
+
+| 필드 | 타입 | 실측 예시값 | 용도/설명 |
+| --- | --- | --- | --- |
+| id | integer | `1` | 댓글 기본 키 (내부 식별자) |
+| post_id | integer | `1` | 댓글이 속한 게시글 식별자 |
+| parent_id | null | `null` | 상위 댓글 식별자 (대댓글일 때만 값 존재) |
+| content | string | `API 문서 샘플 댓글입니다.` | 댓글 본문 내용 |
+| author | object | `{"uuid":"a234c2b1-…","name":"API 문서 샘플 사용자"}` | 작성자 사용자 객체 (author 관계 파생) |
+| is_secret | boolean | `false` | 비밀 댓글 여부 |
+| status | string | `published` | 댓글 상태 코드 (`published` / `blinded` / `deleted`) |
+| status_label | string | `게시됨` | 상태의 사람이 읽는 라벨 (상태 Enum label() 산물) |
+| depth | integer | `0` | 댓글 계층 깊이 (0 = 최상위 댓글, 서비스에서 자동 계산) |
+| replies_count | integer | `0` | 이 댓글에 달린 대댓글 수 (집계) |
+| created_at | string | `2026-07-08 10:41:34` | 생성 일시 |
+| created_at_formatted | string | `방금 전` | `created_at` 값의 표시용 포맷 문자열 |
+| updated_at | string | `2026-07-08 10:41:34` | 최종 수정 일시 |
+| deleted_at | null | `null` | 소프트 삭제 일시 (미삭제 시 null) |
+| is_cascade_deleted | boolean | `false` | 상위 게시글/댓글 삭제로 연쇄 삭제된 댓글인지 여부 |
+| ip_address | string | `127.0.0.1` | 작성 요청이 발생한 IP 주소 (권한자에게만 노출) |
+| action_logs | array | `[]` | 블라인드/복원/삭제 처리 이력 목록. `admin.manage` 권한 보유자에게만 노출. |
+| is_author | boolean | `true` | 현재 사용자가 작성자인지 여부 |
+| is_guest_comment | boolean | `false` | 비회원 작성 댓글 여부 |
+| is_already_reported | boolean | `false` | 현재 사용자가 이미 신고한 댓글인지 여부 |
+| is_owner | boolean | `true` | 현재 인증 사용자가 이 리소스의 소유자인지 여부 (BaseApiResource 표준 메타) |
+| abilities | object | `{"can_read":true,"can_write":true,"can_manage":true}` | 현재 사용자가 이 댓글에 수행 가능한 작업 불리언 맵 |
 
 **응답 예시**
 
-<!-- 실측 제외: unresolved-path-param — 응답 예시는 사람이 작성하세요. -->
+```http
+HTTP/1.1 201
+```
+
+```json
+{
+    "success": true,
+    "message": "댓글이 등록되었습니다.",
+    "data": {
+        "id": 1,
+        "post_id": 1,
+        "parent_id": null,
+        "content": "API 문서 샘플 댓글입니다.",
+        "author": {
+            "uuid": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+            "name": "API 문서 샘플 사용자",
+            "email": "apidoc-sample-user@example.com",
+            "avatar": null,
+            "status": "active",
+            "status_label": "활성",
+            "is_guest": false
+        },
+        "is_secret": false,
+        "status": "published",
+        "status_label": "게시됨",
+        "depth": 0,
+        "replies_count": 0,
+        "created_at": "2026-07-08 10:41:34",
+        "created_at_formatted": "방금 전",
+        "updated_at": "2026-07-08 10:41:34",
+        "deleted_at": null,
+        "is_cascade_deleted": false,
+        "ip_address": "127.0.0.1",
+        "action_logs": [],
+        "is_author": true,
+        "is_guest_comment": false,
+        "is_already_reported": false,
+        "is_owner": true,
+        "abilities": {
+            "can_read": true,
+            "can_write": true,
+            "can_manage": true
+        }
+    }
+}
+```
 
 **에러 응답**
 
 | 상태코드 | 의미 | 발생 조건 |
 | --- | --- | --- |
 | 401 | Unauthenticated | 유효한 Bearer 토큰이 없거나 만료된 경우 |
-| 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.admin.comments.write`)이 없는 경우 |
-| 404 | Not Found | path 파라미터에 해당하는 리소스가 없는 경우 |
-| 422 | Unprocessable Entity | 요청 파라미터가 검증 규칙을 위반한 경우 (`error.errors` 에 필드별 메시지) |
+| 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.admin.comments.write`)이 없거나, 게시판의 댓글 기능이 꺼진 경우 (`이 게시판은 댓글 기능이 비활성화되어 있습니다.`) |
+| 404 | Not Found | 슬러그에 해당하는 게시판이 없는 경우 (`게시판을 찾을 수 없습니다.`) |
+| 422 | Unprocessable Entity | 요청 파라미터가 검증 규칙을 위반한 경우 (`error.errors` 에 필드별 메시지). 댓글 길이, 금지 키워드, 작성 쿨다운, 대상 게시글·상위 댓글 유효성 위반 포함 |
+| 500 | Internal Server Error | 댓글 생성 처리 실패 (`댓글 등록에 실패했습니다.`) |
 
 <!-- @generated:end -->
 
@@ -1516,7 +1875,7 @@ Authorization: Bearer {YOUR_TOKEN}
 
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: unresolved-path-param — 응답 필드는 사람이 작성하세요. -->
+_이 엔드포인트는 `data` 를 반환하지 않습니다 (성공 메시지만 — `data` 는 `null`)._
 
 **응답 예시**
 
@@ -1537,8 +1896,9 @@ HTTP/1.1 200
 | 상태코드 | 의미 | 발생 조건 |
 | --- | --- | --- |
 | 401 | Unauthenticated | 유효한 Bearer 토큰이 없거나 만료된 경우 |
-| 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.admin.comments.write|sirsoft-board.{slug}.admin.manage`)이 없는 경우 |
-| 404 | Not Found | path 파라미터에 해당하는 리소스가 없는 경우 |
+| 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.admin.comments.write\|sirsoft-board.{slug}.admin.manage`)이 없거나, 타인/비회원 댓글을 `admin.manage` 없이 삭제하려는 경우(`접근 권한이 없습니다.`), 게시판의 댓글 기능이 꺼진 경우(`이 게시판은 댓글 기능이 비활성화되어 있습니다.`) |
+| 404 | Not Found | ID 에 해당하는 댓글 또는 슬러그에 해당하는 게시판이 없는 경우 (`댓글을 찾을 수 없습니다.`) |
+| 500 | Internal Server Error | 삭제 처리 실패 (`댓글 삭제에 실패했습니다.`) |
 
 <!-- @generated:end -->
 
@@ -1572,20 +1932,91 @@ Authorization: Bearer {YOUR_TOKEN}
 
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: unresolved-path-param — 응답 필드는 사람이 작성하세요. -->
+_단건 응답: `data` 객체의 필드 (`CommentResource` — 댓글 생성/블라인드 응답과 동일한 구조)._
+
+| 필드 | 타입 | 실측 예시값 | 용도/설명 |
+| --- | --- | --- | --- |
+| id | integer | `1` | 댓글 기본 키 (내부 식별자) |
+| post_id | integer | `1` | 댓글이 속한 게시글 식별자 |
+| parent_id | null | `null` | 상위 댓글 식별자 (대댓글일 때만 값 존재) |
+| content | string | `API 문서 샘플 댓글입니다. (수정)` | 수정된 댓글 본문 내용 |
+| author | object | `{"uuid":"a234c2b1-…","name":"API 문서 샘플 사용자"}` | 작성자 사용자 객체 (author 관계 파생) |
+| is_secret | boolean | `false` | 비밀 댓글 여부 |
+| status | string | `published` | 댓글 상태 코드 (`published` / `blinded` / `deleted`) |
+| status_label | string | `게시됨` | 상태의 사람이 읽는 라벨 |
+| depth | integer | `0` | 댓글 계층 깊이 (0 = 최상위 댓글) |
+| replies_count | integer | `0` | 이 댓글에 달린 대댓글 수 (집계) |
+| created_at | string | `2026-07-08 10:41:34` | 생성 일시 |
+| created_at_formatted | string | `4시간 전` | `created_at` 값의 표시용 포맷 문자열 |
+| updated_at | string | `2026-07-08 15:01:45` | 최종 수정 일시 (수정 시각으로 갱신) |
+| deleted_at | null | `null` | 소프트 삭제 일시 (미삭제 시 null) |
+| is_cascade_deleted | boolean | `false` | 상위 게시글/댓글 삭제로 연쇄 삭제된 댓글인지 여부 |
+| ip_address | null | `null` | 작성 요청이 발생한 IP 주소 (권한자에게만 노출) |
+| action_logs | array | `[]` | 블라인드/복원/삭제 처리 이력 목록. `admin.manage` 권한 보유자에게만 노출. |
+| is_author | boolean | `true` | 현재 사용자가 작성자인지 여부 |
+| is_guest_comment | boolean | `false` | 비회원 작성 댓글 여부 |
+| is_already_reported | boolean | `false` | 현재 사용자가 이미 신고한 댓글인지 여부 |
+| is_owner | boolean | `true` | 현재 인증 사용자가 이 리소스의 소유자인지 여부 |
+| abilities | object | `{"can_read":true,"can_write":true,"can_manage":true}` | 현재 사용자가 이 댓글에 수행 가능한 작업 불리언 맵 |
 
 **응답 예시**
 
-<!-- 실측 제외: unresolved-path-param — 응답 예시는 사람이 작성하세요. -->
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "댓글이 수정되었습니다.",
+    "data": {
+        "id": 1,
+        "post_id": 1,
+        "parent_id": null,
+        "content": "API 문서 샘플 댓글입니다. (수정)",
+        "author": {
+            "uuid": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+            "name": "API 문서 샘플 사용자",
+            "email": "apidoc-sample-user@example.com",
+            "avatar": null,
+            "status": "active",
+            "status_label": "활성",
+            "is_guest": false
+        },
+        "is_secret": false,
+        "status": "published",
+        "status_label": "게시됨",
+        "depth": 0,
+        "replies_count": 0,
+        "created_at": "2026-07-08 10:41:34",
+        "created_at_formatted": "4시간 전",
+        "updated_at": "2026-07-08 15:01:45",
+        "deleted_at": null,
+        "is_cascade_deleted": false,
+        "ip_address": null,
+        "action_logs": [],
+        "is_author": true,
+        "is_guest_comment": false,
+        "is_already_reported": false,
+        "is_owner": true,
+        "abilities": {
+            "can_read": true,
+            "can_write": true,
+            "can_manage": true
+        }
+    }
+}
+```
 
 **에러 응답**
 
 | 상태코드 | 의미 | 발생 조건 |
 | --- | --- | --- |
 | 401 | Unauthenticated | 유효한 Bearer 토큰이 없거나 만료된 경우 |
-| 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.admin.comments.write`)이 없는 경우 |
-| 404 | Not Found | path 파라미터에 해당하는 리소스가 없는 경우 |
+| 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.admin.comments.write`)이 없거나, 타인/비회원 댓글을 `admin.manage` 없이 수정하려는 경우(`접근 권한이 없습니다.`), 게시판의 댓글 기능이 꺼진 경우(`이 게시판은 댓글 기능이 비활성화되어 있습니다.`) |
+| 404 | Not Found | ID 에 해당하는 댓글 또는 슬러그에 해당하는 게시판이 없는 경우 (`댓글을 찾을 수 없습니다.`) |
 | 422 | Unprocessable Entity | 요청 파라미터가 검증 규칙을 위반한 경우 (`error.errors` 에 필드별 메시지) |
+| 500 | Internal Server Error | 수정 처리 실패 (`댓글 수정에 실패했습니다.`) |
 
 <!-- @generated:end -->
 
@@ -1733,6 +2164,7 @@ HTTP/1.1 200
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
 | postId | path | string | 예 | — | 대상 post의 식별자 |
 | id | path | string | 예 | — | 대상 리소스의 식별자 |
+| reason | body | string | 아니오 | max 1000 | 댓글 블라인드 처리 사유(최대 1000자). 처리 이력에 기록되며, 미지정 시 빈 문자열로 저장됩니다. |
 
 **요청 예시**
 
@@ -1741,23 +2173,113 @@ PATCH /api/modules/sirsoft-board/admin/board/{slug}/posts/{postId}/comments/{id}
 Host: api.example.com
 Accept: application/json
 Authorization: Bearer {YOUR_TOKEN}
+Content-Type: application/json
+
+{
+    "reason": "예시값"
+}
 ```
 
 **응답 필드** (`data` 내부)
 
-<!-- 실측 제외: side-effectful-write — 응답 필드는 사람이 작성하세요. -->
+_단건 응답: `data` 객체의 필드 (`CommentResource` — 복원된 댓글. 블라인드 응답과 동일한 구조이며, `status` 가 `published` 로 되돌아가고 `action_logs` 에 `restore` 이력이 1건 추가됩니다)._
+
+| 필드 | 타입 | 실측 예시값 | 용도/설명 |
+| --- | --- | --- | --- |
+| id | integer | `1` | 댓글 기본 키 (내부 식별자) |
+| post_id | integer | `1` | 댓글이 속한 게시글 식별자 |
+| parent_id | null | `null` | 상위 댓글 식별자 (대댓글일 때만 값 존재) |
+| content | string | `API 문서 샘플 댓글입니다.` | 댓글 본문 내용 (복원되어 원문이 다시 노출됨) |
+| author | object | `{"uuid":"a234c2b1-…","name":"API 문서 샘플 사용자"}` | 작성자 사용자 객체 (author 관계 파생) |
+| is_secret | boolean | `false` | 비밀 댓글 여부 |
+| status | string | `published` | 복원 후 댓글 상태 (`published` 로 되돌아감) |
+| status_label | string | `게시됨` | 상태의 사람이 읽는 라벨 |
+| depth | integer | `0` | 댓글 계층 깊이 (0 = 최상위 댓글) |
+| replies_count | integer | `0` | 이 댓글에 달린 대댓글 수 (집계) |
+| created_at | string | `2026-07-08 10:41:34` | 생성 일시 |
+| created_at_formatted | string | `4시간 전` | `created_at` 값의 표시용 포맷 문자열 |
+| updated_at | string | `2026-07-08 15:01:45` | 최종 수정 일시 |
+| deleted_at | null | `null` | 소프트 삭제 일시 (미삭제 시 null) |
+| is_cascade_deleted | boolean | `false` | 상위 게시글/댓글 삭제로 연쇄 삭제된 댓글인지 여부 |
+| ip_address | null | `null` | 작성 요청이 발생한 IP 주소 (권한자에게만 노출) |
+| action_logs | array | `[{"action":"blind","reason":"실측 예시값",…},{"action":"restore","reason":null,…}]` | 블라인드/복원/삭제 처리 이력 목록 (복원 이력이 추가됨). `admin.manage` 권한 보유자에게만 노출. |
+| is_author | boolean | `true` | 현재 사용자가 작성자인지 여부 |
+| is_guest_comment | boolean | `false` | 비회원 작성 댓글 여부 |
+| is_already_reported | boolean | `false` | 현재 사용자가 이미 신고한 댓글인지 여부 |
+| is_owner | boolean | `true` | 현재 인증 사용자가 이 리소스의 소유자인지 여부 |
+| abilities | object | `{"can_read":true,"can_write":true,"can_manage":true}` | 현재 사용자가 이 댓글에 수행 가능한 작업 불리언 맵 |
 
 **응답 예시**
 
-<!-- 실측 제외: side-effectful-write — 응답 예시는 사람이 작성하세요. -->
+```http
+HTTP/1.1 200
+```
+
+```json
+{
+    "success": true,
+    "message": "댓글이 복원되었습니다.",
+    "data": {
+        "id": 1,
+        "post_id": 1,
+        "parent_id": null,
+        "content": "API 문서 샘플 댓글입니다.",
+        "author": {
+            "uuid": "a234c2b1-cde8-437f-b28b-23323be2b98d",
+            "name": "API 문서 샘플 사용자",
+            "email": "apidoc-sample-user@example.com",
+            "avatar": null,
+            "status": "active",
+            "status_label": "활성",
+            "is_guest": false
+        },
+        "is_secret": false,
+        "status": "published",
+        "status_label": "게시됨",
+        "depth": 0,
+        "replies_count": 0,
+        "created_at": "2026-07-08 10:41:34",
+        "created_at_formatted": "4시간 전",
+        "updated_at": "2026-07-08 15:01:45",
+        "deleted_at": null,
+        "is_cascade_deleted": false,
+        "ip_address": null,
+        "action_logs": [
+            {
+                "action": "blind",
+                "reason": "실측 예시값",
+                "admin_name": "API 문서 샘플 사용자",
+                "created_at": "2026-07-08 06:01:44"
+            },
+            {
+                "action": "restore",
+                "reason": null,
+                "admin_name": "API 문서 샘플 사용자",
+                "created_at": "2026-07-08 06:01:45"
+            }
+        ],
+        "is_author": true,
+        "is_guest_comment": false,
+        "is_already_reported": false,
+        "is_owner": true,
+        "abilities": {
+            "can_read": true,
+            "can_write": true,
+            "can_manage": true
+        }
+    }
+}
+```
 
 **에러 응답**
 
 | 상태코드 | 의미 | 발생 조건 |
 | --- | --- | --- |
 | 401 | Unauthenticated | 유효한 Bearer 토큰이 없거나 만료된 경우 |
-| 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.admin.manage`)이 없는 경우 |
-| 404 | Not Found | path 파라미터에 해당하는 리소스가 없는 경우 |
+| 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.admin.manage`)이 없거나, 게시판의 댓글 기능이 꺼진 경우 (`이 게시판은 댓글 기능이 비활성화되어 있습니다.`) |
+| 404 | Not Found | ID 에 해당하는 댓글 또는 슬러그에 해당하는 게시판이 없는 경우 (`댓글을 찾을 수 없습니다.`) |
+| 422 | Unprocessable Entity | 요청 파라미터가 검증 규칙을 위반한 경우 (`error.errors` 에 필드별 메시지) |
+| 500 | Internal Server Error | 복원 처리 실패 (`댓글 복원에 실패했습니다.`) |
 
 <!-- @generated:end -->
 

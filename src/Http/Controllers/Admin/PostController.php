@@ -5,12 +5,14 @@ namespace Modules\Sirsoft\Board\Http\Controllers\Admin;
 use App\Http\Controllers\Api\Base\AdminBaseController;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Modules\Sirsoft\Board\Enums\PostStatus;
 use Modules\Sirsoft\Board\Exceptions\AttachmentLimitExceededException;
 use Modules\Sirsoft\Board\Exceptions\BoardNotFoundException;
 use Modules\Sirsoft\Board\Exceptions\PostNotFoundException;
+use Modules\Sirsoft\Board\Http\Requests\Admin\PostFormDataRequest;
+use Modules\Sirsoft\Board\Http\Requests\Admin\PostFormMetaRequest;
+use Modules\Sirsoft\Board\Http\Requests\Admin\PostIndexRequest;
 use Modules\Sirsoft\Board\Http\Requests\BlindPostRequest;
 use Modules\Sirsoft\Board\Http\Requests\RestorePostRequest;
 use Modules\Sirsoft\Board\Http\Requests\StorePostRequest;
@@ -51,12 +53,11 @@ class PostController extends AdminBaseController
     /**
      * 게시글 목록을 조회합니다.
      *
-     * @param  Request  $request  HTTP 요청
+     * @param  PostIndexRequest  $request  검증된 목록 조회 요청
      * @param  string  $slug  게시판 슬러그
      * @return JsonResponse 게시글 목록 응답
      */
-    // audit:allow controller-base-request-injection reason: GET 목록 조회. all()로 필터·페이징 파라미터만 읽음 (검증 불필요)
-    public function index(Request $request, string $slug): JsonResponse
+    public function index(PostIndexRequest $request, string $slug): JsonResponse
     {
         // 권한은 라우트 미들웨어에서 체크됨 (sirsoft-board.{slug}.admin.posts.read)
         try {
@@ -392,12 +393,11 @@ class PostController extends AdminBaseController
      * - 수정 모드: 기존 게시글 데이터
      * - 답변글 모드: 기본값이 설정된 폼 데이터
      *
-     * @param  Request  $request  HTTP 요청
+     * @param  PostFormDataRequest  $request  검증된 폼 데이터 요청
      * @param  string  $slug  게시판 슬러그
      * @return JsonResponse 폼 입력 데이터 응답
      */
-    // audit:allow controller-base-request-injection reason: GET 수정 폼 데이터 조회. 경로 파라미터(slug) + 쿼리만 read-only 참조 (검증 불필요)
-    public function getFormData(Request $request, string $slug): JsonResponse
+    public function getFormData(PostFormDataRequest $request, string $slug): JsonResponse
     {
         // 권한은 라우트 미들웨어에서 체크됨 (sirsoft-board.{slug}.admin.posts.write)
         try {
@@ -480,12 +480,11 @@ class PostController extends AdminBaseController
      *
      * 게시판 정보, 원글 정보, 작성자 정보 등 화면 표시에 필요한 데이터를 반환합니다.
      *
-     * @param  Request  $request  HTTP 요청
+     * @param  PostFormMetaRequest  $request  검증된 폼 메타 요청
      * @param  string  $slug  게시판 슬러그
      * @return JsonResponse 폼 메타 데이터 응답
      */
-    // audit:allow controller-base-request-injection reason: GET 작성/수정 폼 메타 조회. 경로 파라미터(slug) + post_id 쿼리만 read-only 참조 (검증 불필요)
-    public function getFormMeta(Request $request, string $slug): JsonResponse
+    public function getFormMeta(PostFormMetaRequest $request, string $slug): JsonResponse
     {
         // 권한은 라우트 미들웨어에서 체크됨 (sirsoft-board.{slug}.admin.posts.write)
         try {
