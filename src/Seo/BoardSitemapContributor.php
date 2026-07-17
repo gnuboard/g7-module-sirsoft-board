@@ -3,17 +3,29 @@
 namespace Modules\Sirsoft\Board\Seo;
 
 use App\Seo\Contracts\SitemapContributorInterface;
-use Modules\Sirsoft\Board\Enums\PostStatus;
-use Modules\Sirsoft\Board\Models\Board;
-use Modules\Sirsoft\Board\Models\Post;
+use Illuminate\Support\Facades\Log;
+use Modules\Sirsoft\Board\Repositories\Contracts\BoardRepositoryInterface;
+use Modules\Sirsoft\Board\Repositories\Contracts\PostRepositoryInterface;
 
 /**
  * Board 모듈 Sitemap 기여자
  *
  * 게시판 및 게시글 URL을 sitemap에 제공합니다.
+ * 데이터 접근은 Repository 인터페이스에 위임합니다.
  */
 class BoardSitemapContributor implements SitemapContributorInterface
 {
+    /**
+     * BoardSitemapContributor 생성자
+     *
+     * @param  BoardRepositoryInterface  $boardRepository  게시판 Repository
+     * @param  PostRepositoryInterface  $postRepository  게시글 Repository
+     */
+    public function __construct(
+        private readonly BoardRepositoryInterface $boardRepository,
+        private readonly PostRepositoryInterface $postRepository,
+    ) {}
+
     /**
      * 확장 식별자를 반환합니다.
      *
@@ -35,6 +47,11 @@ class BoardSitemapContributor implements SitemapContributorInterface
     {
         $urls = [];
 
+        // 기여자당 URL 안전 상한 (0 = 무제한). 상한은 이 기여자가 내보내는 모든 URL 유형에
+        // 적용된다 — 특정 루프에만 걸면 다른 유형이 상한을 넘겨버린다.
+        $maxUrls = (int) g7_core_settings('seo.sitemap_max_urls_per_contributor', 0);
+        $truncated = false;
+
         // 'SEO 제공 페이지' 토글 — OFF 시 해당 URL 유형 제외 (기본 노출)
         $seoBoards = (bool) g7_module_settings('sirsoft-board', 'seo.seo_boards', true);
         $seoBoard = (bool) g7_module_settings('sirsoft-board', 'seo.seo_board', true);
@@ -42,11 +59,11 @@ class BoardSitemapContributor implements SitemapContributorInterface
 
         // 게시판 목록 페이지
         if ($seoBoards) {
-            $urls[] = [
+            $truncated = ! $this->appendUrl($urls, [
                 'url' => '/boards',
                 'changefreq' => 'weekly',
                 'priority' => 0.5,
-            ];
+            ], $maxUrls);
         }
 
         // 개별 게시판/게시글 URL이 모두 OFF면 게시판 조회 자체를 생략
@@ -55,15 +72,19 @@ class BoardSitemapContributor implements SitemapContributorInterface
         }
 
         // 게시판별 페이지
-        $boards = Board::where('is_active', true)->get(['id', 'slug', 'updated_at']);
-        foreach ($boards as $board) {
-            if ($seoBoard) {
-                $urls[] = [
-                    'url' => "/board/{$board->slug}",
-                    'lastmod' => $board->updated_at?->toW3cString(),
-                    'changefreq' => 'daily',
-                    'priority' => 0.6,
-                ];
+        foreach ($this->boardRepository->streamActiveForSitemap() as $board) {
+            if ($truncated) {
+                break;
+            }
+
+            if ($seoBoard && ! $this->appendUrl($urls, [
+                'url' => "/board/{$board->slug}",
+                'lastmod' => $board->updated_at?->toW3cString(),
+                'changefreq' => 'daily',
+                'priority' => 0.6,
+            ], $maxUrls)) {
+                $truncated = true;
+                break;
             }
 
             if (! $seoPostDetail) {
@@ -71,20 +92,45 @@ class BoardSitemapContributor implements SitemapContributorInterface
             }
 
             // 각 게시판의 공개된 게시글 (비밀글 제외, 게시 상태만)
-            $posts = Post::where('board_id', $board->id)
-                ->where('status', PostStatus::Published)
-                ->where('is_secret', false)
-                ->get(['id', 'updated_at']);
-            foreach ($posts as $post) {
-                $urls[] = [
+            foreach ($this->postRepository->streamPublishedForSitemap($board->id) as $post) {
+                if (! $this->appendUrl($urls, [
                     'url' => "/board/{$board->slug}/{$post->id}",
                     'lastmod' => $post->updated_at?->toW3cString(),
                     'changefreq' => 'monthly',
                     'priority' => 0.5,
-                ];
+                ], $maxUrls)) {
+                    $truncated = true;
+                    break;
+                }
             }
         }
 
+        if ($truncated) {
+            Log::warning('[SEO] Sitemap 기여자 URL 상한 초과로 잘렸습니다.', [
+                'contributor' => $this->getIdentifier(),
+                'max_urls' => $maxUrls,
+            ]);
+        }
+
         return $urls;
+    }
+
+    /**
+     * 안전 상한을 지키며 URL 항목을 추가합니다.
+     *
+     * @param  array<int, array<string, mixed>>  $urls  누적 URL 배열 (참조)
+     * @param  array<string, mixed>  $entry  추가할 URL 항목
+     * @param  int  $maxUrls  기여자당 URL 상한 (0 = 무제한)
+     * @return bool 추가되면 true, 상한 도달로 추가하지 못하면 false
+     */
+    private function appendUrl(array &$urls, array $entry, int $maxUrls): bool
+    {
+        if ($maxUrls > 0 && count($urls) >= $maxUrls) {
+            return false;
+        }
+
+        $urls[] = $entry;
+
+        return true;
     }
 }

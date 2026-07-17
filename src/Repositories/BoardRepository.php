@@ -2,10 +2,12 @@
 
 namespace Modules\Sirsoft\Board\Repositories;
 
+use App\Enums\UserStatus;
 use App\Helpers\PermissionHelper;
-use App\Helpers\TimezoneHelper;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +34,7 @@ class BoardRepository implements BoardRepositoryInterface
      */
     public function create(array $data): Board
     {
-        $board = new Board();
+        $board = new Board;
         $board->fill($data);
 
         // created_by/updated_by는 guarded이므로 직접 할당
@@ -63,7 +65,7 @@ class BoardRepository implements BoardRepositoryInterface
      * @param  int  $id  게시판 ID
      * @return Board 게시판 모델
      *
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
+     * @throws ModelNotFoundException
      */
     public function findOrFail(int $id): Board
     {
@@ -88,7 +90,7 @@ class BoardRepository implements BoardRepositoryInterface
      * @param  array  $data  수정할 데이터
      * @return Board 수정된 게시판 모델
      *
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
+     * @throws ModelNotFoundException
      */
     public function update(int $id, array $data): Board
     {
@@ -113,7 +115,7 @@ class BoardRepository implements BoardRepositoryInterface
      * @param  int  $id  게시판 ID
      * @return bool 삭제 성공 여부
      *
-     * @throws \Illuminate\Database\Eloquent\ModelNotFoundException
+     * @throws ModelNotFoundException
      */
     public function delete(int $id): bool
     {
@@ -179,7 +181,7 @@ class BoardRepository implements BoardRepositoryInterface
     /**
      * 쿼리 빌더를 반환합니다. (체이닝 가능)
      *
-     * @return \Illuminate\Database\Eloquent\Builder<Board>
+     * @return Builder<Board>
      */
     public function query()
     {
@@ -243,7 +245,7 @@ class BoardRepository implements BoardRepositoryInterface
             'board_name' => $post->board?->getLocalizedName(),
             'title' => $post->title,
             'author_name' => $post->author_name,
-            'created_at'           => $this->formatCreatedAt($post->created_at),
+            'created_at' => $this->formatCreatedAt($post->created_at),
             'created_at_formatted' => $this->formatCreatedAtFormat($post->created_at, g7_module_settings('sirsoft-board', 'display.date_display_format', 'standard')),
             'view_count' => $post->view_count,
             'comment_count' => $post->comments_count ?? 0,
@@ -295,7 +297,7 @@ class BoardRepository implements BoardRepositoryInterface
             'id' => $post->id,
             'title' => $post->title,
             'author_name' => $post->author_name,
-            'created_at'           => $this->formatCreatedAt($post->created_at),
+            'created_at' => $this->formatCreatedAt($post->created_at),
             'created_at_formatted' => $this->formatCreatedAtFormat($post->created_at, g7_module_settings('sirsoft-board', 'display.date_display_format', 'standard')),
             'view_count' => $post->view_count,
             'comment_count' => $post->comments_count ?? 0,
@@ -481,8 +483,8 @@ class BoardRepository implements BoardRepositoryInterface
             }
 
             // 사용자 상태 처리 (탈퇴한 사용자는 익명화)
-            $userStatus = $post->user_id ? \App\Enums\UserStatus::tryFrom($post->user_status) : null;
-            $isWithdrawn = $userStatus === \App\Enums\UserStatus::Withdrawn;
+            $userStatus = $post->user_id ? UserStatus::tryFrom($post->user_status) : null;
+            $isWithdrawn = $userStatus === UserStatus::Withdrawn;
             $authorName = $post->user_id
                 ? ($isWithdrawn ? __('user.withdrawn_user') : $post->user_name)
                 : $post->guest_author_name;
@@ -504,7 +506,7 @@ class BoardRepository implements BoardRepositoryInterface
                 ],
                 'view_count' => $viewCount,
                 'comment_count' => $commentCount,
-                'created_at'           => $this->formatCreatedAt(Carbon::parse($post->created_at)),
+                'created_at' => $this->formatCreatedAt(Carbon::parse($post->created_at)),
                 'created_at_formatted' => $this->formatCreatedAtFormat($post->created_at, g7_module_settings('sirsoft-board', 'display.date_display_format', 'standard')),
             ];
         })->toArray();
@@ -513,18 +515,32 @@ class BoardRepository implements BoardRepositoryInterface
     /**
      * 활성화된 게시판 목록을 조회합니다.
      *
-     * @param string|null $slug 특정 게시판 슬러그 (null이면 전체)
+     * @param  string|null  $slug  특정 게시판 슬러그 (null이면 전체)
      * @return Collection 활성 게시판 컬렉션
      */
     public function getActiveBoards(?string $slug = null): Collection
     {
         $query = Board::where('is_active', true);
 
-        if (!empty($slug)) {
+        if (! empty($slug)) {
             $query->where('slug', $slug);
         }
 
         return $query->get();
+    }
+
+    /**
+     * Sitemap 생성용으로 활성 게시판을 순회자로 조회합니다.
+     *
+     * @param  int  $chunkSize  청크 크기
+     * @return iterable<Board> 활성 게시판 순회자 (id, slug, updated_at 만 조회)
+     */
+    public function streamActiveForSitemap(int $chunkSize = 500): iterable
+    {
+        return Board::where('is_active', true)
+            ->select(['id', 'slug', 'updated_at'])
+            ->orderBy('id')
+            ->lazyById($chunkSize);
     }
 
     /**
@@ -542,9 +558,9 @@ class BoardRepository implements BoardRepositoryInterface
     /**
      * 게시판을 일괄 업데이트합니다.
      *
-     * @param array<string, mixed> $data 업데이트할 데이터
-     * @param bool $applyAll 전체 적용 여부
-     * @param array<int> $boardIds 특정 게시판 ID 목록 (applyAll=false일 때 사용)
+     * @param  array<string, mixed>  $data  업데이트할 데이터
+     * @param  bool  $applyAll  전체 적용 여부
+     * @param  array<int>  $boardIds  특정 게시판 ID 목록 (applyAll=false일 때 사용)
      * @return int 업데이트된 게시판 수
      */
     public function bulkUpdate(array $data, bool $applyAll = true, array $boardIds = []): int
@@ -590,9 +606,9 @@ class BoardRepository implements BoardRepositoryInterface
      *
      * @param  string  $orderBy  정렬 기준 컬럼
      * @param  string  $orderDirection  정렬 방향 (asc/desc)
-     * @return \Illuminate\Database\Eloquent\Collection 활성 게시판 컬렉션
+     * @return Collection 활성 게시판 컬렉션
      */
-    public function getActiveBoardsOrdered(string $orderBy = 'created_at', string $orderDirection = 'desc'): \Illuminate\Database\Eloquent\Collection
+    public function getActiveBoardsOrdered(string $orderBy = 'created_at', string $orderDirection = 'desc'): Collection
     {
         return Board::where('is_active', true)
             ->orderBy($orderBy, $orderDirection)
@@ -618,9 +634,9 @@ class BoardRepository implements BoardRepositoryInterface
      *
      * id, name, slug 컬럼만 조회하여 메뉴 렌더링에 필요한 최소 데이터만 반환합니다.
      *
-     * @return \Illuminate\Database\Eloquent\Collection 활성 게시판 컬렉션 (id, name, slug만 포함)
+     * @return Collection 활성 게시판 컬렉션 (id, name, slug만 포함)
      */
-    public function getActiveBoardsForMenu(): \Illuminate\Database\Eloquent\Collection
+    public function getActiveBoardsForMenu(): Collection
     {
         return Board::where('is_active', true)
             ->select(['id', 'name', 'slug'])

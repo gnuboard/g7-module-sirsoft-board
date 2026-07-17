@@ -22,6 +22,7 @@ interface PostRepositoryInterface
      * @param  int  $perPage  페이지당 항목 수
      * @param  bool  $withTrashed  삭제된 게시글 포함 여부
      * @param  Board|null  $board  게시판 모델 (이미 조회된 경우 전달하여 중복 쿼리 방지)
+     * @return Paginator 게시글 페이지네이터
      */
     public function paginate(string $slug, array $filters = [], int $perPage = 15, bool $withTrashed = false, ?Board $board = null): Paginator;
 
@@ -96,6 +97,7 @@ interface PostRepositoryInterface
      * @param  string  $status  변경할 상태 (blinded/deleted)
      * @param  array  $actionLog  작업 이력 데이터
      * @param  string|null  $triggerType  트리거 유형 (admin, report 등)
+     * @return Post 상태가 변경된 게시글 모델
      *
      * @throws ModelNotFoundException
      */
@@ -262,6 +264,18 @@ interface PostRepositoryInterface
      * @return Post|null 게시글 또는 null
      */
     public function findByBoardId(int $boardId, int $id): ?Post;
+
+    /**
+     * Sitemap 용으로 게시판의 공개 게시글을 스트리밍 조회합니다.
+     *
+     * 공개 게시글 = 게시 상태 + 비밀글 아님. 전체 적재를 피하기 위해
+     * id 기준으로 청크 단위 지연 조회합니다.
+     *
+     * @param  int  $boardId  게시판 ID
+     * @param  int  $chunkSize  청크 크기
+     * @return iterable<Post> 공개 게시글 순회자 (id, updated_at 만 조회)
+     */
+    public function streamPublishedForSitemap(int $boardId, int $chunkSize = 500): iterable;
 
     /**
      * 게시판 ID 기준으로 게시글을 일괄 소프트 삭제합니다.
