@@ -84,6 +84,8 @@ class BoardSitemapContributor extends AbstractSitemapContributor
                 'url' => '/boards',
                 'changefreq' => 'weekly',
                 'priority' => 0.5,
+                'resource_type' => 'board_index',
+                'resource_id' => null,
             ];
         }
 
@@ -100,6 +102,8 @@ class BoardSitemapContributor extends AbstractSitemapContributor
                     'lastmod' => $board->updated_at?->toW3cString(),
                     'changefreq' => 'daily',
                     'priority' => 0.6,
+                    'resource_type' => 'board',
+                    'resource_id' => (string) $board->id,
                 ];
             }
 
@@ -114,6 +118,8 @@ class BoardSitemapContributor extends AbstractSitemapContributor
                     'lastmod' => $post->updated_at?->toW3cString(),
                     'changefreq' => 'monthly',
                     'priority' => 0.5,
+                    'resource_type' => 'board_post',
+                    'resource_id' => (string) $post->id,
                 ];
             }
         }
