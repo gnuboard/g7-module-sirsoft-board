@@ -4,6 +4,7 @@ namespace Modules\Sirsoft\Board\Tests\Unit\Seo;
 
 require_once __DIR__.'/../../ModuleTestCase.php';
 
+use App\Seo\AbstractSitemapContributor;
 use App\Seo\Contracts\SitemapContributorInterface;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
@@ -284,6 +285,25 @@ class BoardSitemapContributorTest extends BoardTestCase
 
         $this->assertContains('/boards', $urlPaths);
         $this->assertContains("/board/{$this->board->slug}", $urlPaths);
+        $this->assertContains("/board/{$this->board->slug}/{$postId}", $urlPaths);
+    }
+
+    /**
+     * getUrlsLazy: 배열을 실체화하지 않는 지연 제너레이터로 URL 을 흘려보낸다 (⑭ 스트리밍)
+     *
+     * 소비 경로는 getUrls() 가 아니라 getUrlsLazy() 이므로, 이것이 Traversable 로
+     * 한 건씩 yield 되어야 대용량 게시글에서 메모리가 유계로 유지된다.
+     */
+    public function test_get_urls_lazy_streams_entries(): void
+    {
+        $postId = $this->createTestPost(['status' => 'published', 'is_secret' => false]);
+
+        $this->assertInstanceOf(AbstractSitemapContributor::class, $this->contributor);
+
+        $lazy = $this->contributor->getUrlsLazy();
+        $this->assertInstanceOf(\Traversable::class, $lazy);
+
+        $urlPaths = array_column(iterator_to_array($lazy, false), 'url');
         $this->assertContains("/board/{$this->board->slug}/{$postId}", $urlPaths);
     }
 }
