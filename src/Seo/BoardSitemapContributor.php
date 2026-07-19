@@ -2,6 +2,7 @@
 
 namespace Modules\Sirsoft\Board\Seo;
 
+use App\Enums\SitemapChangeFreq;
 use App\Seo\AbstractSitemapContributor;
 use Illuminate\Support\Facades\Log;
 use Modules\Sirsoft\Board\Repositories\Contracts\BoardRepositoryInterface;
@@ -82,7 +83,7 @@ class BoardSitemapContributor extends AbstractSitemapContributor
         if ($seoBoards) {
             yield [
                 'url' => '/boards',
-                'changefreq' => 'weekly',
+                'changefreq' => SitemapChangeFreq::Weekly->value,
                 'priority' => 0.5,
                 'resource_type' => 'board_index',
                 'resource_id' => null,
@@ -100,7 +101,7 @@ class BoardSitemapContributor extends AbstractSitemapContributor
                 yield [
                     'url' => "/board/{$board->slug}",
                     'lastmod' => $board->updated_at?->toW3cString(),
-                    'changefreq' => 'daily',
+                    'changefreq' => SitemapChangeFreq::Daily->value,
                     'priority' => 0.6,
                     'resource_type' => 'board',
                     'resource_id' => (string) $board->id,
@@ -116,7 +117,7 @@ class BoardSitemapContributor extends AbstractSitemapContributor
                 yield [
                     'url' => "/board/{$board->slug}/{$post->id}",
                     'lastmod' => $post->updated_at?->toW3cString(),
-                    'changefreq' => 'monthly',
+                    'changefreq' => SitemapChangeFreq::Monthly->value,
                     'priority' => 0.5,
                     'resource_type' => 'board_post',
                     'resource_id' => (string) $post->id,

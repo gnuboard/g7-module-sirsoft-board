@@ -4,6 +4,7 @@ namespace Modules\Sirsoft\Board\Listeners;
 
 use App\Contracts\Extension\CacheInterface;
 use App\Contracts\Extension\HookListenerInterface;
+use App\Enums\SitemapChangeFreq;
 use App\Jobs\GenerateSitemapJob;
 use App\Seo\Contracts\SeoCacheManagerInterface;
 use App\Seo\SeoCacheRegenerator;
@@ -185,7 +186,7 @@ class SeoBoardCacheListener implements HookListenerInterface
                 $indexer->indexResource('board_post', $post->id, 'sirsoft-board', [[
                     'url' => "/board/{$slug}/{$post->id}",
                     'lastmod' => $post->updated_at?->toW3cString(),
-                    'changefreq' => 'monthly',
+                    'changefreq' => SitemapChangeFreq::Monthly->value,
                     'priority' => 0.5,
                 ]]);
             } else {
@@ -226,7 +227,7 @@ class SeoBoardCacheListener implements HookListenerInterface
                 $indexer->indexResource('board', $board->id, 'sirsoft-board', [[
                     'url' => "/board/{$board->slug}",
                     'lastmod' => $board->updated_at?->toW3cString(),
-                    'changefreq' => 'daily',
+                    'changefreq' => SitemapChangeFreq::Daily->value,
                     'priority' => 0.6,
                 ]]);
             } else {
