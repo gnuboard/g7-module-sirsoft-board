@@ -44,6 +44,7 @@ class PostRepository implements PostRepositoryInterface
      * @param  array  $filters  필터 조건
      * @param  int  $perPage  페이지당 항목 수 (일반 게시글 기준)
      * @param  bool  $withTrashed  삭제된 게시글 포함 여부
+     * @param  Board|null  $board  게시판 모델 (이미 조회된 경우 전달하여 중복 쿼리 방지)
      * @return Paginator 페이지네이션된 게시글 목록 (simplePaginate — COUNT 쿼리 제거)
      */
     public function paginate(string $slug, array $filters = [], int $perPage = 15, bool $withTrashed = false, ?Board $board = null): Paginator
@@ -176,6 +177,7 @@ class PostRepository implements PostRepositoryInterface
      *
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  게시글 ID
+     * @return Post|null 게시글 모델 (없으면 null)
      */
     public function find(string $slug, int $id): ?Post
     {
@@ -189,6 +191,7 @@ class PostRepository implements PostRepositoryInterface
      *
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  게시글 ID
+     * @return Post 게시글 모델
      *
      * @throws ModelNotFoundException
      */
@@ -205,6 +208,7 @@ class PostRepository implements PostRepositoryInterface
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  게시글 ID
      * @param  array  $data  수정할 데이터
+     * @return Post 수정된 게시글 모델
      *
      * @throws ModelNotFoundException
      */
@@ -221,6 +225,7 @@ class PostRepository implements PostRepositoryInterface
      *
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  게시글 ID
+     * @return bool 삭제 성공 여부
      *
      * @throws ModelNotFoundException
      */
@@ -236,6 +241,7 @@ class PostRepository implements PostRepositoryInterface
      *
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  게시글 ID
+     * @return bool 영구 삭제 성공 여부
      *
      * @throws ModelNotFoundException
      */
@@ -253,6 +259,8 @@ class PostRepository implements PostRepositoryInterface
      * @param  int  $id  게시글 ID
      * @param  string  $status  변경할 상태 (published/blinded/deleted)
      * @param  array  $actionLog  작업 이력 데이터
+     * @param  string|null  $triggerType  트리거 유형 (admin, report 등)
+     * @return Post 상태가 변경된 게시글 모델
      *
      * @throws ModelNotFoundException
      */
@@ -406,6 +414,7 @@ class PostRepository implements PostRepositoryInterface
      *
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  게시글 ID
+     * @param  int|null  $boardId  게시판 ID (전달 시 Board 재조회 생략)
      * @return Post|null 게시글 모델 (카운트 포함)
      */
     public function findWithCounts(string $slug, int $id, ?int $boardId = null): ?Post
@@ -554,6 +563,7 @@ class PostRepository implements PostRepositoryInterface
      * @param  int  $id  현재 게시글 ID
      * @param  array  $filters  정렬 파라미터 (order_by, order_direction)
      * @param  bool  $withTrashed  삭제된 게시글 포함 여부 (기본: false)
+     * @param  int|null  $boardId  게시판 ID (전달 시 Board 재조회 생략)
      * @return array{prev: Post|null, next: Post|null} 이전/다음 게시글
      */
     public function getAdjacentPosts(string $slug, int $id, array $filters = [], bool $withTrashed = false, ?int $boardId = null): array
@@ -1389,6 +1399,27 @@ class PostRepository implements PostRepositoryInterface
             ->withTrashed()
             ->with(['user'])
             ->find($id);
+    }
+
+    /**
+     * Sitemap 용으로 게시판의 공개 게시글을 스트리밍 조회합니다.
+     *
+     * lazyById 는 id 기준 키셋 페이징으로 청크를 순차 조회하므로,
+     * 결과셋 전체가 메모리(및 DB 드라이버 버퍼)에 적재되지 않습니다.
+     *
+     * @param  int  $boardId  게시판 ID
+     * @param  int  $chunkSize  청크 크기
+     * @return iterable<Post> 공개 게시글 순회자 (id, updated_at 만 조회)
+     */
+    public function streamPublishedForSitemap(int $boardId, int $chunkSize = 500): iterable
+    {
+        return Post::query()
+            ->where('board_id', $boardId)
+            ->where('status', PostStatus::Published)
+            ->where('is_secret', false)
+            ->select(['id', 'updated_at'])
+            ->orderBy('id')
+            ->lazyById($chunkSize);
     }
 
     /**
