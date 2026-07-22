@@ -1,6 +1,7 @@
 {
   "meta": {
     "is_partial": true,
+    "_e2e_allow": "e2e:allow 채널 토글 저장(upsert)·하단탭 필터는 레이아웃 회귀테스트(vitest) + MCP 실브라우저 검증(하단탭 노출/저장/발송)으로 커버. 알림설정 화면 Playwright 인프라 부재 (#28)",
     "description": "게시판 알림 설정 탭 — 채널 토글 + 2단 탭 + 채널별 템플릿 목록"
   },
   "id": "tab_content_notification_definitions",
@@ -115,7 +116,7 @@
                       "handler": "setState",
                       "params": {
                         "target": "local",
-                        "form.notifications.channels": "{{(_local.form?.notifications?.channels ?? []).map(c => c.id === ch.id ? {...c, is_active: !c.is_active} : c)}}",
+                        "form.notifications.channels": "{{(_local.form?.notifications?.channels ?? []).some(c => c.id === ch.id) ? (_local.form?.notifications?.channels ?? []).map(c => c.id === ch.id ? {...c, is_active: !c.is_active} : c) : [...(_local.form?.notifications?.channels ?? []), {id: ch.id, is_active: true, sort_order: (_local.form?.notifications?.channels ?? []).length + 1}]}}",
                         "hasChanges": true
                       }
                     }
@@ -139,7 +140,7 @@
           "type": "basic",
           "name": "Button",
           "iteration": {
-            "source": "{{(availableChannels?.data?.channels ?? []).filter(c => (_local.form?.notifications?.channels ?? []).find(nc => nc.id === c.id)?.is_active !== false)}}",
+            "source": "{{(availableChannels?.data?.channels ?? []).filter(c => c.source === 'core' ? (_local.form?.notifications?.channels ?? []).find(nc => nc.id === c.id)?.is_active !== false : (_local.form?.notifications?.channels ?? []).find(nc => nc.id === c.id)?.is_active === true)}}",
             "item_var": "ch",
             "index_var": "chIdx"
           },
