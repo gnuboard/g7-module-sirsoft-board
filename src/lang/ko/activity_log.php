@@ -77,6 +77,7 @@ return [
     // ChangeDetector 필드 라벨
     'fields' => [
         // Board
+        'name' => '게시판명',
         'is_active' => '활성 여부',
         'per_page' => '페이지당 게시물 수',
         'per_page_mobile' => '모바일 페이지당 게시물 수',

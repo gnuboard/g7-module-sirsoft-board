@@ -77,6 +77,7 @@ return [
     // ChangeDetector field labels
     'fields' => [
         // Board
+        'name' => 'Board Name',
         'is_active' => 'Active',
         'per_page' => 'Posts Per Page',
         'per_page_mobile' => 'Posts Per Page (Mobile)',

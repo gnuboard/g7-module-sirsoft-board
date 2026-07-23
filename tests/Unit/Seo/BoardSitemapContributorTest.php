@@ -8,6 +8,7 @@ use App\Seo\AbstractSitemapContributor;
 use App\Seo\Contracts\SitemapContributorInterface;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use Modules\Sirsoft\Board\Models\Board;
 use Modules\Sirsoft\Board\Seo\BoardSitemapContributor;
 use Modules\Sirsoft\Board\Tests\BoardTestCase;
 
@@ -74,7 +75,11 @@ class BoardSitemapContributorTest extends BoardTestCase
      */
     public function test_get_urls_returns_only_static_url_when_no_active_boards(): void
     {
-        $this->updateBoardSettings(['is_active' => false]);
+        // "활성 게시판이 0개" 전제를 이 테스트가 직접 만든다.
+        // 자기 게시판만 비활성화하면, 트랜잭션을 쓰지 않는 다른 테스트 클래스가 남긴
+        // 게시판이 활성 상태로 남아 있어 전제가 성립하지 않는다.
+        Board::query()->update(['is_active' => false]);
+        $this->board->refresh();
 
         $urls = $this->contributor->getUrls();
 

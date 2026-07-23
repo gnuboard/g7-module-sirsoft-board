@@ -143,6 +143,10 @@ return [
 
         'category_max' => 50,
 
+        // 신규 게시글 NEW 배지 표시 기간 (시간 단위, 0 = 표시 안 함)
+        'new_display_hours_min' => 0,
+        'new_display_hours_max' => 720,
+
         // 답글 깊이 제한
         'max_reply_depth_min' => 1,
         'max_reply_depth_max' => 10,

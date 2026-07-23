@@ -420,6 +420,67 @@ class BoardSettingsControllerTest extends ModuleTestCase
         $response->assertStatus(200);
     }
 
+    /**
+     * override_values 의 컬럼 값도 Store/Update 와 동일한 범위 제한(ReadsBoardLimits SSoT)을 받는다.
+     *
+     * 회귀: 일괄 적용 경로는 override_values 를 무검증(`['sometimes','array']`)으로 통과시켜
+     * boards 컬럼에 직접 기록했다. Store/Update 가 config/board.php SSoT 로 강제하는 바로 그 컬럼을
+     * 일괄 적용만 우회할 수 있어, new_display_hours=99999(상한 720) 같은 값이 저장됐다.
+     */
+    public function test_bulk_apply_rejects_out_of_range_override_new_display_hours(): void
+    {
+        $response = $this->actingAs($this->adminUser)
+            ->postJson('/api/modules/sirsoft-board/admin/settings/bulk-apply', [
+                'fields' => ['new_display_hours'],
+                'apply_all' => true,
+                'override_values' => ['new_display_hours' => 99999], // 상한 720 초과
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['override_values.new_display_hours']);
+    }
+
+    /**
+     * override_values 의 길이 제한 컬럼(min_title_length 등)도 상한을 넘으면 거부한다.
+     */
+    public function test_bulk_apply_rejects_out_of_range_override_min_title_length(): void
+    {
+        $response = $this->actingAs($this->adminUser)
+            ->postJson('/api/modules/sirsoft-board/admin/settings/bulk-apply', [
+                'fields' => ['min_title_length'],
+                'apply_all' => true,
+                'override_values' => ['min_title_length' => 999999], // 상한 200 초과
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['override_values.min_title_length']);
+    }
+
+    /**
+     * 범위 안의 override_values 는 정상 통과한다(정정이 유효값까지 막지 않음).
+     */
+    public function test_bulk_apply_accepts_in_range_override_values(): void
+    {
+        $board = Board::create([
+            'name' => ['ko' => '테스트', 'en' => 'Test'],
+            'slug' => 'settings-ov-'.substr(md5(microtime()), 0, 8),
+            'type' => 'gallery',
+            'new_display_hours' => 24,
+        ]);
+
+        $response = $this->actingAs($this->adminUser)
+            ->postJson('/api/modules/sirsoft-board/admin/settings/bulk-apply', [
+                'fields' => ['new_display_hours'],
+                'apply_all' => true,
+                'override_values' => ['new_display_hours' => 48], // 상한 720 이내
+            ]);
+
+        $response->assertStatus(200);
+
+        $board->refresh();
+        $this->assertEquals(48, $board->new_display_hours);
+    }
+
     // ========================================
     // StoreBoardSettingsRequest 검증 경계값 테스트 (회귀: issue#413)
     // ========================================

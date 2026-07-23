@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Modules\Sirsoft\Board\Enums\PostStatus;
 use Modules\Sirsoft\Board\Exceptions\BoardNotFoundException;
 use Modules\Sirsoft\Board\Exceptions\PostNotFoundException;
 use Modules\Sirsoft\Board\Http\Requests\BlindPostRequest;
@@ -53,6 +54,7 @@ class PostController extends AdminBaseController
      * @param  string  $slug  게시판 슬러그
      * @return JsonResponse 게시글 목록 응답
      */
+    // audit:allow controller-base-request-injection reason: GET 목록 조회. all()로 필터·페이징 파라미터만 읽음 (검증 불필요)
     public function index(Request $request, string $slug): JsonResponse
     {
         // 권한은 라우트 미들웨어에서 체크됨 (sirsoft-board.{slug}.admin.posts.read)
@@ -387,6 +389,7 @@ class PostController extends AdminBaseController
      * @param  string  $slug  게시판 슬러그
      * @return JsonResponse 폼 입력 데이터 응답
      */
+    // audit:allow controller-base-request-injection reason: GET 수정 폼 데이터 조회. 경로 파라미터(slug) + 쿼리만 read-only 참조 (검증 불필요)
     public function getFormData(Request $request, string $slug): JsonResponse
     {
         // 권한은 라우트 미들웨어에서 체크됨 (sirsoft-board.{slug}.admin.posts.write)
@@ -474,6 +477,7 @@ class PostController extends AdminBaseController
      * @param  string  $slug  게시판 슬러그
      * @return JsonResponse 폼 메타 데이터 응답
      */
+    // audit:allow controller-base-request-injection reason: GET 작성/수정 폼 메타 조회. 경로 파라미터(slug) + post_id 쿼리만 read-only 참조 (검증 불필요)
     public function getFormMeta(Request $request, string $slug): JsonResponse
     {
         // 권한은 라우트 미들웨어에서 체크됨 (sirsoft-board.{slug}.admin.posts.write)
@@ -487,7 +491,7 @@ class PostController extends AdminBaseController
             // 관리자 라우트에서는 항상 사용자 권한 정보 포함
             $request->merge(['include_user_abilities' => true]);
 
-            $boardResource = new \Modules\Sirsoft\Board\Http\Resources\BoardResource($board);
+            $boardResource = new BoardResource($board);
             $boardData = $boardResource->toArray($request);
 
             // 게시글 폼에서는 게시판 이름을 로컬라이즈된 문자열로 반환
@@ -523,10 +527,10 @@ class PostController extends AdminBaseController
                 $parentPost = $this->postService->getPost($slug, $parentId);
 
                 // 블라인드 또는 삭제된 게시글에는 답글 작성 불가
-                if ($parentPost->status === \Modules\Sirsoft\Board\Enums\PostStatus::Blinded) {
+                if ($parentPost->status === PostStatus::Blinded) {
                     return $this->error('sirsoft-board::validation.post.parent_id.blinded', 403);
                 }
-                if ($parentPost->status === \Modules\Sirsoft\Board\Enums\PostStatus::Deleted) {
+                if ($parentPost->status === PostStatus::Deleted) {
                     return $this->error('sirsoft-board::validation.post.parent_id.deleted', 403);
                 }
 
@@ -577,7 +581,7 @@ class PostController extends AdminBaseController
 
         // 비회원 게시글은 admin.manage 권한 필요 (위에서 통과 안 됨)
         if ($postUserId === null) {
-            return $this->forbidden('sirsoft-board::messages.permissions.access_denied');
+            return $this->forbidden('sirsoft-board::messages.permission.denied');
         }
 
         // admin.posts.write 권한이 있고 본인 글이면 수정/삭제 가능
@@ -585,6 +589,6 @@ class PostController extends AdminBaseController
             return null;
         }
 
-        return $this->forbidden('sirsoft-board::messages.permissions.access_denied');
+        return $this->forbidden('sirsoft-board::messages.permission.denied');
     }
 }

@@ -294,7 +294,7 @@ class PostController extends PublicBaseController
 
                 // 파일 업로드 권한 확인
                 if (! $this->checkBoardPermission($slug, 'attachments.upload', PermissionType::User)) {
-                    return $this->forbidden('sirsoft-board::messages.permissions.access_denied');
+                    return $this->forbidden('sirsoft-board::messages.permission.attachments_upload_denied');
                 }
             }
 
@@ -584,7 +584,7 @@ class PostController extends PublicBaseController
                 // 회원 게시글이고 본인이 아닌 경우 권한 에러
                 if ($post->user_id && Auth::id() !== $post->user_id) {
                     if (! $this->hasBoardManagePermission($slug)) {
-                        return $this->error('sirsoft-board::messages.posts.no_permission', 403);
+                        return $this->error('sirsoft-board::messages.posts.modify_permission_denied', 403);
                     }
                 }
 
@@ -675,7 +675,7 @@ class PostController extends PublicBaseController
                 // 회원 게시글이고 본인이 아니거나, 관리자도 아닌 경우 권한 에러
                 if ($post->user_id && Auth::id() !== $post->user_id) {
                     if (! $this->hasBoardManagePermission($slug)) {
-                        return $this->error('sirsoft-board::messages.posts.no_permission', 403);
+                        return $this->error('sirsoft-board::messages.posts.modify_permission_denied', 403);
                     }
                 }
 
@@ -787,7 +787,6 @@ class PostController extends PublicBaseController
      *
      * @param  Post  $parentPost  부모 게시글 모델
      * @param  int  $parentId  부모 게시글 ID (예외 메시지용)
-     * @return void
      *
      * @throws PostNotFoundException 부모글이 블라인드/삭제 상태인 경우
      */

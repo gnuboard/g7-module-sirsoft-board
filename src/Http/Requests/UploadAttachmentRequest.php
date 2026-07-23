@@ -4,6 +4,7 @@ namespace Modules\Sirsoft\Board\Http\Requests;
 
 use App\Extension\HookManager;
 use Illuminate\Foundation\Http\FormRequest;
+use Modules\Sirsoft\Board\Http\Requests\Concerns\ResolvesAllowedExtensions;
 use Modules\Sirsoft\Board\Models\Board;
 
 /**
@@ -11,8 +12,12 @@ use Modules\Sirsoft\Board\Models\Board;
  */
 class UploadAttachmentRequest extends FormRequest
 {
+    use ResolvesAllowedExtensions;
+
     /**
      * 요청 권한 확인
+     *
+     * @return bool 항상 true (권한은 미들웨어에서 검증)
      */
     public function authorize(): bool
     {
@@ -43,7 +48,14 @@ class UploadAttachmentRequest extends FormRequest
         $maxSizeMB = $board->max_file_size ?? 10;
         $maxSizeKB = $maxSizeMB * 1024;
 
-        $allowedExtensions = $board->allowed_extensions ?? ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'zip'];
+        // 게시판 값이 비어 있으면(null 또는 []) 모듈 기본값으로 폴백한다.
+        // 빈 배열을 그대로 쓰면 'mimes:' 빈 규칙이 되어 전 파일이 거부된다.
+        $defaults = g7_module_settings('sirsoft-board', 'basic_defaults', []);
+        $allowedExtensions = $this->resolveAllowedExtensions(
+            $board->allowed_extensions,
+            $defaults['allowed_extensions'] ?? null
+        );
+
         $mimes = implode(',', $allowedExtensions);
 
         $rules = [

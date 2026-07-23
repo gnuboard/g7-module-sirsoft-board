@@ -411,6 +411,82 @@ class BoardManagementTest extends ModuleTestCase
     }
 
     /**
+     * 폼 데이터를 그대로 되돌려 저장해도 통과해야 한다 (이슈 #78 통합 회귀)
+     *
+     * 관리자 폼은 GET 응답 전체를 _local.form 에 통째로 주입하고 그대로 PUT 한다.
+     * 따라서 요청에는 항상 모든 키가 존재하며, 무변경 저장이 검증에 막히면 안 된다.
+     * 이 테스트가 "전체 객체 PUT" 이라는 프런트 계약을 백엔드에 고정한다.
+     *
+     * @dataProvider roundTripBoardAttributesProvider
+     *
+     * @scenario case=upload_disabled_extensions_null
+     *
+     * @effects unchanged_form_data_round_trip_saves
+     *
+     * @param  array<string, mixed>  $attributes  게시판 속성
+     */
+    public function test_form_data_round_trip_save_passes(array $attributes): void
+    {
+        // Given: 생성 API 로 만든 게시판 (board-scoped 역할/권한이 실제로 존재하는 상태)
+        $slug = 'test-rt-'.substr(md5(microtime().serialize($attributes)), 0, 8);
+
+        $this->actingAs($this->adminUser)
+            ->postJson('/api/modules/sirsoft-board/admin/boards', [
+                'name' => ['ko' => '왕복 저장 테스트', 'en' => 'Round Trip Test'],
+                'slug' => $slug,
+                'type' => 'basic',
+                'show_view_count' => true,
+                'use_report' => false,
+                'board_manager_ids' => [$this->adminUser->uuid],
+            ])->assertStatus(201);
+
+        // 검증 대상 상태를 DB 에 직접 반영 (레거시 데이터 재현)
+        $board = Board::where('slug', $slug)->firstOrFail();
+        $board->forceFill($attributes)->save();
+
+        // When: 폼 데이터를 조회하고 받은 객체를 그대로 PUT
+        $formResponse = $this->actingAs($this->adminUser)
+            ->getJson('/api/modules/sirsoft-board/admin/boards/form-data?board_slug='.$board->slug);
+        $formResponse->assertStatus(200);
+
+        $payload = $formResponse->json('data');
+
+        $response = $this->actingAs($this->adminUser)
+            ->putJson("/api/modules/sirsoft-board/admin/boards/{$board->slug}", $payload);
+
+        // Then: 무변경 저장이 통과해야 함
+        $response->assertStatus(200, '무변경 저장 실패: '.json_encode($response->json(), JSON_UNESCAPED_UNICODE));
+    }
+
+    /**
+     * 무변경 저장 회귀 대상 게시판 속성.
+     *
+     * @return array<string, array{array<string, mixed>}> 게시판 속성
+     */
+    public static function roundTripBoardAttributesProvider(): array
+    {
+        return [
+            '첨부 미사용 + 확장자 NULL' => [[
+                'use_file_upload' => false,
+                'allowed_extensions' => null,
+            ]],
+            '첨부 미사용 + 확장자 빈 배열' => [[
+                'use_file_upload' => false,
+                'allowed_extensions' => [],
+            ]],
+            '첨부 미사용 + NEW 배지 끄기' => [[
+                'use_file_upload' => false,
+                'allowed_extensions' => null,
+                'new_display_hours' => 0,
+            ]],
+            '첨부 사용 + 확장자 지정' => [[
+                'use_file_upload' => true,
+                'allowed_extensions' => ['jpg', 'png'],
+            ]],
+        ];
+    }
+
+    /**
      * 폼 데이터를 board_slug 로 수정 모드 조회할 수 있다 (#450)
      */
     public function test_get_form_data_edit_mode_by_board_slug(): void
