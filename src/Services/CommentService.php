@@ -89,12 +89,14 @@ class CommentService
      *
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  댓글 ID
+     * @param  int|null  $postId  상위 게시글 ID (전달 시 해당 게시글의 댓글로 조회 범위 제한)
+     * @return Comment 댓글 모델
      *
      * @throws ModelNotFoundException
      */
-    public function getComment(string $slug, int $id): Comment
+    public function getComment(string $slug, int $id, ?int $postId = null): Comment
     {
-        return $this->commentRepository->findOrFail($slug, $id);
+        return $this->commentRepository->findOrFail($slug, $id, $postId);
     }
 
     /**
@@ -228,6 +230,7 @@ class CommentService
      *
      * @param  string  $slug  게시판 슬러그
      * @param  array  $data  댓글 생성 데이터
+     * @return Comment 생성된 댓글 모델
      *
      * @throws \Exception 블라인드/삭제된 게시글에 댓글 작성 시
      */
@@ -251,10 +254,11 @@ class CommentService
 
         // depth 자동 계산 (답글인 경우)
         if (! empty($data['parent_id'])) {
-            $parentComment = $this->commentRepository->find($slug, $data['parent_id']);
+            // 같은 게시글에 속한 부모 댓글만 인정 (교차 게시글 부모 차단)
+            $parentComment = $this->commentRepository->find($slug, $data['parent_id'], (int) $data['post_id']);
             if ($parentComment) {
-                // 부모 댓글의 depth + 1 (최대 5까지)
-                $data['depth'] = min(($parentComment->depth ?? 0) + 1, 5);
+                // 부모 댓글의 depth + 1 — 상한은 CommentValidationRule 이 게시판 설정으로 검증
+                $data['depth'] = ($parentComment->depth ?? 0) + 1;
             } else {
                 // 부모 댓글을 찾을 수 없으면 0으로 설정
                 $data['depth'] = 0;
@@ -282,12 +286,14 @@ class CommentService
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  댓글 ID
      * @param  array  $data  수정할 데이터
+     * @param  int|null  $postId  상위 게시글 ID (전달 시 해당 게시글의 댓글로 조회 범위 제한)
+     * @return Comment 수정된 댓글 모델
      *
      * @throws ModelNotFoundException
      */
-    public function updateComment(string $slug, int $id, array $data): Comment
+    public function updateComment(string $slug, int $id, array $data, ?int $postId = null): Comment
     {
-        $comment = $this->commentRepository->findOrFail($slug, $id);
+        $comment = $this->commentRepository->findOrFail($slug, $id, $postId);
 
         // 훅: before_update
         HookManager::doAction('sirsoft-board.comment.before_update', $comment, $data, $slug);
@@ -312,12 +318,14 @@ class CommentService
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  댓글 ID
      * @param  string|null  $triggerType  트리거 유형 (admin, user, report 등)
+     * @param  int|null  $postId  상위 게시글 ID (전달 시 해당 게시글의 댓글로 조회 범위 제한)
+     * @return bool 삭제 성공 여부
      *
      * @throws ModelNotFoundException
      */
-    public function deleteComment(string $slug, int $id, ?string $triggerType = null): bool
+    public function deleteComment(string $slug, int $id, ?string $triggerType = null, ?int $postId = null): bool
     {
-        $comment = $this->commentRepository->findOrFail($slug, $id);
+        $comment = $this->commentRepository->findOrFail($slug, $id, $postId);
 
         // 훅: before_delete
         HookManager::doAction('sirsoft-board.comment.before_delete', $comment, $slug);
@@ -345,12 +353,14 @@ class CommentService
      * @param  int  $id  댓글 ID
      * @param  string  $reason  블라인드 사유
      * @param  string|null  $triggerType  트리거 유형 (report, admin, auto_hide 등)
+     * @param  int|null  $postId  상위 게시글 ID (전달 시 해당 게시글의 댓글로 조회 범위 제한)
+     * @return Comment 블라인드 처리된 댓글 모델
      *
      * @throws ModelNotFoundException
      */
-    public function blindComment(string $slug, int $id, string $reason, ?string $triggerType = null): Comment
+    public function blindComment(string $slug, int $id, string $reason, ?string $triggerType = null, ?int $postId = null): Comment
     {
-        $comment = $this->commentRepository->findOrFail($slug, $id);
+        $comment = $this->commentRepository->findOrFail($slug, $id, $postId);
 
         // 멱등성: 이미 블라인드 상태이면 중복 처리 방지
         if ($comment->status === PostStatus::Blinded) {
@@ -379,12 +389,14 @@ class CommentService
      * @param  int  $id  댓글 ID
      * @param  string|null  $reason  복원 사유
      * @param  string|null  $triggerType  트리거 유형 (report, admin, auto_hide 등)
+     * @param  int|null  $postId  상위 게시글 ID (전달 시 해당 게시글의 댓글로 조회 범위 제한)
+     * @return Comment 복원된 댓글 모델
      *
      * @throws ModelNotFoundException
      */
-    public function restoreComment(string $slug, int $id, ?string $reason = null, ?string $triggerType = null): Comment
+    public function restoreComment(string $slug, int $id, ?string $reason = null, ?string $triggerType = null, ?int $postId = null): Comment
     {
-        $comment = $this->commentRepository->findOrFail($slug, $id);
+        $comment = $this->commentRepository->findOrFail($slug, $id, $postId);
 
         // 멱등성: 이미 게시됨 상태이면 중복 처리 방지
         if ($comment->status === PostStatus::Published) {

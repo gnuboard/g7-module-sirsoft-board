@@ -19,6 +19,8 @@ interface CommentRepositoryInterface
      * @param  int  $postId  게시글 ID
      * @param  bool  $withTrashed  삭제된 댓글 포함 여부 (기본값: false)
      * @param  string  $orderDirection  정렬 방향 (ASC 또는 DESC, 기본값: DESC)
+     * @param  string|null  $scopePermission  스코프 권한 식별자 (null 이면 스코프 필터 미적용)
+     * @param  int|null  $boardId  게시판 ID (전달 시 Board 재조회 생략)
      * @return Collection 정렬된 댓글 컬렉션
      */
     public function getByPostId(string $slug, int $postId, bool $withTrashed = false, string $orderDirection = 'DESC', ?string $scopePermission = null, ?int $boardId = null): Collection;
@@ -35,22 +37,28 @@ interface CommentRepositoryInterface
     /**
      * ID로 댓글을 조회합니다.
      *
+     * $postId 를 전달하면 해당 게시글에 속한 댓글만 조회합니다 (교차 게시글 접근 차단).
+     *
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  댓글 ID
+     * @param  int|null  $postId  상위 게시글 ID (null 이면 게시판 범위 전체)
      * @return Comment|null 댓글 모델 또는 null
      */
-    public function find(string $slug, int $id): ?Comment;
+    public function find(string $slug, int $id, ?int $postId = null): ?Comment;
 
     /**
      * ID로 댓글을 조회하며, 없으면 예외를 발생시킵니다.
      *
+     * $postId 를 전달하면 해당 게시글에 속한 댓글만 조회합니다 (교차 게시글 접근 차단).
+     *
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  댓글 ID
+     * @param  int|null  $postId  상위 게시글 ID (null 이면 게시판 범위 전체)
      * @return Comment 댓글 모델
      *
      * @throws ModelNotFoundException
      */
-    public function findOrFail(string $slug, int $id): Comment;
+    public function findOrFail(string $slug, int $id, ?int $postId = null): Comment;
 
     /**
      * 댓글을 수정합니다.
@@ -94,6 +102,7 @@ interface CommentRepositoryInterface
      * @param  string  $status  변경할 상태 (blinded/deleted)
      * @param  array  $actionLog  작업 이력 데이터
      * @param  string|null  $triggerType  트리거 유형 (report, admin, auto_hide 등)
+     * @return Comment 상태가 변경된 댓글 모델
      *
      * @throws ModelNotFoundException
      */

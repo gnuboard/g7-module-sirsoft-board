@@ -252,16 +252,20 @@ class CommentRepository implements CommentRepositoryInterface
     /**
      * ID로 댓글을 조회합니다.
      *
+     * $postId 를 전달하면 해당 게시글에 속한 댓글만 조회합니다 (교차 게시글 접근 차단).
+     *
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  댓글 ID
+     * @param  int|null  $postId  상위 게시글 ID (null 이면 게시판 범위 전체)
      * @return Comment|null 댓글 또는 null
      */
-    public function find(string $slug, int $id): ?Comment
+    public function find(string $slug, int $id, ?int $postId = null): ?Comment
     {
         $board = Board::where('slug', $slug)->first();
 
         return Comment::query()
             ->where('board_id', $board?->id)
+            ->when($postId !== null, fn ($query) => $query->where('post_id', $postId))
             ->withTrashed()
             ->with(['user'])
             ->find($id);
@@ -270,18 +274,22 @@ class CommentRepository implements CommentRepositoryInterface
     /**
      * ID로 댓글을 조회하며, 없으면 예외를 발생시킵니다.
      *
+     * $postId 를 전달하면 해당 게시글에 속한 댓글만 조회합니다 (교차 게시글 접근 차단).
+     *
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  댓글 ID
+     * @param  int|null  $postId  상위 게시글 ID (null 이면 게시판 범위 전체)
      * @return Comment 댓글 모델
      *
      * @throws ModelNotFoundException
      */
-    public function findOrFail(string $slug, int $id): Comment
+    public function findOrFail(string $slug, int $id, ?int $postId = null): Comment
     {
         $board = Board::where('slug', $slug)->firstOrFail();
 
         return Comment::query()
             ->where('board_id', $board->id)
+            ->when($postId !== null, fn ($query) => $query->where('post_id', $postId))
             ->withTrashed()
             ->with(['user'])
             ->findOrFail($id);
