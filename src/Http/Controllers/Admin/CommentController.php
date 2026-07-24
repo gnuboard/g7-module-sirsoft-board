@@ -127,8 +127,8 @@ class CommentController extends AdminBaseController
     public function update(UpdateCommentRequest $request, string $slug, int $postId, int $id): JsonResponse
     {
         try {
-            // 댓글 조회
-            $comment = $this->commentService->getComment($slug, $id);
+            // 경로의 게시글에 속한 댓글만 조회 (교차 게시글 접근 차단)
+            $comment = $this->commentService->getComment($slug, $id, $postId);
 
             // 권한 체크: 본인 댓글 또는 admin.manage
             if ($response = $this->authorizeCommentModification($slug, $comment->user_id)) {
@@ -146,7 +146,7 @@ class CommentController extends AdminBaseController
             }
 
             $data = $request->validated();
-            $updatedComment = $this->commentService->updateComment($slug, $id, $data);
+            $updatedComment = $this->commentService->updateComment($slug, $id, $data, $postId);
 
             return $this->successWithResource(
                 'sirsoft-board::messages.comment.update_success',
@@ -170,8 +170,8 @@ class CommentController extends AdminBaseController
     public function destroy(string $slug, int $postId, int $id): JsonResponse
     {
         try {
-            // 댓글 조회
-            $comment = $this->commentService->getComment($slug, $id);
+            // 경로의 게시글에 속한 댓글만 조회 (교차 게시글 접근 차단)
+            $comment = $this->commentService->getComment($slug, $id, $postId);
 
             // 권한 체크: 본인 댓글 또는 admin.manage
             if ($response = $this->authorizeCommentModification($slug, $comment->user_id)) {
@@ -188,7 +188,7 @@ class CommentController extends AdminBaseController
                 return $this->error('sirsoft-board::messages.comments.comments_disabled', 403);
             }
 
-            $this->commentService->deleteComment($slug, $id, 'admin');
+            $this->commentService->deleteComment($slug, $id, 'admin', $postId);
 
             return $this->success('sirsoft-board::messages.comment.delete_success');
         } catch (ModelNotFoundException) {
@@ -223,7 +223,7 @@ class CommentController extends AdminBaseController
             $validated = $request->validated();
             $reason = $validated['reason'] ?? '';
 
-            $comment = $this->commentService->blindComment($slug, $id, $reason);
+            $comment = $this->commentService->blindComment($slug, $id, $reason, null, $postId);
 
             return $this->successWithResource(
                 'sirsoft-board::messages.comment.blind_success',
@@ -259,7 +259,7 @@ class CommentController extends AdminBaseController
             }
 
             $reason = $request->validated()['reason'] ?? null;
-            $comment = $this->commentService->restoreComment($slug, $id, $reason);
+            $comment = $this->commentService->restoreComment($slug, $id, $reason, null, $postId);
 
             return $this->successWithResource(
                 'sirsoft-board::messages.comment.restore_success',

@@ -1525,7 +1525,7 @@ HTTP/1.1 200
 
 <!-- @generated:end -->
 
-**설명** 게시판 관리자가 댓글 1건을 삭제합니다. `auth:sanctum` + admin 인증이 필요하며, 라우트 권한은 `comments.write` 또는 `manage`입니다. 컨트롤러가 댓글을 조회한 뒤 권한을 적용합니다: `admin.manage`는 모든 댓글(비회원 댓글 포함), `admin.write`는 본인 댓글만 삭제할 수 있습니다. 게시판의 `use_comment`가 꺼져 있으면 403이며, `CommentService::deleteComment()`가 'admin' 컨텍스트로 삭제를 수행합니다.
+**설명** 게시판 관리자가 댓글 1건을 삭제합니다. `auth:sanctum` + admin 인증이 필요하며, 라우트 권한은 `comments.write` 또는 `manage`입니다. 컨트롤러가 댓글을 조회한 뒤 권한을 적용합니다: `admin.manage`는 모든 댓글(비회원 댓글 포함), `admin.write`는 본인 댓글만 삭제할 수 있습니다. 게시판의 `use_comment`가 꺼져 있으면 403이며, `CommentService::deleteComment()`가 'admin' 컨텍스트로 삭제를 수행합니다. 경로의 `{postId}`에 속한 댓글만 대상이 됩니다 — 다른 게시글의 댓글 ID를 지정하면 404를 반환하며 해당 댓글은 변경되지 않습니다.
 
 
 ### PUT /api/modules/sirsoft-board/admin/board/{slug}/posts/{postId}/comments/{id}
@@ -1572,7 +1572,7 @@ Authorization: Bearer {YOUR_TOKEN}
 
 <!-- @generated:end -->
 
-**설명** 게시판 관리자가 댓글 1건을 수정합니다. `auth:sanctum` + admin + 게시판별 `comments.write` 권한이 필요하며, 컨트롤러가 댓글을 조회한 뒤 권한을 적용합니다: `admin.manage`는 모든 댓글, `admin.write`는 본인 댓글만 수정할 수 있습니다. 게시판의 `use_comment`가 꺼져 있으면 403이며, `UpdateCommentRequest` 검증 값으로 `CommentService::updateComment()`가 갱신을 수행합니다.
+**설명** 게시판 관리자가 댓글 1건을 수정합니다. `auth:sanctum` + admin + 게시판별 `comments.write` 권한이 필요하며, 컨트롤러가 댓글을 조회한 뒤 권한을 적용합니다: `admin.manage`는 모든 댓글, `admin.write`는 본인 댓글만 수정할 수 있습니다. 게시판의 `use_comment`가 꺼져 있으면 403이며, `UpdateCommentRequest` 검증 값으로 `CommentService::updateComment()`가 갱신을 수행합니다. 경로의 `{postId}`에 속한 댓글만 대상이 됩니다 — 다른 게시글의 댓글 ID를 지정하면 404를 반환하며 해당 댓글은 변경되지 않습니다.
 
 
 ### PATCH /api/modules/sirsoft-board/admin/board/{slug}/posts/{postId}/comments/{id}/blind
@@ -1700,7 +1700,7 @@ HTTP/1.1 200
 
 <!-- @generated:end -->
 
-**설명** 게시판 관리자가 댓글을 블라인드 처리합니다. `auth:sanctum` + admin + 게시판별 `admin.manage` 권한이 필요하며, 게시판의 `use_comment`가 꺼져 있으면 403으로 차단됩니다. 선택적 `reason`(최대 1000자)을 사유로 받아 `CommentService::blindComment()`가 댓글을 숨김 처리하되 관리 목적으로 보존하며, 복원(restore)으로 되돌릴 수 있습니다.
+**설명** 게시판 관리자가 댓글을 블라인드 처리합니다. `auth:sanctum` + admin + 게시판별 `admin.manage` 권한이 필요하며, 게시판의 `use_comment`가 꺼져 있으면 403으로 차단됩니다. 선택적 `reason`(최대 1000자)을 사유로 받아 `CommentService::blindComment()`가 댓글을 숨김 처리하되 관리 목적으로 보존하며, 복원(restore)으로 되돌릴 수 있습니다. 경로의 `{postId}`에 속한 댓글만 대상이 됩니다 — 다른 게시글의 댓글 ID를 지정하면 404를 반환하며 해당 댓글은 변경되지 않습니다.
 
 
 ### PATCH /api/modules/sirsoft-board/admin/board/{slug}/posts/{postId}/comments/{id}/restore
@@ -1744,6 +1744,6 @@ Authorization: Bearer {YOUR_TOKEN}
 
 <!-- @generated:end -->
 
-**설명** 게시판 관리자가 블라인드 처리된 댓글을 복원합니다. `auth:sanctum` + admin + 게시판별 `admin.manage` 권한이 필요하며, 게시판의 `use_comment`가 꺼져 있으면 403으로 차단됩니다. 요청 본문의 선택적 `reason`을 사유로 받아 `CommentService::restoreComment()`가 블라인드 상태를 해제해 댓글을 다시 노출합니다.
+**설명** 게시판 관리자가 블라인드 처리된 댓글을 복원합니다. `auth:sanctum` + admin + 게시판별 `admin.manage` 권한이 필요하며, 게시판의 `use_comment`가 꺼져 있으면 403으로 차단됩니다. 요청 본문의 선택적 `reason`을 사유로 받아 `CommentService::restoreComment()`가 블라인드 상태를 해제해 댓글을 다시 노출합니다. 경로의 `{postId}`에 속한 댓글만 대상이 됩니다 — 다른 게시글의 댓글 ID를 지정하면 404를 반환하며 해당 댓글은 변경되지 않습니다.
 
 

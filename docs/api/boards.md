@@ -3648,7 +3648,7 @@ Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생�
 
 <!-- @generated:end -->
 
-**설명** 게시글에 댓글(또는 대댓글)을 작성합니다. `auth:sanctum` + `sirsoft-board.{slug}.comments.write` 권한이 필요하며, 게시판의 댓글 기능이 꺼져 있으면 403을 반환합니다. 현재 로그인 사용자를 작성자로 저장하고 요청 IP를 기록하며, 스팸 방지 쿨다운이 설정되어 있으면 작성 성공 후 쿨다운을 기록합니다.
+**설명** 게시글에 댓글(또는 대댓글)을 작성합니다. `auth:sanctum` + `sirsoft-board.{slug}.comments.write` 권한이 필요하며, 게시판의 댓글 기능이 꺼져 있으면 403을 반환합니다. 현재 로그인 사용자를 작성자로 저장하고 요청 IP를 기록하며, 스팸 방지 쿨다운이 설정되어 있으면 작성 성공 후 쿨다운을 기록합니다. `parent_id`는 경로의 `{postId}`에 속한 댓글이어야 하며, 다른 게시글의 댓글을 지정하면 422를 반환합니다. 저장되는 `depth`는 부모 댓글 `depth + 1`이고, 게시판 설정 `max_comment_depth`를 넘는 답글은 422로 거절됩니다.
 
 
 ### DELETE /api/modules/sirsoft-board/boards/{slug}/posts/{postId}/comments/{commentId}
@@ -3703,7 +3703,7 @@ HTTP/1.1 200
 
 <!-- @generated:end -->
 
-**설명** 댓글을 삭제합니다. `auth:sanctum` + `sirsoft-board.{slug}.comments.write` 또는 게시판 manager 권한이 필요하며, 게시판의 댓글 기능이 꺼져 있으면 403을 반환합니다. 서비스의 `canDelete` 가 작성자 본인·게시판 관리자·비회원 댓글의 비밀번호 확인 여부를 판정하며, 조건 미충족 시 403을 반환합니다.
+**설명** 댓글을 삭제합니다. `auth:sanctum` + `sirsoft-board.{slug}.comments.write` 또는 게시판 manager 권한이 필요하며, 게시판의 댓글 기능이 꺼져 있으면 403을 반환합니다. 서비스의 `canDelete` 가 작성자 본인·게시판 관리자·비회원 댓글의 비밀번호 확인 여부를 판정하며, 조건 미충족 시 403을 반환합니다. 경로의 `{postId}`에 속한 댓글만 대상이 됩니다 — 다른 게시글의 댓글 ID를 지정하면 404를 반환하며 해당 댓글은 변경되지 않습니다.
 
 
 ### PUT /api/modules/sirsoft-board/boards/{slug}/posts/{postId}/comments/{commentId}
@@ -3749,7 +3749,7 @@ Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생�
 
 <!-- @generated:end -->
 
-**설명** 댓글을 수정합니다. `auth:sanctum` + `sirsoft-board.{slug}.comments.write` 또는 게시판 manager 권한이 필요하며, 게시판의 댓글 기능이 꺼져 있으면 403을 반환합니다. 서비스의 `canUpdate` 가 작성자 본인·게시판 관리자·비회원 댓글의 비밀번호 확인 여부를 판정하며, 검증용 `password` 는 저장에서 제외됩니다.
+**설명** 댓글을 수정합니다. `auth:sanctum` + `sirsoft-board.{slug}.comments.write` 또는 게시판 manager 권한이 필요하며, 게시판의 댓글 기능이 꺼져 있으면 403을 반환합니다. 서비스의 `canUpdate` 가 작성자 본인·게시판 관리자·비회원 댓글의 비밀번호 확인 여부를 판정하며, 검증용 `password` 는 저장에서 제외됩니다. 경로의 `{postId}`에 속한 댓글만 대상이 됩니다 — 다른 게시글의 댓글 ID를 지정하면 404를 반환하며 해당 댓글은 변경되지 않습니다. 요청 본문에서는 `content`·`is_secret`·`status`만 반영되며, `post_id`·`parent_id`·`depth` 등 그 밖의 필드를 함께 보내도 무시됩니다.
 
 
 ### POST /api/modules/sirsoft-board/boards/{slug}/posts/{postId}/reports
