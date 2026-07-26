@@ -66,11 +66,13 @@
   ],
   "named_actions": {
     "searchBoardReports": {
+      "comment": "검색 실행 — 열거한 검색 조건만 덮어쓰고 페이지당 개수 등 나머지 목록 상태는 유지한다. page 는 새 검색이므로 1페이지로 되돌린다 (#75).",
       "handler": "navigate",
       "params": {
         "path": "/admin/boards/reports",
-        "mergeQuery": false,
+        "mergeQuery": true,
         "query": {
+          "page": "",
           "filters[0][field]": "{{_local.searchField || 'all'}}",
           "filters[0][value]": "{{_local.searchQuery || ''}}",
           "filters[0][operator]": "like",
@@ -78,9 +80,7 @@
           "type": "{{((_global.typeFilter ?? query['type[]'] ?? []) || []).length > 0 ? (_global.typeFilter ?? query['type[]']) : null}}",
           "target_status": "{{((_global.targetStatusFilter ?? query['target_status[]'] ?? []) || []).length > 0 ? (_global.targetStatusFilter ?? query['target_status[]']) : null}}",
           "reported_at_from": "{{_global.dateFrom !== undefined ? _global.dateFrom : (query.reported_at_from || '')}}",
-          "reported_at_to": "{{_global.dateTo !== undefined ? _global.dateTo : (query.reported_at_to || '')}}",
-          "sort_by": "{{query.sort_by || 'last_reported_at'}}",
-          "sort_order": "{{query.sort_order || 'desc'}}"
+          "reported_at_to": "{{_global.dateTo !== undefined ? _global.dateTo : (query.reported_at_to || '')}}"
         }
       }
     }
@@ -120,11 +120,13 @@
                 },
                 "actions": [
                   {
+                    "comment": "새로고침은 보고 있던 목록을 그대로 다시 부르는 것이다 — 페이지/검색/필터를 유지한다 (#75).",
                     "type": "click",
                     "handler": "navigate",
                     "params": {
                       "path": "/admin/boards/reports",
-                      "mergeQuery": false
+                      "mergeQuery": true,
+                      "query": {}
                     }
                   }
                 ],
@@ -1244,6 +1246,7 @@
                         }
                       },
                       {
+                        "comment": "audit:allow layout-list-context-navigate-merge-query 초기화 버튼 — 목록 상태를 전부 비우는 것이 이 버튼의 목적이므로 병합하지 않는다.",
                         "type": "click",
                         "handler": "navigate",
                         "params": {
@@ -2202,7 +2205,9 @@
                   "view": {
                     "handler": "navigate",
                     "params": {
-                      "path": "/admin/boards/reports/{{$args[1]?.id}}"
+                      "path": "/admin/boards/reports/{{$args[1]?.id}}",
+                      "mergeQuery": true,
+                      "query": {}
                     }
                   },
                   "go_to_board": {

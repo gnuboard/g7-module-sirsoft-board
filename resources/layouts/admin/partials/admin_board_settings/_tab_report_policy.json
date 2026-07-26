@@ -766,7 +766,7 @@
                                       "params": {
                                         "actions": [
                                           { "handler": "setState", "params": { "target": "global", "activeBoardSettingsTab": "notification_definitions" } },
-                                          { "handler": "replaceUrl", "params": { "query": { "tab": "notification_definitions" } } }
+                                          { "comment": "audit:allow layout-list-context-navigate-merge-query 다른 탭으로 넘어가는 이동이다 — 알림 정의 탭은 자기 검색어와 페이지를 따로 갖는 별개의 목록이라 신고 정책 탭의 조건을 물려주지 않는다.", "handler": "replaceUrl", "params": { "query": { "tab": "notification_definitions" } } }
                                         ]
                                       }
                                     }
@@ -915,7 +915,7 @@
                                       "params": {
                                         "actions": [
                                           { "handler": "setState", "params": { "target": "global", "activeBoardSettingsTab": "notification_definitions" } },
-                                          { "handler": "replaceUrl", "params": { "query": { "tab": "notification_definitions" } } }
+                                          { "comment": "audit:allow layout-list-context-navigate-merge-query 다른 탭으로 넘어가는 이동이다 — 알림 정의 탭은 자기 검색어와 페이지를 따로 갖는 별개의 목록이라 신고 정책 탭의 조건을 물려주지 않는다.", "handler": "replaceUrl", "params": { "query": { "tab": "notification_definitions" } } }
                                         ]
                                       }
                                     }

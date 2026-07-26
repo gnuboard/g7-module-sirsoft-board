@@ -69,11 +69,13 @@
                                 },
                                 "actions": [
                                     {
+                                        "comment": "새로고침은 보고 있던 목록을 그대로 다시 부르는 것이다 — 페이지/검색을 유지한다 (#75).",
                                         "type": "click",
                                         "handler": "navigate",
                                         "params": {
                                             "path": "/admin/boards",
-                                            "mergeQuery": false
+                                            "mergeQuery": true,
+                                            "query": {}
                                         }
                                     }
                                 ],
@@ -102,7 +104,9 @@
                                         "type": "click",
                                         "handler": "navigate",
                                         "params": {
-                                            "path": "/admin/boards/create"
+                                            "path": "/admin/boards/create",
+                                            "mergeQuery": true,
+                                            "query": {}
                                         }
                                     }
                                 ],
@@ -341,8 +345,8 @@
                                                                                     "handler": "navigate",
                                                                                     "params": {
                                                                                         "path": "/admin/boards/{{row.slug}}/edit",
-                                                                                        "mergeQuery": false,
-                                                                                        "query": []
+                                                                                        "mergeQuery": true,
+                                                                                        "query": {}
                                                                                     }
                                                                                 },
                                                                                 "manage_posts": {
@@ -638,10 +642,15 @@
                                             "target": "copy_confirm_modal"
                                         },
                                         {
+                                            "comment": "복사 생성 폼으로 이동 — copy_id 는 query 로 넘긴다. mergeQuery 는 path 의 인라인 쿼리스트링을 버리므로 path 에 붙여두면 사라진다 (#75).",
                                             "type": "click",
                                             "handler": "navigate",
                                             "params": {
-                                                "path": "/admin/boards/create?copy_id={{_global.modal_data.id}}"
+                                                "path": "/admin/boards/create",
+                                                "mergeQuery": true,
+                                                "query": {
+                                                    "copy_id": "{{_global.modal_data.id}}"
+                                                }
                                             }
                                         }
                                     ]
