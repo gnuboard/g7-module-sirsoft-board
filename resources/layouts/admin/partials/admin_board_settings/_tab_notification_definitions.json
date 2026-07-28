@@ -1,7 +1,7 @@
 {
   "meta": {
     "is_partial": true,
-    "_e2e_allow": "e2e:allow 채널 토글 저장(upsert)·하단탭 필터는 레이아웃 회귀테스트(vitest) + MCP 실브라우저 검증(하단탭 노출/저장/발송)으로 커버. 알림설정 화면 Playwright 인프라 부재 (#28)",
+    "_e2e_allow": "e2e:allow 채널 토글 저장(upsert)·하단탭 필터는 레이아웃 회귀테스트(vitest) + MCP 실브라우저 검증(하단탭 노출/저장/발송)으로 커버. 알림설정 화면 Playwright 인프라 부재",
     "description": "게시판 알림 설정 탭 — 채널 토글 + 2단 탭 + 채널별 템플릿 목록"
   },
   "id": "tab_content_notification_definitions",
