@@ -136,7 +136,7 @@
                     "name": "Icon",
                     "props": {
                       "name": "arrows-rotate",
-                      "className": "w-5 h-5"
+                      "className": "text-xl"
                     }
                   }
                 ]
@@ -324,7 +324,7 @@
                         "name": "Icon",
                         "props": {
                           "name": "{{_global.showAdvancedSearch ? 'chevron-up' : 'chevron-down'}}",
-                          "className": "w-4 h-4 text-white dark:text-gray-300"
+                          "className": "text-base text-white dark:text-gray-300"
                         }
                       }
                     ]
@@ -520,7 +520,7 @@
                                 "name": "Icon",
                                 "props": {
                                   "name": "{{_global.showAdvancedSearch ? 'chevron-up' : 'chevron-down'}}",
-                                  "className": "w-4 h-4 text-white dark:text-gray-300"
+                                  "className": "text-base text-white dark:text-gray-300"
                                 }
                               }
                             ]
@@ -2192,6 +2192,7 @@
                       "query": {
                         "page": "{{$args[0]}}"
                       },
+                      "replace": true,
                       "transition_overlay_target": "reports_data_grid__body"
                     }
                   }
@@ -2302,7 +2303,7 @@
                   "name": "Icon",
                   "props": {
                     "name": "exclamation-triangle",
-                    "className": "w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0"
+                    "className": "text-base text-red-600 dark:text-red-400 flex-shrink-0"
                   }
                 },
                 {
@@ -2328,7 +2329,7 @@
                   "name": "Icon",
                   "props": {
                     "name": "exclamation-triangle",
-                    "className": "w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0"
+                    "className": "text-base text-yellow-600 dark:text-yellow-400 flex-shrink-0"
                   }
                 },
                 {
@@ -2354,7 +2355,7 @@
                   "name": "Icon",
                   "props": {
                     "name": "eye",
-                    "className": "w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0"
+                    "className": "text-base text-orange-600 dark:text-orange-400 flex-shrink-0"
                   }
                 },
                 {
@@ -2380,7 +2381,7 @@
                   "name": "Icon",
                   "props": {
                     "name": "spinner",
-                    "className": "w-5 h-5 text-blue-600 dark:text-blue-400 animate-spin mr-2"
+                    "className": "text-xl text-blue-600 dark:text-blue-400 animate-spin mr-2"
                   }
                 },
                 {
