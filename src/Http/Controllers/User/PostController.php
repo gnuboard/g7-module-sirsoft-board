@@ -382,7 +382,14 @@ class PostController extends PublicBaseController
 
             // 게시글 수정
             $data = $request->validated();
-            $post = $this->postService->updatePost($slug, $id, $data);
+
+            // `attachment_ids` 를 Service 로 넘기지 않으면 검증(형식·개수 상한 합산)은 통과하고
+            // 첨부만 조용히 연결되지 않는다 (200 + 첨부 0 건). 관리자 경로는 넘기고 있으므로
+            // 같은 요청이 화면에 따라 다르게 동작했다.
+            $attachmentIds = $data['attachment_ids'] ?? [];
+            unset($data['attachment_ids']);
+
+            $post = $this->postService->updatePost($slug, $id, $data, $attachmentIds);
 
             // board 관계 수동 설정
             $post->setRelation('board', $board);

@@ -443,6 +443,64 @@ class AttachmentLimitTest extends BoardTestCase
     }
 
     /**
+     * 수정 시 `attachment_ids` 로 보낸 첨부가 사용자 경로에서도 실제로 연결된다.
+     *
+     * 결함: 관리자 컨트롤러는 `attachment_ids` 를 뽑아 Service 로 넘기는데 사용자 컨트롤러는
+     *   넘기지 않았다. 그래서 같은 요청이 검증(형식·개수 상한 합산)은 통과하고 200 을 받는데
+     *   첨부만 조용히 연결되지 않았다 — 화면에는 성공으로 보이고 첨부만 사라진다.
+     *   작성 경로의 `files[]` 유실과 같은 계열이며, 두 경로가 같은 강도여야 한다.
+     */
+    public function test_update_links_attachment_ids_on_user_path(): void
+    {
+        $postId = $this->createTestPost(['user_id' => $this->memberUser->id]);
+
+        $tempKey = 'tk_'.str_repeat('u', 20);
+        $this->seedTempAttachments($tempKey, 2);
+        $attachmentIds = Attachment::where('temp_key', $tempKey)->pluck('id')->all();
+
+        $response = $this->actingAs($this->memberUser, 'sanctum')->putJson(
+            "/api/modules/sirsoft-board/boards/{$this->getTestBoardSlug()}/posts/{$postId}",
+            [
+                'title' => '첨부 연결 수정',
+                'content' => '본문은 최소 길이를 넘겨야 검증을 통과합니다.',
+                'attachment_ids' => $attachmentIds,
+            ]
+        );
+
+        $response->assertStatus(200);
+
+        $this->assertSame(
+            2,
+            Attachment::where('post_id', $postId)->count(),
+            'attachment_ids 로 보낸 첨부가 게시글에 연결되지 않았습니다 — 응답은 성공인데 첨부만 사라집니다.'
+        );
+    }
+
+    /**
+     * 수정 경로의 `attachment_ids` 도 개수 상한을 넘기면 차단된다 (위 경계의 대조군).
+     */
+    public function test_update_attachment_ids_over_limit_is_blocked(): void
+    {
+        $postId = $this->createTestPost(['user_id' => $this->memberUser->id]);
+
+        $tempKey = 'tk_'.str_repeat('o', 20);
+        $this->seedTempAttachments($tempKey, 6);
+        $attachmentIds = Attachment::where('temp_key', $tempKey)->pluck('id')->all();
+
+        $response = $this->actingAs($this->memberUser, 'sanctum')->putJson(
+            "/api/modules/sirsoft-board/boards/{$this->getTestBoardSlug()}/posts/{$postId}",
+            [
+                'title' => '상한 초과 첨부 수정',
+                'content' => '본문은 최소 길이를 넘겨야 검증을 통과합니다.',
+                'attachment_ids' => $attachmentIds,
+            ]
+        );
+
+        $response->assertStatus(422);
+        $this->assertSame(0, Attachment::where('post_id', $postId)->count());
+    }
+
+    /**
      * 상한 미설정(0) 게시판은 제한하지 않는다 (기존 동작 유지).
      */
     public function test_board_without_limit_is_not_restricted(): void

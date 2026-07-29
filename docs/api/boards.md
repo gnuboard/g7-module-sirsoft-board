@@ -3148,8 +3148,12 @@ HTTP/1.1 200
 | --- | --- | --- | --- | --- | --- |
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
 | id | path | string | 예 | — | 대상 리소스의 식별자 |
+| attachment_ids | body | integer[] | 아니오 | — | 미리 업로드해 둔 첨부 ID 목록. 게시글에 연결된다 (관리자 수정 경로와 동일) |
+| temp_key | body | string | 아니오 | 최대 64자 | 임시 업로드 묶음 키. 해당 묶음의 첨부가 게시글로 이동·연결된다 |
 
 > 이 엔드포인트는 확장이 파라미터를 추가할 수 있습니다 (`sirsoft-board.user_post.update_validation_rules`).
+
+`attachment_ids` 는 **연결 대상**이며, 목록에서 뺀 기존 첨부를 삭제하지는 않습니다. 첨부 개수 상한은 이미 연결된 첨부까지 합산해 판정하므로 상한을 넘기면 `422`(`errors.code = attachment_limit_exceeded`)로 거부됩니다.
 
 **요청 예시**
 

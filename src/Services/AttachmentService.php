@@ -5,6 +5,7 @@ namespace Modules\Sirsoft\Board\Services;
 use App\Contracts\Extension\StorageInterface;
 use App\Extension\HookManager;
 use App\Helpers\PermissionHelper;
+use App\Support\ImageResizer;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\UploadedFile;
@@ -126,6 +127,10 @@ class AttachmentService
             // 신규 게시글: 임시 경로에 저장 (저장 시 최종 경로로 이동)
             $path = "{$slug}/temp/{$tempKey}/{$storedFilename}";
         }
+
+        // 환경설정 > 업로드의 최대 가로/세로·품질을 적용한다 (코어 설정이 모든 업로드 경로에 동일 적용).
+        // 임시 파일을 제자리에서 줄이므로 아래의 저장·크기 계산이 모두 축소본을 본다.
+        app(ImageResizer::class)->resizeInPlace($file->getRealPath(), $file->getMimeType());
 
         // 스토리지에 파일 저장 (category: 'attachments')
         $this->storage->put('attachments', $path, file_get_contents($file->getRealPath()));
