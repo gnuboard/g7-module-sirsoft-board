@@ -220,6 +220,7 @@ return [
         'table_creation_failed' => '게시판 테이블 생성에 실패했습니다 (:table): :error',
         'category_in_use' => ':category 카테고리는 :count개의 게시글에서 사용 중입니다.',
         'board_not_found' => '게시판을 찾을 수 없습니다.',
+        'attachment_limit_exceeded' => '첨부파일은 최대 :limit개까지 등록할 수 있습니다. (요청: :attempted개)',
         'post_not_found' => '게시글을 찾을 수 없습니다.',
         'permission_denied' => '권한이 없습니다.',
         'validation_failed' => '입력값이 올바르지 않습니다.',

@@ -553,6 +553,88 @@ class BoardSettingsControllerTest extends ModuleTestCase
             ->assertJsonValidationErrors(['basic_defaults.per_page_mobile']);
     }
 
+    /**
+     * basic_defaults.max_file_count 는 config max_file_count_max(20)까지 허용 (#493 B2)
+     */
+    public function test_settings_request_max_file_count_allows_config_max(): void
+    {
+        $response = $this->actingAs($this->adminUser)
+            ->putJson('/api/modules/sirsoft-board/admin/settings', [
+                'basic_defaults' => ['max_file_count' => 20],
+            ]);
+
+        $response->assertStatus(200);
+    }
+
+    /**
+     * basic_defaults.max_file_count 가 config max(20) 초과 시 422 (#493 B2)
+     */
+    public function test_settings_request_max_file_count_rejects_above_config_max(): void
+    {
+        $response = $this->actingAs($this->adminUser)
+            ->putJson('/api/modules/sirsoft-board/admin/settings', [
+                'basic_defaults' => ['max_file_count' => 21],
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['basic_defaults.max_file_count']);
+    }
+
+    /**
+     * 제한값 설정을 바꾸면 저장 규칙이 따라오는지 확인 (#493 B2 — config 가 SSoT)
+     *
+     * 규칙이 리터럴로 되돌아가면 설정을 바꿔도 경계가 그대로라 이 테스트가 먼저 깨진다.
+     */
+    public function test_settings_request_bounds_follow_config(): void
+    {
+        config(['sirsoft-board.limits.max_file_count_max' => 3]);
+
+        $this->actingAs($this->adminUser)
+            ->putJson('/api/modules/sirsoft-board/admin/settings', [
+                'basic_defaults' => ['max_file_count' => 3],
+            ])
+            ->assertStatus(200);
+
+        $this->actingAs($this->adminUser)
+            ->putJson('/api/modules/sirsoft-board/admin/settings', [
+                'basic_defaults' => ['max_file_count' => 4],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['basic_defaults.max_file_count']);
+    }
+
+    /**
+     * report_policy.auto_hide_threshold 는 0(자동 숨김 비활성)을 저장할 수 있다 (#493 B4)
+     *
+     * 화면 안내가 "0=비활성" 이므로 서버가 0 을 거부하면 비활성으로 되돌릴 방법이 없다.
+     */
+    public function test_settings_request_auto_hide_threshold_allows_zero(): void
+    {
+        $response = $this->actingAs($this->adminUser)
+            ->putJson('/api/modules/sirsoft-board/admin/settings', [
+                'report_policy' => ['auto_hide_threshold' => 0],
+            ]);
+
+        $response->assertStatus(200);
+
+        $content = json_decode(File::get($this->settingsStoragePath.'/report_policy.json'), true);
+        $this->assertSame(0, (int) $content['auto_hide_threshold']);
+    }
+
+    /**
+     * report_policy.auto_hide_threshold 가 config max(100) 초과 시 422 (#493 B4)
+     */
+    public function test_settings_request_auto_hide_threshold_rejects_above_config_max(): void
+    {
+        $response = $this->actingAs($this->adminUser)
+            ->putJson('/api/modules/sirsoft-board/admin/settings', [
+                'report_policy' => ['auto_hide_threshold' => 101],
+            ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['report_policy.auto_hide_threshold']);
+    }
+
     // ========================================
     // clearCache (캐시 초기화) 테스트
     // ========================================

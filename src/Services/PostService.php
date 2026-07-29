@@ -85,6 +85,7 @@ class PostService
      * @param  string  $slug  게시판 슬러그
      * @param  array  $filters  필터 조건
      * @param  bool  $withTrashed  삭제된 게시글 포함 여부
+     * @param  string  $context  호출 컨텍스트 (admin/user — 권한 스코프 판정용)
      * @return int 일반 게시글 수 (답글, 공지 제외)
      *
      * @throws ModelNotFoundException 게시판을 찾을 수 없는 경우
@@ -145,6 +146,7 @@ class PostService
      *
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  게시글 ID
+     * @param  string  $context  호출 컨텍스트 (admin/user — 권한 스코프 판정용)
      * @return Post 게시글 모델
      *
      * @throws ModelNotFoundException 게시판 또는 게시글을 찾을 수 없는 경우
@@ -393,8 +395,9 @@ class PostService
      * @param  int  $id  게시글 ID
      * @param  string  $reason  블라인드 사유
      * @param  string|null  $triggerType  트리거 유형 (admin, report 등)
+     * @return Post 블라인드 처리된 게시글 모델
      *
-     * @throws ModelNotFoundException
+     * @throws ModelNotFoundException 게시판 또는 게시글을 찾을 수 없는 경우
      */
     public function blindPost(string $slug, int $id, string $reason, ?string $triggerType = null): Post
     {
@@ -519,6 +522,7 @@ class PostService
      *
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  게시글 ID
+     * @param  int|null  $boardId  이미 검증된 게시판 ID (중복 조회 방지용)
      * @return Post 게시글 모델 (카운트 포함)
      *
      * @throws ModelNotFoundException 게시판 또는 게시글을 찾을 수 없는 경우
@@ -629,6 +633,7 @@ class PostService
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  게시글 ID
      * @param  bool  $canViewDeleted  삭제된 게시글 조회 가능 여부
+     * @param  string  $context  호출 컨텍스트 (admin/user — 권한 스코프 판정용)
      * @return Post 상세 정보가 포함된 게시글 모델
      *
      * @throws ModelNotFoundException 게시판 또는 게시글을 찾을 수 없는 경우
@@ -725,6 +730,9 @@ class PostService
     ): void {
         // 방안 A: 업로드 완료된 첨부파일 ID로 연결 (신규 방식)
         if (! empty($attachmentIds)) {
+            // 개수 상한 최종 방어선 (기존 연결분과 합산) — Request 는 files[] 만 세므로 여기서 다시 판정한다
+            $this->attachmentService->assertAttachmentCountWithin($slug, $postId, count($attachmentIds));
+
             $linkedCount = $this->attachmentRepository->linkAttachmentsByIds($slug, $attachmentIds, $postId);
             if ($linkedCount > 0) {
                 Log::info("{$context} 시 첨부파일 ID로 연결 완료", [
@@ -1154,6 +1162,7 @@ class PostService
      *
      * @param  array  $boardIds  검색 대상 게시판 ID 목록
      * @param  string  $keyword  검색 키워드
+     * @return int 일치하는 게시글 수
      */
     public function countAcrossBoards(array $boardIds, string $keyword): int
     {

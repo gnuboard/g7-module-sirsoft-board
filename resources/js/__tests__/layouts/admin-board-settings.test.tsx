@@ -1135,14 +1135,19 @@ describe('_tab_report_policy.json - 신고 정책 탭', () => {
         expect(manageTagInputs[0].props.options).toContain('roleOptions');
     });
 
+    // 허용 범위는 서버가 내려주는 한계값(_meta.limits)을 바인딩한다. 화면이 숫자를 직접 들면
+    // 저장 규칙과 갈라진다 — 실제로 화면 min:1 ↔ 서버 min:0 으로 어긋나 "0=비활성" 안내대로
+    // 입력할 수 없던 결함이 있었다(#493 B4).
     it('필드에 유효한 min/max 제약이 있다', () => {
         const autoHide = findById(tabReportPolicy, 'field_auto_hide_threshold');
         const autoHideInput = findByName(autoHide, 'Input').find(
             (c: any) => c.props?.name === 'report_policy.auto_hide_threshold'
         );
-        expect(autoHideInput.props.min).toBe(1);
-        expect(autoHideInput.props.max).toBe(100);
-
+        expect(String(autoHideInput.props.min)).toContain('limits?.auto_hide_threshold_min');
+        expect(String(autoHideInput.props.max)).toContain('limits?.auto_hide_threshold_max');
+        // 0 = 자동 숨김 비활성. 폴백이 1 로 되돌아가면 비활성으로 되돌릴 방법이 사라진다.
+        expect(String(autoHideInput.props.min)).toContain('?? 0');
+        expect(String(autoHideInput.props.max)).toContain('?? 100');
     });
 
     it('Select가 composite 타입이다', () => {

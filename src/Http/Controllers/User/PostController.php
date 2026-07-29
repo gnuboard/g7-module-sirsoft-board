@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Modules\Sirsoft\Board\Enums\PostStatus;
 use Modules\Sirsoft\Board\Enums\SecretMode;
+use Modules\Sirsoft\Board\Exceptions\AttachmentLimitExceededException;
 use Modules\Sirsoft\Board\Exceptions\BoardNotFoundException;
 use Modules\Sirsoft\Board\Exceptions\PostNotFoundException;
 use Modules\Sirsoft\Board\Http\Requests\User\StorePostRequest;
@@ -320,7 +321,11 @@ class PostController extends PublicBaseController
             // secret_mode='enabled'인 경우 사용자 선택에 따름 (별도 처리 불필요)
 
             // 게시글 생성
-            $post = $this->postService->createPost($slug, $data);
+            // `files[]` 를 Service 로 넘기지 않으면 검증·권한 확인은 통과하고 첨부만 조용히
+            // 사라진다 (201 + 첨부 0 건). 위에서 이미 `hasFile('files')` 로 업로드 권한을
+            // 확인하고 있으므로 이 경로가 파일을 받는다는 의도는 명확하다.
+            $files = $request->file('files');
+            $post = $this->postService->createPost($slug, $data, is_array($files) ? $files : []);
 
             // 쿨다운 캐시 기록 (게시글 생성 성공 후)
             $spamSecurity = g7_module_settings('sirsoft-board', 'spam_security', []);
@@ -338,6 +343,9 @@ class PostController extends PublicBaseController
                 new PostResource($post),
                 201
             );
+        } catch (AttachmentLimitExceededException $e) {
+            // 게시판 첨부 개수 상한 초과 — generic 500 이 아닌 422 명시 차단
+            return $this->error($e->getMessage(), 422, ['code' => 'attachment_limit_exceeded']);
         } catch (BoardNotFoundException $e) {
             throw $e;
         } catch (\Exception $e) {
@@ -383,6 +391,9 @@ class PostController extends PublicBaseController
                 'sirsoft-board::messages.posts.update_success',
                 new PostResource($post)
             );
+        } catch (AttachmentLimitExceededException $e) {
+            // 게시판 첨부 개수 상한 초과 — generic 500 이 아닌 422 명시 차단
+            return $this->error($e->getMessage(), 422, ['code' => 'attachment_limit_exceeded']);
         } catch (AccessDeniedHttpException $e) {
             return $this->error('auth.scope_denied', 403);
         } catch (ModelNotFoundException $e) {

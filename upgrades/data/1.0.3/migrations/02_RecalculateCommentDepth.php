@@ -17,7 +17,8 @@ use Illuminate\Support\Facades\Schema;
  * 콘텐츠는 건드리지 않으며 depth 컬럼만 갱신하므로 결정론적입니다.
  *
  * idempotent: 이미 정합한 행은 갱신 대상에서 제외되어 재실행해도 결과가 같습니다.
- * 순환 참조가 남아 있어도 방문 ID 집합으로 유한 종료합니다.
+ * 순환 참조가 남아 있어도 방문 ID 집합으로 유한 종료하며, 루트에서 도달하지 못한
+ * 행(고아 부모 / 순환 컴포넌트)은 값을 보존한 채 경고 로그로 남깁니다.
  * V-1 안전: Facades\DB/Schema 만 사용.
  */
 class RecalculateCommentDepth implements DataMigration
@@ -83,6 +84,9 @@ class RecalculateCommentDepth implements DataMigration
                 self::MAX_LEVELS
             ));
         }
+
+        $this->logOrphanParents($context);
+        $this->logUnreachableComments($context, $visited);
 
         $context->logger->info(sprintf(
             '[board:1.0.3] depth 재계산 완료 — %d 건 갱신 (최대 세대 %d)',
@@ -178,6 +182,94 @@ class RecalculateCommentDepth implements DataMigration
         }
 
         return $updated;
+    }
+
+    /**
+     * 부모 행이 존재하지 않는 고아 댓글을 경고 로그로 남깁니다.
+     *
+     * BFS 는 `parent_id IS NULL` 인 루트에서만 출발하므로, 부모가 이미 삭제된 댓글은
+     * 어느 세대에도 도달하지 못해 depth 가 옛 값 그대로 남는다. 값을 임의로 고치거나
+     * 행을 지우면 데이터 손실이므로 건드리지 않되, 정정되지 않았다는 사실은 남긴다.
+     *
+     * @param  UpgradeContext  $context  업그레이드 컨텍스트
+     */
+    private function logOrphanParents(UpgradeContext $context): void
+    {
+        $orphanIds = DB::table(self::TABLE.' as c')
+            ->whereNotNull('c.parent_id')
+            ->whereNotExists(function ($query) {
+                $query->select('p.id')
+                    ->from(self::TABLE.' as p')
+                    ->whereColumn('p.id', 'c.parent_id');
+            })
+            ->pluck('c.id')
+            ->all();
+
+        if ($orphanIds === []) {
+            return;
+        }
+
+        $context->logger->warning(sprintf(
+            '[board:1.0.3] 부모 행이 없는 댓글 %d 건 — depth 재계산에서 스킵(값 보존). 대상 id: %s',
+            count($orphanIds),
+            json_encode(array_map('intval', $orphanIds), JSON_UNESCAPED_UNICODE)
+        ));
+    }
+
+    /**
+     * 루트에서 도달하지 못한 댓글(순환 참조 컴포넌트)을 경고 로그로 남깁니다.
+     *
+     * 부모 행이 존재하는데도 BFS 가 방문하지 못했다면 그 부모 역시 도달 불가라는 뜻이고,
+     * 거슬러 올라가면 루트가 없는 순환(A→B→A)에 닿는다. 이런 행은 세대 상한에 걸리지도
+     * (BFS 가 진입 자체를 못 함) 고아 판정에 걸리지도(부모 행은 실재함) 않아,
+     * 경고가 없으면 정정되지 않은 사실이 조용히 묻힌다.
+     *
+     * 값은 건드리지 않는다 — 순환의 어느 지점을 끊을지는 운영자 판단 영역이다.
+     *
+     * @param  UpgradeContext  $context  업그레이드 컨텍스트
+     * @param  array<int, bool>  $visited  BFS 가 방문한 댓글 ID 집합
+     */
+    private function logUnreachableComments(UpgradeContext $context, array $visited): void
+    {
+        $cycleIds = [];
+        $lastId = 0;
+
+        while (true) {
+            $ids = DB::table(self::TABLE.' as c')
+                ->whereNotNull('c.parent_id')
+                ->where('c.id', '>', $lastId)
+                ->whereExists(function ($query) {
+                    $query->select('p.id')
+                        ->from(self::TABLE.' as p')
+                        ->whereColumn('p.id', 'c.parent_id');
+                })
+                ->orderBy('c.id')
+                ->limit(self::CHUNK)
+                ->pluck('c.id')
+                ->all();
+
+            if ($ids === []) {
+                break;
+            }
+
+            foreach ($ids as $id) {
+                $lastId = (int) $id;
+
+                if (! isset($visited[$lastId])) {
+                    $cycleIds[] = $lastId;
+                }
+            }
+        }
+
+        if ($cycleIds === []) {
+            return;
+        }
+
+        $context->logger->warning(sprintf(
+            '[board:1.0.3] 루트에서 도달하지 못한 댓글 %d 건 — 순환 참조로 보이며 depth 재계산에서 스킵(값 보존). 대상 id: %s',
+            count($cycleIds),
+            json_encode($cycleIds, JSON_UNESCAPED_UNICODE)
+        ));
     }
 
     /**
