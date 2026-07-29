@@ -220,6 +220,7 @@ return [
         'table_creation_failed' => 'Failed to create board table (:table): :error',
         'category_in_use' => 'Category :category is in use by :count post(s).',
         'board_not_found' => 'Board not found.',
+        'attachment_limit_exceeded' => 'You can attach up to :limit file(s). (requested: :attempted)',
         'post_not_found' => 'Post not found.',
         'permission_denied' => 'Permission denied.',
         'validation_failed' => 'Validation failed.',

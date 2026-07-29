@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Base\PublicBaseController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Modules\Sirsoft\Board\Exceptions\AttachmentLimitExceededException;
 use Modules\Sirsoft\Board\Exceptions\BoardNotFoundException;
 use Modules\Sirsoft\Board\Http\Requests\ReorderAttachmentsRequest;
 use Modules\Sirsoft\Board\Http\Requests\UploadAttachmentRequest;
@@ -175,6 +176,9 @@ class AttachmentController extends PublicBaseController
                 ],
                 201
             );
+        } catch (AttachmentLimitExceededException $e) {
+            // 게시판 첨부 개수 상한 초과 — generic 500 이 아닌 422 명시 차단
+            return $this->error($e->getMessage(), 422, ['code' => 'attachment_limit_exceeded']);
         } catch (BoardNotFoundException $e) {
             return $this->notFound(__('sirsoft-board::messages.boards.not_found'));
         } catch (\Exception $e) {

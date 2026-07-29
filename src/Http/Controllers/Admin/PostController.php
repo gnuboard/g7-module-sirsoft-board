@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Modules\Sirsoft\Board\Enums\PostStatus;
+use Modules\Sirsoft\Board\Exceptions\AttachmentLimitExceededException;
 use Modules\Sirsoft\Board\Exceptions\BoardNotFoundException;
 use Modules\Sirsoft\Board\Exceptions\PostNotFoundException;
 use Modules\Sirsoft\Board\Http\Requests\BlindPostRequest;
@@ -193,6 +194,9 @@ class PostController extends AdminBaseController
                 new PostResource($post),
                 201
             );
+        } catch (AttachmentLimitExceededException $e) {
+            // 게시판 첨부 개수 상한 초과 — generic 500 이 아닌 422 명시 차단
+            return $this->error($e->getMessage(), 422, ['code' => 'attachment_limit_exceeded']);
         } catch (\Exception $e) {
             return $this->error('sirsoft-board::messages.posts.create_failed', 500, $e->getMessage());
         }
@@ -245,6 +249,9 @@ class PostController extends AdminBaseController
                 'sirsoft-board::messages.posts.update_success',
                 new PostResource($post)
             );
+        } catch (AttachmentLimitExceededException $e) {
+            // 게시판 첨부 개수 상한 초과 — generic 500 이 아닌 422 명시 차단
+            return $this->error($e->getMessage(), 422, ['code' => 'attachment_limit_exceeded']);
         } catch (ModelNotFoundException $e) {
             throw new PostNotFoundException($id);
         } catch (AccessDeniedHttpException $e) {

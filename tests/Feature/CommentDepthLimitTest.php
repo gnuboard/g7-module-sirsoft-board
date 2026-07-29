@@ -6,6 +6,8 @@ require_once __DIR__.'/../ModuleTestCase.php';
 
 use App\Models\Role;
 use App\Models\User;
+use Modules\Sirsoft\Board\Exceptions\CommentDepthExceededException;
+use Modules\Sirsoft\Board\Services\CommentService;
 use Modules\Sirsoft\Board\Tests\BoardTestCase;
 
 /**
@@ -160,6 +162,50 @@ class CommentDepthLimitTest extends BoardTestCase
     }
 
     /**
+     * max_comment_depth=0 게시판에서는 대댓글 자체가 불가능하다
+     *
+     * 0 은 "답글 없음" 설정이다. 상한을 리터럴로 클램프하거나 0 을 무제한으로 오해하면
+     * 이 게시판에서 대댓글이 그대로 달린다.
+     *
+     * @scenario entity=board_comment, parent_target=unrelated
+     *
+     * @effects depth_beyond_board_max_rejected_422, depth_follows_board_setting_not_literal
+     */
+    public function test_reply_is_rejected_when_max_depth_is_zero(): void
+    {
+        $this->updateBoardSettings(['max_comment_depth' => 0]);
+
+        $postId = $this->createTestPost();
+        $parentId = $this->createTestComment($postId, ['depth' => 0]);
+
+        $this->actingAs($this->memberUser)
+            ->postJson($this->storeUrl($postId), [
+                'content' => '대댓글 불가 게시판에서의 답글 시도',
+                'parent_id' => $parentId,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['parent_id']);
+    }
+
+    /**
+     * max_comment_depth=0 이어도 최상위 댓글은 정상 작성된다 (과잉 차단 방지)
+     *
+     * @scenario entity=board_comment, parent_target=unrelated
+     *
+     * @effects depth_follows_board_setting_not_literal
+     */
+    public function test_top_level_comment_is_allowed_when_max_depth_is_zero(): void
+    {
+        $this->updateBoardSettings(['max_comment_depth' => 0]);
+
+        $postId = $this->createTestPost();
+
+        $this->actingAs($this->memberUser)
+            ->postJson($this->storeUrl($postId), ['content' => '최상위 댓글'])
+            ->assertStatus(201);
+    }
+
+    /**
      * 댓글 생성 엔드포인트 URL 을 생성합니다.
      *
      * @param  int  $postId  게시글 ID
@@ -168,5 +214,62 @@ class CommentDepthLimitTest extends BoardTestCase
     private function storeUrl(int $postId): string
     {
         return "/api/modules/sirsoft-board/boards/{$this->board->slug}/posts/{$postId}/comments";
+    }
+
+    /**
+     * FormRequest 를 거치지 않는 경로(훅 · Service 직접 호출)에서도 깊이 상한이 지켜진다
+     *
+     * `CommentValidationRule` 은 요청 단계 선차단이라 Service 를 직접 부르는 확장 코드에는
+     * 걸리지 않는다. 첨부 개수(B3)가 Service 를 최종 불변조건으로 삼은 것과 같은 이유로,
+     * 깊이 상한도 Service 가 마지막 관문이어야 한다.
+     *
+     * @scenario entity=board_comment, parent_target=unrelated
+     *
+     * @effects depth_beyond_board_max_rejected_422
+     */
+    public function test_service_direct_call_rejects_reply_beyond_max_depth(): void
+    {
+        $this->updateBoardSettings(['max_comment_depth' => 2]);
+
+        $postId = $this->createTestPost();
+        $depth0 = $this->createTestComment($postId, ['depth' => 0]);
+        $depth1 = $this->createTestComment($postId, ['parent_id' => $depth0, 'depth' => 1]);
+        $depth2 = $this->createTestComment($postId, ['parent_id' => $depth1, 'depth' => 2]);
+
+        $service = app(CommentService::class);
+
+        $this->expectException(CommentDepthExceededException::class);
+
+        // depth 3 = 상한 2 초과 → Service 가 막아야 한다
+        $service->createComment($this->board->slug, [
+            'post_id' => $postId,
+            'parent_id' => $depth2,
+            'content' => 'FormRequest 를 우회한 깊이 초과 답글',
+            'user_id' => $this->memberUser->id,
+        ]);
+    }
+
+    /**
+     * 상한 이내의 Service 직접 호출은 그대로 통과한다 (과잉 차단 방지)
+     *
+     * @scenario entity=board_comment, parent_target=unrelated
+     *
+     * @effects depth_follows_board_setting_not_literal
+     */
+    public function test_service_direct_call_allows_reply_within_max_depth(): void
+    {
+        $this->updateBoardSettings(['max_comment_depth' => 2]);
+
+        $postId = $this->createTestPost();
+        $depth0 = $this->createTestComment($postId, ['depth' => 0]);
+
+        $comment = app(CommentService::class)->createComment($this->board->slug, [
+            'post_id' => $postId,
+            'parent_id' => $depth0,
+            'content' => '상한 이내 답글',
+            'user_id' => $this->memberUser->id,
+        ]);
+
+        $this->assertSame(1, (int) $comment->depth);
     }
 }

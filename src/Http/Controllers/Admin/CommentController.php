@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\Base\AdminBaseController;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Modules\Sirsoft\Board\Exceptions\CommentDepthExceededException;
+use Modules\Sirsoft\Board\Exceptions\PostNotCommentableException;
 use Modules\Sirsoft\Board\Http\Requests\BlindCommentRequest;
 use Modules\Sirsoft\Board\Http\Requests\RestoreCommentRequest;
 use Modules\Sirsoft\Board\Http\Requests\StoreCommentRequest;
@@ -110,6 +112,12 @@ class CommentController extends AdminBaseController
             );
         } catch (ModelNotFoundException) {
             return $this->notFound('sirsoft-board::messages.boards.not_found');
+        } catch (CommentDepthExceededException $e) {
+            // 요청 단계 검증을 우회해 Service 관문에 걸린 경우 — 사용자 입력 문제이므로 422
+            return $this->error($e->getMessage(), 422);
+        } catch (PostNotCommentableException $e) {
+            // 블라인드·삭제된 게시글 — 서버 오류가 아니라 게시글 상태 문제이므로 422 + 사유 전달
+            return $this->error($e->getMessage(), 422);
         } catch (\Exception $e) {
             return $this->error('sirsoft-board::messages.comment.create_failed', 500, $e->getMessage());
         }

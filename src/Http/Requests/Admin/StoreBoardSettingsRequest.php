@@ -211,11 +211,11 @@ class StoreBoardSettingsRequest extends FormRequest
             // report_policy (신고 정책) 카테고리
             // ========================================
             'report_policy' => ['sometimes', 'array'],
-            'report_policy.auto_hide_threshold' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'report_policy.auto_hide_threshold' => ['nullable', 'integer', 'min:'.$this->boardLimit('auto_hide_threshold_min', 0), 'max:'.$this->boardLimit('auto_hide_threshold_max', 100)],
             'report_policy.auto_hide_target' => ['nullable', 'string', 'in:post,comment,both'],
-            'report_policy.daily_report_limit' => ['nullable', 'integer', 'min:0', 'max:100'],
-            'report_policy.rejection_limit_count' => ['nullable', 'integer', 'min:0', 'max:50'],
-            'report_policy.rejection_limit_days' => ['nullable', 'integer', 'min:1', 'max:365'],
+            'report_policy.daily_report_limit' => ['nullable', 'integer', 'min:'.$this->boardLimit('daily_report_limit_min', 0), 'max:'.$this->boardLimit('daily_report_limit_max', 100)],
+            'report_policy.rejection_limit_count' => ['nullable', 'integer', 'min:'.$this->boardLimit('rejection_limit_count_min', 0), 'max:'.$this->boardLimit('rejection_limit_count_max', 50)],
+            'report_policy.rejection_limit_days' => ['nullable', 'integer', 'min:'.$this->boardLimit('rejection_limit_days_min', 1), 'max:'.$this->boardLimit('rejection_limit_days_max', 365)],
             'report_policy.notify_admin_on_report' => ['nullable', 'boolean'],
             'report_policy.notify_admin_on_report_scope' => ['nullable', 'string', 'in:per_case,per_report'],
             'report_policy.notify_admin_on_report_channels' => ['nullable', 'array'],
@@ -244,10 +244,10 @@ class StoreBoardSettingsRequest extends FormRequest
             // spam_security (스팸/보안) 카테고리
             // ========================================
             'spam_security' => ['sometimes', 'array'],
-            'spam_security.post_cooldown_seconds' => ['nullable', 'integer', 'min:0', 'max:3600'],
-            'spam_security.comment_cooldown_seconds' => ['nullable', 'integer', 'min:0', 'max:3600'],
-            'spam_security.report_cooldown_seconds' => ['nullable', 'integer', 'min:0', 'max:3600'],
-            'spam_security.view_count_cache_ttl' => ['nullable', 'integer', 'min:60', 'max:604800'],
+            'spam_security.post_cooldown_seconds' => ['nullable', 'integer', 'min:'.$this->boardLimit('post_cooldown_seconds_min', 0), 'max:'.$this->boardLimit('post_cooldown_seconds_max', 3600)],
+            'spam_security.comment_cooldown_seconds' => ['nullable', 'integer', 'min:'.$this->boardLimit('comment_cooldown_seconds_min', 0), 'max:'.$this->boardLimit('comment_cooldown_seconds_max', 3600)],
+            'spam_security.report_cooldown_seconds' => ['nullable', 'integer', 'min:'.$this->boardLimit('report_cooldown_seconds_min', 0), 'max:'.$this->boardLimit('report_cooldown_seconds_max', 3600)],
+            'spam_security.view_count_cache_ttl' => ['nullable', 'integer', 'min:'.$this->boardLimit('view_count_cache_ttl_min', 60), 'max:'.$this->boardLimit('view_count_cache_ttl_max', 604800)],
 
             // ========================================
             // seo (SEO 설정) 카테고리

@@ -47,6 +47,24 @@ trait ReadsBoardLimits
         'max_comment_depth_min' => 0,
         'max_comment_depth_max' => 10,
 
+        'auto_hide_threshold_min' => 0,
+        'auto_hide_threshold_max' => 100,
+        'daily_report_limit_min' => 0,
+        'daily_report_limit_max' => 100,
+        'rejection_limit_count_min' => 0,
+        'rejection_limit_count_max' => 50,
+        'rejection_limit_days_min' => 1,
+        'rejection_limit_days_max' => 365,
+
+        'post_cooldown_seconds_min' => 0,
+        'post_cooldown_seconds_max' => 3600,
+        'comment_cooldown_seconds_min' => 0,
+        'comment_cooldown_seconds_max' => 3600,
+        'report_cooldown_seconds_min' => 0,
+        'report_cooldown_seconds_max' => 3600,
+        'view_count_cache_ttl_min' => 60,
+        'view_count_cache_ttl_max' => 604800,
+
         'new_display_hours_min' => 0,
         'new_display_hours_max' => 720,
     ];
@@ -72,10 +90,11 @@ trait ReadsBoardLimits
      * 특정 제한값을 반환합니다.
      *
      * @param  string  $key  제한값 키 (예: per_page_min)
+     * @param  int|null  $default  키가 없을 때 쓸 값 (미지정 시 0)
      * @return int 제한값
      */
-    protected function boardLimit(string $key): int
+    protected function boardLimit(string $key, ?int $default = null): int
     {
-        return (int) ($this->boardLimits()[$key] ?? 0);
+        return (int) ($this->boardLimits()[$key] ?? $default ?? 0);
     }
 }

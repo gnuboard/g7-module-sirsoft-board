@@ -85,6 +85,8 @@ Content-Disposition: form-data; name="temp_key"
 
 **설명** 게시판 관리자가 게시글 첨부파일 1건을 업로드합니다. `auth:sanctum` + admin + 게시판별 `attachments.upload` 권한이 필요하며, `AttachmentService::upload()`가 게시판별 동적 첨부 테이블에 저장합니다. `post_id`가 있으면 해당 게시글에 즉시 귀속되고, 없으면 `temp_key`로 임시 업로드되어 게시글 작성/수정 저장 시점에 연결됩니다. 응답은 FileUploader 컴포넌트 호환을 위해 `data.data`로 한 번 더 감싸 파일 메타(hash·url·order 등)를 반환합니다.
 
+첨부 개수는 게시판 설정 `max_file_count` 를 기준으로 **직접 업로드 · 미리 올려 둔 파일 연결(`attachment_ids`) · 임시 업로드 연결(`temp_key`) · 이미 연결된 첨부** 를 모두 합산해 판정합니다. 상한을 넘으면 `422`(`errors.code = attachment_limit_exceeded`)를 반환하며, 이 판정은 업로드 엔드포인트뿐 아니라 게시글 생성·수정 저장 시점에도 동일하게 적용됩니다. `max_file_count` 가 0 이면 개수를 제한하지 않습니다.
+
 
 ### GET /api/modules/sirsoft-board/admin/board/{slug}/attachments/download/{hash}
 <!-- @generated:start:api.modules.sirsoft-board.admin.board.attachments.download -->

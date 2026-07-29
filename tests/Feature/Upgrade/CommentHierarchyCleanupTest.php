@@ -6,8 +6,10 @@ require_once __DIR__.'/../../ModuleTestCase.php';
 
 use App\Extension\UpgradeContext;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Modules\Sirsoft\Board\Tests\BoardTestCase;
 use Modules\Sirsoft\Board\Upgrades\Upgrade_1_0_3;
+use Psr\Log\LoggerInterface;
 
 /**
  * 1.0.3 댓글 계층 오염 데이터 정리 업그레이드 스텝 테스트
@@ -126,6 +128,124 @@ class CommentHierarchyCleanupTest extends BoardTestCase
         $second = $this->snapshot();
 
         $this->assertSame($first, $second, '재실행 결과가 동일해야 합니다.');
+    }
+
+    /**
+     * 부모 행이 삭제된 고아 댓글은 값이 보존되고 경고 로그가 남는다
+     *
+     * 정리 1단계는 부모와 INNER JOIN 하므로 부모 행 자체가 없는 댓글은 매칭되지 않고,
+     * 2단계 BFS 는 `parent_id IS NULL` 루트에서 출발하므로 이 댓글에 도달하지 못한다.
+     * 값을 임의로 고치거나 지우면 데이터 손실이므로 보존하되, 정정되지 않았다는 사실은
+     * 경고로 남겨야 한다.
+     *
+     * @scenario entity=board_comment, parent_target=missing
+     *
+     * @effects dangling_parent_skipped_with_warning
+     */
+    public function test_dangling_parent_is_skipped_with_warning(): void
+    {
+        $post = $this->createTestPost(['title' => '게시글 A']);
+
+        $parent = $this->createTestComment($post, ['depth' => 0]);
+        $dangling = $this->createTestComment($post, ['parent_id' => $parent, 'depth' => 3]);
+
+        // 부모 행만 물리 삭제하여 dangling parent_id 상태를 만든다.
+        DB::table('board_comments')->where('id', $parent)->delete();
+
+        $logger = \Mockery::spy(LoggerInterface::class);
+        Log::shouldReceive('channel')
+            ->with('extension-upgrade')
+            ->andReturn($logger);
+
+        $this->runCleanup();
+
+        $this->assertDatabaseHas('board_comments', [
+            'id' => $dangling,
+            'parent_id' => $parent,
+            'depth' => 3,
+        ]);
+
+        $logger->shouldHaveReceived('warning')
+            ->withArgs(fn (string $message) => str_contains($message, '부모 행이 없는 댓글')
+                && str_contains($message, (string) $dangling))
+            ->once();
+    }
+
+    /**
+     * 루트에서 도달할 수 없는 순환 참조 댓글은 값이 보존되고 경고 로그가 남는다
+     *
+     * 부모 행이 실재하므로 고아 판정(`부모 행이 없는 댓글`)에 걸리지 않고,
+     * BFS 는 루트에서만 출발하므로 순환 컴포넌트에 진입조차 못 해 세대 상한에도
+     * 걸리지 않는다. 두 그물을 모두 빠져나가므로 전용 경고가 없으면
+     * "정정되지 않았다" 는 사실이 조용히 묻힌다.
+     *
+     * @scenario entity=board_comment, parent_target=cycle
+     *
+     * @effects unreachable_cycle_skipped_with_warning
+     */
+    public function test_unreachable_cycle_is_skipped_with_warning(): void
+    {
+        $post = $this->createTestPost(['title' => '게시글 A']);
+
+        $first = $this->createTestComment($post, ['depth' => 0]);
+        $second = $this->createTestComment($post, ['parent_id' => $first, 'depth' => 1]);
+
+        // 첫 댓글의 부모를 두 번째로 돌려 루트 없는 순환(A→B→A)을 만든다.
+        DB::table('board_comments')->where('id', $first)->update([
+            'parent_id' => $second,
+            'depth' => 4,
+        ]);
+
+        $logger = \Mockery::spy(LoggerInterface::class);
+        Log::shouldReceive('channel')
+            ->with('extension-upgrade')
+            ->andReturn($logger);
+
+        $this->runCleanup();
+
+        // 값 보존 — 순환의 어느 지점을 끊을지는 운영자 판단이므로 건드리지 않는다.
+        $this->assertDatabaseHas('board_comments', [
+            'id' => $first,
+            'parent_id' => $second,
+            'depth' => 4,
+        ]);
+        $this->assertDatabaseHas('board_comments', [
+            'id' => $second,
+            'parent_id' => $first,
+            'depth' => 1,
+        ]);
+
+        $logger->shouldHaveReceived('warning')
+            ->withArgs(fn (string $message) => str_contains($message, '루트에서 도달하지 못한 댓글')
+                && str_contains($message, (string) $first)
+                && str_contains($message, (string) $second))
+            ->once();
+    }
+
+    /**
+     * 정합한 계층만 있으면 순환 경고가 발생하지 않는다 (과잉 경고 방지)
+     *
+     * @scenario entity=board_comment, parent_target=self
+     *
+     * @effects healthy_hierarchy_emits_no_cycle_warning
+     */
+    public function test_healthy_hierarchy_emits_no_cycle_warning(): void
+    {
+        $post = $this->createTestPost(['title' => '게시글 A']);
+
+        $root = $this->createTestComment($post, ['depth' => 0]);
+        $this->createTestComment($post, ['parent_id' => $root, 'depth' => 1]);
+
+        $logger = \Mockery::spy(LoggerInterface::class);
+        Log::shouldReceive('channel')
+            ->with('extension-upgrade')
+            ->andReturn($logger);
+
+        $this->runCleanup();
+
+        $logger->shouldNotHaveReceived('warning', [
+            \Mockery::on(fn (string $message) => str_contains($message, '루트에서 도달하지 못한 댓글')),
+        ]);
     }
 
     /**

@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Modules\Sirsoft\Board\Enums\PostStatus;
+use Modules\Sirsoft\Board\Exceptions\CommentDepthExceededException;
+use Modules\Sirsoft\Board\Exceptions\PostNotCommentableException;
 use Modules\Sirsoft\Board\Models\Board;
 use Modules\Sirsoft\Board\Models\Comment;
 use Modules\Sirsoft\Board\Repositories\Contracts\BoardRepositoryInterface;
@@ -208,18 +210,18 @@ class CommentService
      * @return bool 댓글 작성 가능 여부
      *
      * @throws ModelNotFoundException 게시글을 찾을 수 없는 경우
-     * @throws \Exception 블라인드/삭제된 게시글인 경우
+     * @throws PostNotCommentableException 블라인드/삭제된 게시글인 경우
      */
     public function validatePostForComment(string $slug, int $postId): bool
     {
         $post = $this->postRepository->findOrFail($slug, $postId);
 
         if ($post->status === PostStatus::Blinded) {
-            throw new \Exception(__('sirsoft-board::messages.comment.post_blinded'));
+            throw PostNotCommentableException::blinded();
         }
 
         if ($post->status === PostStatus::Deleted || $post->deleted_at) {
-            throw new \Exception(__('sirsoft-board::messages.comment.post_deleted'));
+            throw PostNotCommentableException::deleted();
         }
 
         return true;
@@ -257,8 +259,17 @@ class CommentService
             // 같은 게시글에 속한 부모 댓글만 인정 (교차 게시글 부모 차단)
             $parentComment = $this->commentRepository->find($slug, $data['parent_id'], (int) $data['post_id']);
             if ($parentComment) {
-                // 부모 댓글의 depth + 1 — 상한은 CommentValidationRule 이 게시판 설정으로 검증
                 $data['depth'] = ($parentComment->depth ?? 0) + 1;
+
+                // 최종 불변조건 — `CommentValidationRule` 은 요청 단계 선차단이라 훅이나
+                // Service 직접 호출 경로에는 걸리지 않는다. 클램프하지 않고 예외를 던진다:
+                // 요청한 위치와 다른 자리에 조용히 붙으면 사용자가 알 수 없다.
+                $board = $this->boardRepository->findBySlug($slug);
+                $maxDepth = (int) ($board->max_comment_depth ?? 0);
+
+                if ($data['depth'] > $maxDepth) {
+                    throw new CommentDepthExceededException($maxDepth, $data['depth']);
+                }
             } else {
                 // 부모 댓글을 찾을 수 없으면 0으로 설정
                 $data['depth'] = 0;
