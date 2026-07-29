@@ -14,7 +14,7 @@ use Modules\Sirsoft\Board\Traits\FormatsBoardDate;
  *
  * core.search.results Filter Hook을 구독하여 검색 결과에 게시글을 추가합니다.
  * core.search.build_response Filter Hook을 구독하여 응답 구조를 생성합니다.
- * core.search.validation_rules Filter Hook을 구독하여 검색 파라미터 규칙을 추가합니다.
+ * core.search.index_validation_rules Filter Hook을 구독하여 검색 파라미터 규칙을 추가합니다.
  */
 class SearchPostsListener implements HookListenerInterface
 {
@@ -43,7 +43,7 @@ class SearchPostsListener implements HookListenerInterface
                 'priority' => 10,
                 'type' => 'filter',
             ],
-            'core.search.validation_rules' => [
+            'core.search.index_validation_rules' => [
                 'method' => 'addValidationRules',
                 'priority' => 10,
                 'type' => 'filter',

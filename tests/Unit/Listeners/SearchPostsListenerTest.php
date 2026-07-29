@@ -38,7 +38,7 @@ class SearchPostsListenerTest extends TestCase
 
         $this->assertArrayHasKey('core.search.results', $hooks);
         $this->assertArrayHasKey('core.search.build_response', $hooks);
-        $this->assertArrayHasKey('core.search.validation_rules', $hooks);
+        $this->assertArrayHasKey('core.search.index_validation_rules', $hooks);
 
         foreach ($hooks as $hook) {
             $this->assertEquals('filter', $hook['type']);
