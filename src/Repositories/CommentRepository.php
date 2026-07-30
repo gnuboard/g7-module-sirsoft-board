@@ -3,6 +3,7 @@
 namespace Modules\Sirsoft\Board\Repositories;
 
 use App\Helpers\PermissionHelper;
+use App\Repositories\Concerns\PaginatesWithDeferredJoin;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Modules\Sirsoft\Board\Enums\TriggerType;
 use Modules\Sirsoft\Board\Models\Board;
 use Modules\Sirsoft\Board\Models\Comment;
+use Modules\Sirsoft\Board\Models\Post;
 use Modules\Sirsoft\Board\Repositories\Contracts\CommentRepositoryInterface;
 use Modules\Sirsoft\Board\Traits\FormatsBoardDate;
 
@@ -22,6 +24,7 @@ use Modules\Sirsoft\Board\Traits\FormatsBoardDate;
 class CommentRepository implements CommentRepositoryInterface
 {
     use FormatsBoardDate;
+    use PaginatesWithDeferredJoin;
 
     /**
      * 특정 게시글의 댓글 목록을 조회합니다.
@@ -546,18 +549,16 @@ class CommentRepository implements CommentRepositoryInterface
         // 비활성 게시판 제외 — JOIN 대신 whereNotIn으로 인덱스 활용
         $inactiveBoardIds = Board::where('is_active', false)->pluck('id')->all();
 
+        // 관계/정렬은 지연 조인이 담당한다 (inner 는 키 컬럼만 조회)
         $query = Comment::query()
-            ->select('board_comments.*')
             ->where('board_comments.user_id', $userId)
             // 삭제된 게시글 제외 — whereExists로 JOIN 대체
             ->whereExists(function ($q) {
                 $q->select(DB::raw(1))
-                    ->from('board_posts')
+                    ->from((new Post)->getTable())
                     ->whereColumn('board_posts.id', 'board_comments.post_id')
                     ->whereNull('board_posts.deleted_at');
-            })
-            ->with(['post.board'])
-            ->orderBy('board_comments.created_at', $orderDirection);
+            });
 
         // 비활성 게시판 제외
         if (! empty($inactiveBoardIds)) {
@@ -578,7 +579,25 @@ class CommentRepository implements CommentRepositoryInterface
             $query->where('board_comments.content', 'like', $keyword);
         }
 
-        $paginator = $query->paginate($perPage, ['*'], 'page', null, $cachedTotal);
+        // 캐시된 total 이 있으면 COUNT 를 건너뛴다. 검색/게시판 필터가 걸린 조회는 캐시를
+        // 쓰지 않으므로 이때는 trait 이 직접 COUNT 한다.
+        //
+        // 목록 컬럼은 아래 through() 가 실제로 읽는 것만 남긴다 (post_id 는 post 관계 FK).
+        // 넓은 컬럼인 content 는 화면에 표시하므로 유지하되, 지연 조인으로 읽는 행 수가
+        // 페이지 크기에 고정된다.
+        $paginator = $this->paginateWithDeferredJoin(
+            query: $query,
+            columns: [
+                'board_comments.id',
+                'board_comments.post_id',
+                'board_comments.content',
+                'board_comments.created_at',
+            ],
+            sort: [['column' => 'board_comments.created_at', 'direction' => $orderDirection]],
+            perPage: $perPage,
+            relations: ['post.board'],
+            total: $cachedTotal,
+        );
 
         // paginate 후 현재 페이지 항목에만 PHP 가공 적용
         $paginator->through(function (Comment $comment) {

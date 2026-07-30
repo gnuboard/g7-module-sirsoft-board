@@ -4,6 +4,8 @@ namespace Modules\Sirsoft\Board\Repositories;
 
 use App\Enums\UserStatus;
 use App\Helpers\PermissionHelper;
+use App\Models\Attachment;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -147,6 +149,8 @@ class BoardRepository implements BoardRepositoryInterface
         // 권한 스코프 필터링
         PermissionHelper::applyPermissionScope($query, 'sirsoft-board.boards.read');
 
+        // audit:allow repository-paginate-column-pruning reason: 게시판 정의 테이블 —
+        // 행 수가 운영자가 만든 게시판 수에 묶이고(글이 아니라 게시판), 넓은 컬럼이 없다
         return $query->paginate($perPage);
     }
 
@@ -434,27 +438,32 @@ class BoardRepository implements BoardRepositoryInterface
             default => now()->subYear(),
         };
 
-        $prefix = DB::getTablePrefix();
+        // 테이블명은 모델에서 얻는다 (문자열 하드코딩 금지). LEFT() 는 빌더에 대응 표현이
+        // 없는 표준 SQL 함수라 이 컬럼 하나만 raw 로 두고, 프리픽스는 연결 설정에서 읽는다.
+        $postsTable = (new Post)->getTable();
+        $usersTable = (new User)->getTable();
+        $attachmentsTable = (new Attachment)->getTable();
+        $prefixedPostsTable = DB::getTablePrefix().$postsTable;
 
         $query = Post::query()
             ->with('board:id,slug,name')
-            ->leftJoin('users', 'board_posts.user_id', '=', 'users.id')
-            ->leftJoin('attachments', function ($join) {
-                $join->on('attachments.attachmentable_id', '=', 'users.id')
-                    ->where('attachments.attachmentable_type', '=', 'App\\Models\\User')
-                    ->where('attachments.collection', '=', 'avatar');
+            ->leftJoin($usersTable, "{$postsTable}.user_id", '=', "{$usersTable}.id")
+            ->leftJoin($attachmentsTable, function ($join) use ($usersTable, $attachmentsTable) {
+                $join->on("{$attachmentsTable}.attachmentable_id", '=', "{$usersTable}.id")
+                    ->where("{$attachmentsTable}.attachmentable_type", '=', User::class)
+                    ->where("{$attachmentsTable}.collection", '=', 'avatar');
             })
             ->select([
                 'board_posts.id',
                 'board_posts.board_id',
                 'board_posts.title',
-                DB::raw("LEFT(`{$prefix}board_posts`.`content`, 300) as content_raw"),
+                DB::raw("LEFT(`{$prefixedPostsTable}`.`content`, 300) as content_raw"),
                 'board_posts.user_id',
                 'board_posts.author_name as guest_author_name',
-                'users.name as user_name',
-                'users.email as user_email',
-                'users.status as user_status',
-                'attachments.hash as attachment_hash',
+                "{$usersTable}.name as user_name",
+                "{$usersTable}.email as user_email",
+                "{$usersTable}.status as user_status",
+                "{$attachmentsTable}.hash as attachment_hash",
                 'board_posts.view_count',
                 'board_posts.comments_count',
                 'board_posts.created_at',
