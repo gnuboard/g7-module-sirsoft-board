@@ -849,6 +849,50 @@ class Module extends AbstractModule
     }
 
     /**
+     * 성능 계측 프로파일 정의 (`g7:bench`).
+     *
+     * 게시글 목록의 `columns` 는 `PostRepository::paginate()` 가 select 하는 컬럼 집합입니다
+     * (본문 미리보기용 `SUBSTRING` 표현식은 지연 조인의 outer 에서만 적용되고 계측 대상인
+     * 건너뛰기 비용과 무관하므로 제외). 게시글 목록은 화면이 게시판 하나를 조회하므로 필터
+     * 없이 재면 인덱스 선택이 달라져 화면에서 일어나는 일과 다른 것을 재게 됩니다.
+     *
+     * @return array<string, array<string, mixed>> 프로파일 키 → 정의
+     */
+    public function getBenchmarkProfiles(): array
+    {
+        return [
+            'board_posts' => [
+                'type' => 'list',
+                'label' => '게시글 목록',
+                'table' => 'board_posts',
+                'columns' => [
+                    'id', 'board_id', 'user_id', 'parent_id', 'category',
+                    'title', 'author_name', 'content_mode',
+                    'is_notice', 'is_secret', 'status', 'depth',
+                    'view_count', 'comments_count', 'replies_count', 'attachments_count',
+                    'trigger_type', 'ip_address', 'created_at', 'updated_at', 'deleted_at',
+                ],
+                'order' => [['created_at', 'desc'], ['id', 'desc']],
+                'filters' => ['board_id' => 1],
+                'seed_overrides' => ['board_id' => 1, 'is_notice' => 0],
+                'soft_delete' => true,
+            ],
+            // 댓글은 계측 프로파일을 두지 않는다. 페이지네이션되는 댓글 목록은 회원 본인 댓글
+            // 목록뿐이고(CommentRepository), 그 쿼리에는 회원 스코프 · 삭제 게시글 제외
+            // (whereExists 서브쿼리) · 비활성 게시판 제외가 무조건 붙는다. 선언형 필터로
+            // 재현할 수 없는 술어라, 맨 테이블 스캔을 재면 어느 화면도 내지 않는 수치가 된다.
+            'reports' => [
+                'type' => 'list',
+                'label' => '신고 목록',
+                'table' => 'boards_reports',
+                'columns' => ['*'],
+                'order' => [['created_at', 'desc'], ['id', 'desc']],
+                'soft_delete' => true,
+            ],
+        ];
+    }
+
+    /**
      * 새 댓글 알림 정의.
      */
     private function newCommentDefinition(): array
