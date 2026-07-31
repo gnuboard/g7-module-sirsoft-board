@@ -6,12 +6,13 @@ use App\Extension\AbstractModule;
 use App\Models\Role;
 use App\Seo\Concerns\LocalizesSeoValues;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Schema;
 use Modules\Sirsoft\Board\Database\Seeders\BoardTypeSeeder;
 use Modules\Sirsoft\Board\Listeners\ActivityLogDescriptionResolver;
 use Modules\Sirsoft\Board\Listeners\BoardActivityLogListener;
+use Modules\Sirsoft\Board\Listeners\BoardCommentsCountSyncListener;
 use Modules\Sirsoft\Board\Listeners\BoardNotificationChannelListener;
 use Modules\Sirsoft\Board\Listeners\BoardNotificationDataListener;
-use Modules\Sirsoft\Board\Listeners\BoardCommentsCountSyncListener;
 use Modules\Sirsoft\Board\Listeners\BoardPostsCountSyncListener;
 use Modules\Sirsoft\Board\Listeners\CommentReplySyncListener;
 use Modules\Sirsoft\Board\Listeners\EcommerceInquiryHookListener;
@@ -22,6 +23,7 @@ use Modules\Sirsoft\Board\Listeners\SearchPostsListener;
 use Modules\Sirsoft\Board\Listeners\SeoBoardCacheListener;
 use Modules\Sirsoft\Board\Listeners\SeoBoardSettingsCacheListener;
 use Modules\Sirsoft\Board\Listeners\UserNotificationSettingsListener;
+use Modules\Sirsoft\Board\Models\Board;
 
 class Module extends AbstractModule
 {
@@ -39,12 +41,17 @@ class Module extends AbstractModule
     public function uninstall(): bool
     {
         // 게시판별 동적 역할 정리 (sirsoft-board.*.manager, sirsoft-board.*.step)
+        // chunkById(키셋 순회) 필수 — each() 는 OFFSET 기반 청크(기본 1000건)라
+        // 콜백이 순회 대상을 삭제하면 다음 페이지의 OFFSET 이 줄어든 결과 집합을 지나쳐
+        // 1000건을 넘는 역할이 그대로 남는다.
         Role::where('extension_type', 'module')
             ->where('extension_identifier', 'sirsoft-board')
-            ->each(function (Role $role) {
-                $role->permissions()->detach();
-                $role->users()->detach();
-                $role->delete();
+            ->chunkById(100, function ($roles) {
+                foreach ($roles as $role) {
+                    $role->permissions()->detach();
+                    $role->users()->detach();
+                    $role->delete();
+                }
             });
 
         return parent::uninstall();
@@ -308,14 +315,14 @@ class Module extends AbstractModule
      */
     public function getDynamicPermissionIdentifiers(): array
     {
-        if (! \Illuminate\Support\Facades\Schema::hasTable('boards')) {
+        if (! Schema::hasTable('boards')) {
             return [];
         }
 
         $actions = array_keys((array) config('sirsoft-board.board_permission_definitions', []));
         $module = $this->getIdentifier();
         $ids = [];
-        foreach (\Modules\Sirsoft\Board\Models\Board::query()->select('slug')->get() as $board) {
+        foreach (Board::query()->select('slug')->get() as $board) {
             $category = $module.'.'.$board->slug;
             $ids[] = $category;
             foreach ($actions as $action) {
@@ -335,13 +342,13 @@ class Module extends AbstractModule
      */
     public function getDynamicRoleIdentifiers(): array
     {
-        if (! \Illuminate\Support\Facades\Schema::hasTable('boards')) {
+        if (! Schema::hasTable('boards')) {
             return [];
         }
 
         $module = $this->getIdentifier();
         $ids = [];
-        foreach (\Modules\Sirsoft\Board\Models\Board::query()->select('slug')->get() as $board) {
+        foreach (Board::query()->select('slug')->get() as $board) {
             $ids[] = $module.'.'.$board->slug.'.manager';
             $ids[] = $module.'.'.$board->slug.'.step';
         }
@@ -356,12 +363,12 @@ class Module extends AbstractModule
      */
     public function getDynamicMenuSlugs(): array
     {
-        if (! \Illuminate\Support\Facades\Schema::hasTable('boards')) {
+        if (! Schema::hasTable('boards')) {
             return [];
         }
 
         $slugs = [];
-        foreach (\Modules\Sirsoft\Board\Models\Board::query()->select('slug')->get() as $board) {
+        foreach (Board::query()->select('slug')->get() as $board) {
             $slugs[] = 'board-'.$board->slug;
         }
 
