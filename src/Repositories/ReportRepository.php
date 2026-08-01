@@ -586,6 +586,8 @@ class ReportRepository implements ReportRepositoryInterface
         return ReportLog::where('report_id', $reportId)
             ->with('reporter')
             ->latest()
+            // 전순서 보장 — 같은 초에 기록된 처리 로그가 페이지 경계에서 뒤섞이지 않도록
+            ->orderByDesc('id')
             // audit:allow repository-paginate-column-pruning reason: 신고 케이스 1건에 종속된 신고자 로그 —
             // where(report_id) 로 이미 좁혀져 OFFSET 이 깊어질 수 없다
             ->paginate($perPage, ['*'], 'page', $page);

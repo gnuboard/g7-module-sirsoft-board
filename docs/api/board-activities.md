@@ -133,6 +133,6 @@ HTTP/1.1 200
 
 <!-- @generated:end -->
 
-**설명** 로그인한 회원 본인의 게시글 활동을 마이페이지에 표시하기 위해 반환합니다. `auth:sanctum` 인증이 필요한 회원 전용 엔드포인트로, 대상 사용자는 항상 인증된 본인(`Auth::id()`)입니다. `board_slug`·`search`·`activity_type`·`sort`(latest/oldest/views) 필터와 `per_page`(기본 20) 페이지네이션을 지원하며, 응답에는 적용된 필터가 `query` 로 함께 담깁니다.
+**설명** 로그인한 회원 본인의 게시글 활동을 마이페이지에 표시하기 위해 반환합니다. `auth:sanctum` 인증이 필요한 회원 전용 엔드포인트로, 대상 사용자는 항상 인증된 본인(`Auth::id()`)입니다. `board_slug`·`search`·`activity_type`·`sort`(latest/oldest/views) 필터와 `per_page`(기본 20, 허용 범위 1~100) 페이지네이션을 지원하며, 응답에는 적용된 필터가 `query` 로 함께 담깁니다. 범위를 벗어난 `per_page` 는 오류 대신 경계값으로 잘립니다(0·음수 → 1, 100 초과 → 100).
 
 

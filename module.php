@@ -873,8 +873,11 @@ class Module extends AbstractModule
                     'trigger_type', 'ip_address', 'created_at', 'updated_at', 'deleted_at',
                 ],
                 'order' => [['created_at', 'desc'], ['id', 'desc']],
-                'filters' => ['board_id' => 1],
-                'seed_overrides' => ['board_id' => 1, 'is_notice' => 0],
+                // 실제 목록 쿼리(PostRepository::buildSortedPostList)는 공지와 답글을 빼고
+                // 원글만 페이지네이션한다. 필터를 board_id 만 걸면 등치 사슬이 is_notice 에서
+                // 끊겨 옵티마이저가 다른 인덱스를 골라, 제품이 실행하지 않는 실행 계획을 재게 된다.
+                'filters' => ['board_id' => 1, 'is_notice' => 0, 'parent_id' => null],
+                'seed_overrides' => ['board_id' => 1, 'is_notice' => 0, 'parent_id' => null],
                 'soft_delete' => true,
             ],
             // 댓글은 계측 프로파일을 두지 않는다. 페이지네이션되는 댓글 목록은 회원 본인 댓글

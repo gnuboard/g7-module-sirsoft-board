@@ -144,7 +144,8 @@ class BoardRepository implements BoardRepositoryInterface
      */
     public function paginate(int $perPage = 15): LengthAwarePaginator
     {
-        $query = Board::orderBy('created_at', 'desc');
+        // 정렬 마지막의 기본키는 전순서 보장용이다 (created_at 동률에서 페이지 경계 흔들림 방지)
+        $query = Board::orderBy('created_at', 'desc')->orderBy('id', 'desc');
 
         // 권한 스코프 필터링
         PermissionHelper::applyPermissionScope($query, 'sirsoft-board.boards.read');

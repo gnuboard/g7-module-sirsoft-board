@@ -5,6 +5,10 @@ namespace Modules\Sirsoft\Board\Tests\Unit\Repositories;
 // ModuleTestCase 수동 로드 (autoload 전에 로드 필요)
 require_once __DIR__.'/../../ModuleTestCase.php';
 
+use App\Helpers\PermissionHelper;
+use App\Models\Permission;
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Modules\Sirsoft\Board\Repositories\PostRepository;
 use Modules\Sirsoft\Board\Tests\BoardTestCase;
@@ -15,6 +19,10 @@ use Modules\Sirsoft\Board\Tests\BoardTestCase;
  * 목록은 이제 "이번 페이지의 원글 ID 를 먼저 구하고, 그 ID 에 대해서만 목록 컬럼과 관계를
  * 읽는" 2단계 조회다. 이 화면은 공지 병합·답글 트리·다음 페이지 판정이 얽혀 있어, 조회 방식
  * 변경이 조용히 깨지면 화면에서 빈 값이나 누락으로만 드러난다. 그 성질들을 고정한다.
+ *
+ * @scenario case=post_list_deferred_join
+ *
+ * @effects self_scoped_list_returns_only_own_rows, soft_deleted_rows_stay_excluded, with_trashed_scope_is_preserved
  */
 class PostListDeferredJoinTest extends BoardTestCase
 {
@@ -192,5 +200,93 @@ class PostListDeferredJoinTest extends BoardTestCase
         rsort($sorted);
 
         $this->assertSame($sorted, $ids, '동률 정렬에서도 id 내림차순이 유지되어야 한다');
+    }
+
+    /**
+     * self 스코프 사용자의 목록에 타인 글이 섞이지 않는지 검증합니다.
+     *
+     * 권한 스코프는 `PermissionHelper::applyPermissionScope()` 가 쿼리에 붙이는 where 다.
+     * 지연 조인은 이 쿼리를 clone 해 inner/outer 두 번 실행하므로, 스코프가 한쪽에만
+     * 걸리면 목록에 타인 글이 노출되거나(권한 누출) 페이지가 비게 된다. 이 실패는
+     * 예외 없이 조용히 일어나므로 결과 집합으로 직접 단언한다.
+     */
+    public function test_self_scoped_list_returns_only_own_rows(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+
+        for ($i = 1; $i <= 6; $i++) {
+            $this->createTestPost(['title' => "내 글 {$i}", 'user_id' => $owner->id]);
+            $this->createTestPost(['title' => "남의 글 {$i}", 'user_id' => $other->id]);
+        }
+
+        $permission = "sirsoft-board.{$this->board->slug}.admin.posts.read";
+
+        // owner_key 는 config/board.php 의 권한 정의가 SSoT 다. 여기에 값을 적어 두면
+        // 정의가 바뀌어 스코프가 꺼져도 테스트는 계속 통과한다.
+        $scopeMeta = config('sirsoft-board.board_permission_definitions')['admin.posts.read']['scope'] ?? null;
+
+        $this->assertNotNull($scopeMeta, 'admin.posts.read 에 scope 정의가 없다 — 스코프 필터가 적용되지 않는다');
+
+        $this->grantScopedPermission($owner, $permission, 'self', $scopeMeta);
+
+        // 권한 메타가 실제로 스코프를 켜는지 확인 — 이게 null 이면 아래 단언이 무의미해진다
+        $this->assertSame(
+            $scopeMeta['owner_key'],
+            PermissionHelper::getOwnerKey($permission),
+            "권한 {$permission} 의 owner_key 가 config 정의와 다르다"
+        );
+        $this->actingAs($owner);
+
+        $result = $this->repository->paginate(
+            $this->board->slug,
+            ['scope_permission' => $permission],
+            5
+        );
+
+        $titles = collect($result->items())->pluck('title')->all();
+        $userIds = collect($result->items())->pluck('user_id')->unique()->all();
+
+        $this->assertNotEmpty($titles, 'self 스코프에서도 본인 글은 조회되어야 한다');
+        $this->assertSame([$owner->id], $userIds, 'self 스코프 목록에 타인 글이 섞이면 안 된다');
+
+        foreach ($titles as $title) {
+            $this->assertStringNotContainsString('남의 글', $title);
+        }
+    }
+
+    /**
+     * 사용자에게 지정한 스코프로 권한을 부여합니다.
+     *
+     * @param  User  $user  대상 사용자
+     * @param  string  $identifier  권한 식별자
+     * @param  string  $scopeType  스코프 유형 (self/role)
+     * @param  array  $scopeMeta  config 의 scope 정의 (resource_route_key / owner_key)
+     */
+    private function grantScopedPermission(User $user, string $identifier, string $scopeType, array $scopeMeta): void
+    {
+        $permission = Permission::updateOrCreate(
+            ['identifier' => $identifier],
+            [
+                'name' => json_encode(['ko' => $identifier, 'en' => $identifier]),
+                'description' => json_encode(['ko' => $identifier, 'en' => $identifier]),
+                'extension_type' => 'module',
+                'extension_identifier' => 'sirsoft-board',
+                'type' => 'admin',
+                'resource_route_key' => $scopeMeta['resource_route_key'],
+                'owner_key' => $scopeMeta['owner_key'],
+            ]
+        );
+
+        $role = Role::create([
+            'identifier' => 'scoped_test_'.uniqid(),
+            'name' => json_encode(['ko' => '스코프 테스트', 'en' => 'Scoped Test']),
+            'is_active' => true,
+        ]);
+
+        $role->permissions()->attach($permission->id, ['scope_type' => $scopeType]);
+        $user->roles()->attach($role->id, ['assigned_at' => now()]);
+
+        $user->refresh();
     }
 }

@@ -35,6 +35,7 @@ return [
 
         // 게시판 유형 (Admin)
         'board_type_index' => '게시판 유형 목록 조회',
+        'board_type_show' => '게시판 유형 상세 조회 (:type_name)',
         'board_type_create' => '게시판 유형 생성 (:type_name)',
         'board_type_update' => '게시판 유형 수정 (:type_name)',
         'board_type_delete' => '게시판 유형 삭제 (:type_name)',
