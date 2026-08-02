@@ -180,6 +180,8 @@ class Board extends Model
             'use_comment' => 'boolean',
             'use_reply' => 'boolean',
             'max_reply_depth' => 'integer',
+            // Post::isNew() 가 Carbon 시간 연산에 넘기는 값 — 조회 시점과 무관하게 정수를 보장한다.
+            'new_display_hours' => 'integer',
             'use_report' => 'boolean',
             'use_file_upload' => 'boolean',
             'notify_author' => 'boolean',
@@ -329,8 +331,9 @@ class Board extends Model
      *
      * g7_permissions 및 role_permissions 테이블에서 권한 정보를 조회하여
      * 각 권한별로 할당된 역할 identifier 배열을 반환합니다.
+     * (접근자 결과: 키 permission_key, 값 [role_identifiers] 또는 null=전체 허용)
      *
-     * @return array 권한 정보 (키: permission_key, 값: [role_identifiers] or null)
+     * @return Attribute 권한 정보 접근자
      */
     protected function permissions(): Attribute
     {
