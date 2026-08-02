@@ -16,6 +16,7 @@ use Modules\Sirsoft\Board\Http\Requests\UpdateBoardRequest;
 use Modules\Sirsoft\Board\Models\Board;
 use Modules\Sirsoft\Board\Models\BoardType;
 use Modules\Sirsoft\Board\Tests\ModuleTestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
  * 게시판 FormRequest 검증 통합 테스트
@@ -287,31 +288,56 @@ class BoardRequestTest extends ModuleTestCase
     /**
      * Mock Board 객체 생성
      */
-    private function getMockBoard(): object
+    private function getMockBoard(bool $useFileUpload = true): object
     {
         return (object) [
             'slug' => 'notice',
             'categories' => ['일반', '중요'],
+            // prepareForValidation() 이 exclude_if 판정 기준으로 주입하는 저장값
+            'use_file_upload' => $useFileUpload,
         ];
     }
 
     /**
      * UpdateBoardRequest 인스턴스 생성 (route 파라미터 포함)
+     *
+     * @param  bool  $boardUseFileUpload  기존 게시판에 저장된 첨부 사용 여부
      */
-    private function makeUpdateRequest(): UpdateBoardRequest
+    private function makeUpdateRequest(bool $boardUseFileUpload = true): UpdateBoardRequest
     {
         $request = new UpdateBoardRequest;
 
-        $request->setRouteResolver(function () {
+        $request->setRouteResolver(function () use ($boardUseFileUpload) {
             $route = \Mockery::mock(Route::class);
             $route->shouldReceive('parameter')
                 ->with('board', null)
-                ->andReturn($this->getMockBoard());
+                ->andReturn($this->getMockBoard($boardUseFileUpload));
 
             return $route;
         });
 
         return $request;
+    }
+
+    /**
+     * prepareForValidation() 을 거친 검증 입력을 만듭니다.
+     *
+     * `Validator::make($data, $request->rules())` 만으로는 전처리가 실행되지 않아
+     * 조건 필드 주입(기존 게시판 값)을 검증할 수 없다.
+     *
+     * @param  UpdateBoardRequest  $request  대상 요청
+     * @param  array<string, mixed>  $data  전송 페이로드
+     * @return array<string, mixed> 전처리를 마친 입력
+     */
+    private function prepareUpdateInput(UpdateBoardRequest $request, array $data): array
+    {
+        $request->merge($data);
+
+        $prepare = new \ReflectionMethod($request, 'prepareForValidation');
+        $prepare->setAccessible(true);
+        $prepare->invoke($request);
+
+        return $request->all();
     }
 
     /**
@@ -1010,19 +1036,87 @@ class BoardRequestTest extends ModuleTestCase
     }
 
     /**
-     * UpdateBoardRequest - allowed_extensions 빈 배열 전송 시 검증 실패해야 함 (회귀)
+     * UpdateBoardRequest - 첨부 사용 게시판에서 allowed_extensions 빈 배열은 실패 (케이스 2)
      *
-     * sometimes + array + min:1 로, 키가 전송되면 빈 배열은 차단된다.
-     * (nullable 제거로 빈 배열이 통과되던 버그 차단)
+     * 첨부를 쓰는 게시판에 확장자를 비워 저장하면 이후 모든 파일이 거부되므로 차단한다.
+     * 첨부 미사용 게시판은 exclude_if 로 배제되어 통과한다(케이스 3 참조) — 이 테스트는
+     * 그 경계 중 "차단되어야 하는 쪽"만 고정한다.
      */
-    public function test_update_request_empty_allowed_extensions_fails(): void
+    public function test_update_request_empty_allowed_extensions_fails_when_upload_enabled(): void
     {
         $request = $this->makeUpdateRequest();
 
-        $validator = Validator::make(['allowed_extensions' => []], $request->rules());
+        $validator = Validator::make(
+            ['use_file_upload' => true, 'allowed_extensions' => []],
+            $request->rules()
+        );
 
-        $this->assertFalse($validator->passes(), 'allowed_extensions=[] 전송 시 실패해야 함');
+        $this->assertFalse($validator->passes(), 'use_file_upload=true + [] 는 실패해야 함');
         $this->assertArrayHasKey('allowed_extensions', $validator->errors()->toArray());
+    }
+
+    /**
+     * UpdateBoardRequest - 첨부 미사용 게시판의 빈 확장자는 통과 (케이스 3 · GH #78)
+     */
+    public function test_update_request_empty_allowed_extensions_passes_when_upload_disabled(): void
+    {
+        $request = $this->makeUpdateRequest();
+
+        $validator = Validator::make(
+            ['use_file_upload' => false, 'allowed_extensions' => []],
+            $request->rules()
+        );
+
+        $this->assertTrue($validator->passes(), 'use_file_upload=false 이면 빈 확장자도 통과해야 함');
+    }
+
+    /**
+     * UpdateBoardRequest - 토글 미전송 + 확장자 전송 시 기존 게시판 값을 따른다 (케이스 5)
+     *
+     * exclude_if 는 조건 필드가 데이터에 없으면 배제하지 않는다. 부분 수정 요청이
+     * use_file_upload 없이 allowed_extensions 만 보내면 첨부 미사용 게시판인데도
+     * 확장자 필수 규칙이 발화하므로, prepareForValidation() 이 저장값을 주입해야 한다.
+     */
+    public function test_update_request_omitted_toggle_follows_stored_board_value(): void
+    {
+        // 저장된 게시판이 첨부 미사용 → 빈 확장자 통과
+        $disabled = $this->makeUpdateRequest(boardUseFileUpload: false);
+        $disabledInput = $this->prepareUpdateInput($disabled, ['allowed_extensions' => []]);
+
+        $this->assertFalse(
+            $disabledInput['use_file_upload'],
+            '토글 미전송 시 기존 게시판의 use_file_upload 가 주입되어야 함'
+        );
+        $this->assertTrue(
+            Validator::make($disabledInput, $disabled->rules())->passes(),
+            '첨부 미사용 게시판은 토글 미전송 + 빈 확장자도 통과해야 함'
+        );
+
+        // 저장된 게시판이 첨부 사용 → 빈 확장자 차단
+        $enabled = $this->makeUpdateRequest(boardUseFileUpload: true);
+        $enabledInput = $this->prepareUpdateInput($enabled, ['allowed_extensions' => []]);
+
+        $this->assertTrue($enabledInput['use_file_upload']);
+        $this->assertFalse(
+            Validator::make($enabledInput, $enabled->rules())->passes(),
+            '첨부 사용 게시판은 토글 미전송이어도 빈 확장자를 차단해야 함'
+        );
+    }
+
+    /**
+     * UpdateBoardRequest - 토글·확장자 모두 미전송이면 주입하지 않는다 (케이스 4 인접)
+     *
+     * 확장자를 건드리지 않는 부분 수정에 조건 필드를 주입하면, 보내지도 않은 토글이
+     * 검증 대상으로 올라온다.
+     */
+    public function test_update_request_does_not_inject_toggle_when_extensions_omitted(): void
+    {
+        $request = $this->makeUpdateRequest(boardUseFileUpload: false);
+
+        $input = $this->prepareUpdateInput($request, ['per_page' => 30]);
+
+        $this->assertArrayNotHasKey('use_file_upload', $input);
+        $this->assertTrue(Validator::make($input, $request->rules())->passes());
     }
 
     /**
@@ -1250,8 +1344,6 @@ class BoardRequestTest extends ModuleTestCase
      *
      * 0 = NEW 배지 표시 안 함 (Post::isNew() 가 0 을 정상 처리).
      *
-     * @dataProvider newDisplayHoursProvider
-     *
      * @scenario case=new_display_hours_zero
      *
      * @effects new_display_hours_zero_passes, new_display_hours_out_of_range_fails
@@ -1259,6 +1351,7 @@ class BoardRequestTest extends ModuleTestCase
      * @param  mixed  $value  new_display_hours 값
      * @param  bool  $shouldPass  통과 기대 여부
      */
+    #[DataProvider('newDisplayHoursProvider')]
     public function test_update_matrix_new_display_hours_boundaries(mixed $value, bool $shouldPass): void
     {
         $request = $this->makeUpdateRequest();
@@ -1408,14 +1501,13 @@ class BoardRequestTest extends ModuleTestCase
      * config('sirsoft-board.limits') 는 min_title_length_min / min_comment_length_min 을
      * 0 으로 선언하고 있으므로 하드코딩된 min:1 은 계약 위반이다.
      *
-     * @dataProvider settingsZeroLowerBoundProvider
-     *
      * @scenario case=zero_lower_bound_length_fields
      *
      * @effects zero_lower_bound_length_fields_pass
      *
      * @param  string  $field  basic_defaults 하위 필드명
      */
+    #[DataProvider('settingsZeroLowerBoundProvider')]
     public function test_settings_matrix_zero_lower_bounds_pass(string $field): void
     {
         $request = new StoreBoardSettingsRequest;

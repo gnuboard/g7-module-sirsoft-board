@@ -4,6 +4,7 @@ namespace Modules\Sirsoft\Board\Repositories;
 
 use App\Enums\PermissionType;
 use App\Helpers\PermissionHelper;
+use App\Repositories\Concerns\PaginatesWithDeferredJoin;
 use App\Search\Engines\DatabaseFulltextEngine;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\Paginator;
@@ -31,6 +32,7 @@ class PostRepository implements PostRepositoryInterface
 {
     use ChecksBoardPermission;
     use FormatsBoardDate;
+    use PaginatesWithDeferredJoin;
 
     /**
      * PostRepository 생성자
@@ -692,12 +694,13 @@ class PostRepository implements PostRepositoryInterface
             // → 콜드 스타트(버퍼 풀 미적재)에서도 ~2ms (range scan 대비 100배 이상 빠름)
             $aggregateFunc = $strictOp === '<' ? 'MAX' : 'MIN';
             $subQuery = $baseQuery()
-                ->select(DB::raw("{$aggregateFunc}(`{$orderBy}`)"))
+                ->select(DB::raw("{$aggregateFunc}({$orderBy})"))
                 ->where($orderBy, $strictOp, $currentValue);
 
+            // 서브쿼리는 빌더 그대로 넘긴다 — toSql() 로 문자열을 붙이고 mergeBindings 로
+            // 바인딩을 손수 옮기면 조건 추가 순서에 따라 바인딩이 어긋날 수 있다.
             return $baseQuery()
-                ->where($orderBy, DB::raw("({$subQuery->toSql()})"))
-                ->mergeBindings($subQuery->getQuery())
+                ->where($orderBy, '=', $subQuery)
                 ->orderBy('id', $idSort)
                 ->first();
         }
@@ -827,22 +830,33 @@ class PostRepository implements PostRepositoryInterface
             $orderDirection = 'desc'; // 기본값으로 폴백
         }
 
-        // 정렬 적용 (id를 2차 정렬로 추가 — 동일 값 내 순서를 결정론적으로 보장)
+        // 정렬 스펙 (id를 2차 정렬로 추가 — 동일 값 내 순서를 결정론적으로 보장)
         // created_at은 초 단위라 실질적 중복이 드물지만, view_count/title/author_name은 중복이 많음
-        $parentQuery->orderBy($orderBy, $orderDirection)->orderBy('id', $orderDirection);
-
-        if (! empty($relations)) {
-            $parentQuery->with($relations);
-        }
+        $sort = [['column' => $orderBy, 'direction' => $orderDirection]];
 
         // 페이지네이션 여부에 따라 분기
         if ($perPage !== null) {
-            // simplePaginate 사용 — COUNT(*) 쿼리 제거로 대량 데이터 성능 개선
-            // total은 Service 캐시 카운트로 별도 제공
-            $paginator = $parentQuery->simplePaginate($perPage, $columns, 'page', $currentPage);
+            // 지연 조인 — 이번 페이지의 원글 ID 를 먼저 구하고, 그 ID 에 대해서만 목록 컬럼과
+            // 관계를 읽는다. OFFSET 이 건너뛰는 원글의 본문 앞부분(SUBSTRING)까지 읽던 비용이
+            // 사라진다. COUNT 는 기존과 같이 수행하지 않는다(total 은 Service 캐시 카운트).
+            $paginator = $this->paginateWithDeferredJoin(
+                query: $parentQuery,
+                columns: $columns,
+                sort: $sort,
+                perPage: $perPage,
+                page: (int) $currentPage,
+                relations: $relations,
+                simple: true,
+            );
             $parents = $paginator->getCollection();
         } else {
             // 전체 조회
+            $parentQuery->orderBy($orderBy, $orderDirection)->orderBy('id', $orderDirection);
+
+            if (! empty($relations)) {
+                $parentQuery->with($relations);
+            }
+
             $parents = $parentQuery->get($columns);
             $paginator = null;
         }
@@ -1052,10 +1066,9 @@ class PostRepository implements PostRepositoryInterface
         $inactiveBoardIds = $this->getInactiveBoardIds();
         $allExcludeIds = array_unique(array_merge($excludeBoardIds, $inactiveBoardIds));
 
+        // 관계/정렬은 지연 조인이 담당한다 (inner 는 키 컬럼만 조회)
         $query = Post::query()
-            ->where('board_posts.user_id', $userId)
-            ->with('board')
-            ->orderBy($orderColumn, $orderDirection);
+            ->where('board_posts.user_id', $userId);
 
         if ($boardIdFilter) {
             $query->where('board_posts.board_id', $boardIdFilter);
@@ -1078,7 +1091,26 @@ class PostRepository implements PostRepositoryInterface
             });
         }
 
-        $paginator = $query->paginate($perPage, ['*'], 'page', null, $cachedTotal);
+        // 본문(content)은 목록 가공에 앞부분만 쓰이지만 태그 제거 후 길이가 줄어드는 것을 감안해
+        // 넉넉히 잘라 읽는다. 잘라 읽기는 이번 페이지 분량(outer)에서만 일어난다.
+        $listColumns = [
+            'board_posts.id', 'board_posts.board_id', 'board_posts.user_id',
+            'board_posts.title', 'board_posts.status', 'board_posts.is_secret',
+            'board_posts.content_mode', 'board_posts.view_count', 'board_posts.comments_count',
+            'board_posts.created_at', 'board_posts.updated_at', 'board_posts.deleted_at',
+            // DB::raw 는 테이블 프리픽스가 적용되지 않는다. 단일 테이블 조회라 컬럼만 적으면 충분하다.
+            DB::raw('SUBSTRING(content, 1, 1000) as content'),
+        ];
+
+        // 캐시된 total 을 그대로 통과시켜 COUNT 를 다시 수행하지 않는다
+        $paginator = $this->paginateWithDeferredJoin(
+            query: $query,
+            columns: $listColumns,
+            sort: [['column' => $orderColumn, 'direction' => $orderDirection]],
+            perPage: $perPage,
+            relations: ['board'],
+            total: $cachedTotal,
+        );
 
         // paginate 후 10건에만 PHP 가공 적용 (N+1 아님)
         $paginator->through(function ($post) {
@@ -1125,59 +1157,88 @@ class PostRepository implements PostRepositoryInterface
         int $perPage,
         ?int $cachedTotal = null
     ): LengthAwarePaginator {
-        // DB::raw() / whereRaw() 내부 raw SQL은 prefix 자동 적용이 안 되므로 명시적으로 처리
-        $prefix = DB::getTablePrefix();
-        $commentsTable = $prefix.'board_comments';
-        $postsTable = $prefix.'board_posts';
+        // 테이블명은 모델에서 얻는다 — 문자열로 박으면 테이블명이 바뀔 때 조용히 깨진다
+        $postsTable = (new Post)->getTable();
+        $commentsTable = (new Comment)->getTable();
 
         // 비활성 게시판 제외 — JOIN 없이 인덱스 활용
         $inactiveBoardIds = $this->getInactiveBoardIds();
         $allExcludeIds = array_unique(array_merge($excludeBoardIds, $inactiveBoardIds));
 
-        $latestCommentSub = DB::table(DB::raw("{$commentsTable} as bc_outer"))
-            ->selectRaw('bc_outer.post_id, bc_outer.content, bc_outer.created_at')
-            ->whereRaw("bc_outer.id = (
-                SELECT bc2.id FROM {$commentsTable} bc2
-                WHERE bc2.post_id = bc_outer.post_id
-                  AND bc2.user_id = ?
-                  AND bc2.deleted_at IS NULL
-                ORDER BY bc2.created_at DESC
-                LIMIT 1
-            ) AND bc_outer.user_id = ? AND bc_outer.deleted_at IS NULL", [$userId, $userId]);
+        /**
+         * 내가 이 글에 단 댓글 조건 (검색어까지 반영 — 활동 판정 · 건수 집계 공통).
+         *
+         * @param  \Illuminate\Contracts\Database\Eloquent\Builder  $q  댓글 하위 쿼리
+         */
+        $myComment = function ($q) use ($userId, $search) {
+            $q->where('user_id', $userId)->whereNull('deleted_at');
 
-        $query = Post::query()
-            ->join(DB::raw("{$commentsTable} AS uc"), function ($join) use ($userId, $postsTable) {
-                $join->on(DB::raw("{$postsTable}.id"), '=', DB::raw('uc.post_id'))
-                    ->whereRaw('uc.user_id = ?', [$userId])
-                    ->whereRaw('uc.deleted_at IS NULL');
-            })
-            ->leftJoinSub($latestCommentSub, 'lc', 'board_posts.id', '=', 'lc.post_id')
-            ->select([
-                'board_posts.*',
-                DB::raw('COUNT(DISTINCT uc.id) as activity_count'),
-                // board_posts.* 에 이미 comments_count 가 포함되므로 중복 지정 금지
-                // (pagination count 쿼리가 subquery 로 감싸질 때 SQLSTATE[42S21] 유발)
-                'lc.content as comment_content',
-                'lc.created_at as comment_created_at',
-            ])
-            ->with('board')
-            ->groupBy('board_posts.id', 'board_posts.board_id', 'board_posts.comments_count', 'lc.content', 'lc.created_at')
-            ->orderBy($orderColumn, $orderDirection);
+            if ($search) {
+                $q->where('content', 'like', '%'.$this->escapeLikeKeyword($search).'%');
+            }
+        };
+
+        // "내가 댓글을 단 글" 집합은 EXISTS 로 정한다. 조인으로 행을 불린 뒤 groupBy 로 접는
+        // 방식은 inner 가 읽는 행 수를 댓글 수만큼 늘리고, 그룹 쿼리라 총 건수도 서브쿼리로
+        // 감싸야 한다. EXISTS 는 글 1건당 1행이라 둘 다 필요 없다.
+        $query = Post::query()->whereHas('comments', $myComment);
 
         if ($boardIdFilter) {
-            $query->where('board_posts.board_id', $boardIdFilter);
+            $query->where("{$postsTable}.board_id", $boardIdFilter);
         }
 
         if (! empty($allExcludeIds)) {
-            $query->whereNotIn('board_posts.board_id', $allExcludeIds);
+            $query->whereNotIn("{$postsTable}.board_id", $allExcludeIds);
         }
 
-        if ($search) {
-            $keyword = $this->escapeLikeKeyword($search);
-            $query->where('uc.content', 'like', "%{$keyword}%");
-        }
+        // 목록 컬럼: 본문 전체 대신 앞부분만 (가공 후 표시 자수보다 넉넉히 잘라 읽는다).
+        // SUBSTRING 은 빌더에 대응 표현이 없는 표준 SQL 함수라 이 한 곳만 raw 로 남긴다.
+        // 테이블명·프리픽스는 문자열로 박지 않고 모델과 연결 설정에서 얻는다.
+        $listColumns = [
+            "{$postsTable}.id", "{$postsTable}.board_id", "{$postsTable}.user_id",
+            "{$postsTable}.title", "{$postsTable}.status", "{$postsTable}.is_secret",
+            "{$postsTable}.content_mode", "{$postsTable}.view_count", "{$postsTable}.comments_count",
+            "{$postsTable}.created_at", "{$postsTable}.updated_at", "{$postsTable}.deleted_at",
+            DB::raw('SUBSTRING('.DB::getTablePrefix().$postsTable.'.content, 1, 1000) as content'),
+            'lc.content as comment_content',
+            'lc.created_at as comment_created_at',
+        ];
 
-        $paginator = $query->paginate($perPage, ['*'], 'page', null, $cachedTotal);
+        // 정렬은 항상 board_posts 컬럼(작성일/조회수)이라 inner 에서 그대로 적용된다.
+        // 캐시된 total 이 있으면 COUNT 를 건너뛴다. 검색/게시판 필터가 걸린 조회는 캐시를 쓰지
+        // 않아 total 이 null 로 들어오며, 이때 trait 이 그룹 쿼리를 서브쿼리로 감싸 그룹 수를 센다.
+        $paginator = $this->paginateWithDeferredJoin(
+            query: $query,
+            columns: $listColumns,
+            sort: [['column' => $orderColumn, 'direction' => $orderDirection]],
+            perPage: $perPage,
+            relations: ['board'],
+            keyName: 'id',
+            total: $cachedTotal,
+            // 최근 댓글 조회와 활동 건수 집계는 이번 페이지의 게시글에 대해서만 실행한다.
+            // inner 에 두면 건너뛸 행 전체에 대해 상관 서브쿼리가 돌아간다.
+            outerUsing: function ($outer) use ($userId, $myComment, $postsTable, $commentsTable) {
+                // 글마다 "내가 단 댓글 중 가장 최근 1건" — 원래 raw SQL 로 쓰던 상관 서브쿼리를
+                // 빌더로 옮겼다. created_at 동률에서 순서가 흔들리지 않도록 id 를 덧붙인다.
+                $latest = DB::table("{$commentsTable} as bc_outer")
+                    ->select('bc_outer.post_id', 'bc_outer.content', 'bc_outer.created_at')
+                    ->where('bc_outer.user_id', $userId)
+                    ->whereNull('bc_outer.deleted_at')
+                    ->where('bc_outer.id', '=', function ($q) use ($userId, $commentsTable) {
+                        $q->select('bc2.id')
+                            ->from("{$commentsTable} as bc2")
+                            ->whereColumn('bc2.post_id', 'bc_outer.post_id')
+                            ->where('bc2.user_id', $userId)
+                            ->whereNull('bc2.deleted_at')
+                            ->orderByDesc('bc2.created_at')
+                            ->orderByDesc('bc2.id')
+                            ->limit(1);
+                    });
+
+                $outer->leftJoinSub($latest, 'lc', "{$postsTable}.id", '=', 'lc.post_id')
+                    ->withCount(['comments as activity_count' => $myComment]);
+            },
+        );
 
         // paginate 후 10건에만 PHP 가공 적용
         $paginator->through(function ($post) {

@@ -8,6 +8,7 @@ use Illuminate\Support\LazyCollection;
 use Modules\Sirsoft\Board\Models\Board;
 use Modules\Sirsoft\Board\Repositories\Contracts\BoardRepositoryInterface;
 use Modules\Sirsoft\Board\Tests\BoardTestCase;
+use PHPUnit\Framework\Attributes\Group;
 
 /**
  * BoardRepository::streamActiveForSitemap 단위 테스트
@@ -16,11 +17,10 @@ use Modules\Sirsoft\Board\Tests\BoardTestCase;
  * - 순회자(LazyCollection) 를 반환한다 (전체 적재 금지)
  * - sitemap 에 필요한 컬럼만 적재한다 (전컬럼 적재 회귀 차단)
  * - 활성 게시판만 반환한다
- *
- * @group board
- * @group unit
- * @group seo
  */
+#[Group('board')]
+#[Group('unit')]
+#[Group('seo')]
 class BoardRepositorySitemapTest extends BoardTestCase
 {
     private BoardRepositoryInterface $repository;

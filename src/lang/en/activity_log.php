@@ -35,6 +35,7 @@ return [
 
         // Board type (Admin)
         'board_type_index' => 'Board type list viewed',
+        'board_type_show' => 'Board type viewed (:type_name)',
         'board_type_create' => 'Board type created (:type_name)',
         'board_type_update' => 'Board type updated (:type_name)',
         'board_type_delete' => 'Board type deleted (:type_name)',

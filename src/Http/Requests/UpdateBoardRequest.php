@@ -35,11 +35,24 @@ class UpdateBoardRequest extends FormRequest
     /**
      * 검증 전 데이터 전처리
      *
-     * blocked_keywords가 문자열로 전송된 경우 배열로 변환합니다.
+     * blocked_keywords가 문자열로 전송된 경우 배열로 변환하고, 조건부 배제(`exclude_if`)의
+     * 판정 기준이 되는 토글이 요청에 없으면 기존 게시판의 저장값을 주입합니다.
      */
     protected function prepareForValidation(): void
     {
         $data = $this->all();
+
+        // allowed_extensions 만 부분 전송되고 use_file_upload 가 없으면 exclude_if 가 동작하지
+        // 않는다(ValidatesAttributes::validateExcludeIf 는 조건 필드가 데이터에 없으면 배제하지
+        // 않는다). 그러면 첨부를 쓰지 않는 게시판인데도 확장자 필수 규칙이 발화한다.
+        // 기존 게시판의 저장값을 주입해 "저장된 상태 + 페이로드" 결과 상태로 판정한다.
+        if (array_key_exists('allowed_extensions', $data) && ! array_key_exists('use_file_upload', $data)) {
+            $board = $this->route('board');
+
+            if ($board !== null && isset($board->use_file_upload)) {
+                $data['use_file_upload'] = (bool) $board->use_file_upload;
+            }
+        }
 
         // blocked_keywords가 문자열이면 배열로 변환 (validation 전)
         if (isset($data['blocked_keywords']) && is_string($data['blocked_keywords'])) {

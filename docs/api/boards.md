@@ -1232,7 +1232,7 @@ HTTP/1.1 200
 | use_file_upload | body | boolean | 예 | — | 파일 첨부 기능 사용 여부 (true일 때 allowed_extensions 최소 1개 필수) |
 | max_file_size | body | integer | 아니오 | min 1, max 200 | 첨부파일 1개당 최대 크기 (MB 단위) |
 | max_file_count | body | integer | 아니오 | min 1, max 20 | 게시글 1건당 첨부할 수 있는 최대 파일 개수 |
-| allowed_extensions | body | array | 조건부 | min 1 | 업로드 허용 확장자 목록 (예: jpg, png, pdf). `use_file_upload=true` 일 때만 필수이며 최소 1개가 있어야 한다. `use_file_upload=false` 이면 검증에서 제외되어 빈 배열·`null` 도 허용된다 |
+| allowed_extensions | body | array | 조건부 | min 1 | 업로드 허용 확장자 목록 (예: jpg, png, pdf). `use_file_upload=true` 일 때만 필수이며 최소 1개가 있어야 한다. `use_file_upload=false` 이면 검증에서 제외되어 빈 배열·`null` 도 허용된다. **`allowed_extensions` 만 보내고 `use_file_upload` 를 생략하면 저장된 게시판의 값을 기준으로 판정한다** — 첨부를 쓰지 않는 게시판은 빈 배열도 통과하고, 첨부를 쓰는 게시판은 그대로 차단된다 |
 | board_manager_ids | body | array | 예 | min 1 | board manager 식별자 배열 |
 | board_step_ids | body | array | 아니오 | — | board step 식별자 배열 |
 | permissions | body | array | 예 | — | 게시판별 세부 권한 매트릭스 (권한 키별 mode/roles — 각 권한을 all 또는 특정 역할에 부여) |
