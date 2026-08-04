@@ -25,6 +25,9 @@ class BoardReactionTypeSeederTest extends ModuleTestCase
 
     /**
      * 시더가 추천/비추천 2건을 정확한 값으로 등록한다.
+     *
+     * @scenario case=reaction_type_label_localized
+     * @effects reaction_type_name_localized
      */
     public function test_seeder_creates_like_and_dislike_types(): void
     {

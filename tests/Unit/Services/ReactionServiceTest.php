@@ -46,6 +46,9 @@ class ReactionServiceTest extends BoardTestCase
 
     /**
      * 반응이 없던 게시글에 반응하면 신규 등록되고 카운트가 +1 된다.
+     *
+     * @scenario case=register_first_like
+     * @effects register_inserts_row_and_increments_count
      */
     public function test_react_adds_new_reaction_and_increments_count(): void
     {
@@ -69,6 +72,9 @@ class ReactionServiceTest extends BoardTestCase
 
     /**
      * 다른 유형으로 전환하면 이전 유형 -1·신규 유형 +1 이 동시 반영된다 (단일 트랜잭션).
+     *
+     * @scenario case=switch_like_to_dislike
+     * @effects switch_updates_row_and_adjusts_both_counts, switch_count_atomic_in_single_transaction
      */
     public function test_react_switches_type_and_adjusts_both_counts(): void
     {
@@ -94,6 +100,9 @@ class ReactionServiceTest extends BoardTestCase
 
     /**
      * 같은 유형을 재클릭하면 해제되어 이력 행이 삭제되고 카운트가 -1 된다.
+     *
+     * @scenario case=remove_same_type
+     * @effects remove_deletes_row_and_decrements_count
      */
     public function test_react_same_type_removes_reaction_and_decrements_count(): void
     {
@@ -116,6 +125,9 @@ class ReactionServiceTest extends BoardTestCase
 
     /**
      * 카운트는 0 미만으로 내려가지 않는다 (해제 시 클램프).
+     *
+     * @scenario case=count_never_negative_on_over_remove
+     * @effects reaction_count_never_negative
      */
     public function test_reaction_count_never_goes_below_zero(): void
     {
@@ -131,6 +143,9 @@ class ReactionServiceTest extends BoardTestCase
 
     /**
      * use_reaction 이 꺼진 게시판은 반응이 차단된다.
+     *
+     * @scenario case=use_reaction_off_react_blocked
+     * @effects use_reaction_off_react_returns_422
      */
     public function test_react_blocked_when_use_reaction_off(): void
     {
@@ -146,6 +161,9 @@ class ReactionServiceTest extends BoardTestCase
 
     /**
      * 게시판이 켜지 않은(비활성) 유형은 차단된다.
+     *
+     * @scenario case=inactive_type_react_blocked
+     * @effects inactive_type_react_returns_422
      */
     public function test_react_blocked_for_inactive_type_on_board(): void
     {
@@ -161,6 +179,9 @@ class ReactionServiceTest extends BoardTestCase
 
     /**
      * 본인 글에는 반응할 수 없다.
+     *
+     * @scenario case=self_post_react_blocked
+     * @effects self_post_react_returns_422
      */
     public function test_react_blocked_on_own_post(): void
     {
@@ -173,6 +194,9 @@ class ReactionServiceTest extends BoardTestCase
 
     /**
      * 다른 게시판 소속 게시글 ID 로는 반응할 수 없다 (스코프 검증).
+     *
+     * @scenario case=post_not_in_board
+     * @effects post_not_in_board_returns_404
      */
     public function test_react_blocked_for_post_not_in_board(): void
     {

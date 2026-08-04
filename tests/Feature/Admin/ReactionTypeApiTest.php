@@ -48,6 +48,9 @@ class ReactionTypeApiTest extends ModuleTestCase
 
     /**
      * en 로케일에서는 영어 라벨을 반환한다.
+     *
+     * @scenario case=reaction_type_label_localized
+     * @effects reaction_type_name_localized
      */
     public function test_reaction_type_name_localized_to_en(): void
     {
@@ -62,6 +65,9 @@ class ReactionTypeApiTest extends ModuleTestCase
 
     /**
      * 미입력 언어는 사이트 기본 언어(fallback)로 대체 노출된다 (확정 15).
+     *
+     * @scenario case=reaction_type_label_falls_back
+     * @effects missing_locale_falls_back_to_default
      */
     public function test_missing_locale_falls_back(): void
     {

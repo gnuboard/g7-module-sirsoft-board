@@ -43,6 +43,9 @@ class ReactionRepositoryTest extends BoardTestCase
 
     /**
      * upsert 는 없으면 INSERT, 있으면 유형만 UPDATE 한다 (사용자당 1행 유지).
+     *
+     * @scenario case=register_first_like
+     * @effects register_inserts_row_and_increments_count
      */
     public function test_upsert_inserts_then_updates_single_row(): void
     {

@@ -12,6 +12,9 @@ use Modules\Sirsoft\Board\Tests\BoardTestCase;
  *
  * 등록/전환/해제, reaction_counts 증감 정합성(전환 포함), use_reaction off·비활성 유형
  * 차단, 본인 글 차단, 비로그인 차단을 종단 검증한다 (이슈 #525 §10 테스트 범위).
+ *
+ * @scenario case=guest_react_blocked
+ * @effects guest_react_returns_401
  */
 class ReactionApiTest extends BoardTestCase
 {
@@ -186,5 +189,36 @@ class ReactionApiTest extends BoardTestCase
         $this->actingAs($reactor, 'sanctum')
             ->postJson($this->reactUrl(999999), ['reaction_type_id' => $this->likeId])
             ->assertNotFound();
+    }
+
+    /**
+     * 반응 등록/전환/해제 시 활동 로그가 기록된다 (after_react 훅 → 리스너).
+     *
+     * @scenario case=react_logs_activity
+     * @effects react_logs_add_change_remove_activity
+     */
+    public function test_react_writes_activity_log(): void
+    {
+        $author = $this->createUser();
+        $reactor = $this->createUser();
+        $postId = $this->createTestPost(['user_id' => $author->id]);
+
+        // 등록 → reaction.add 로그
+        $this->actingAs($reactor, 'sanctum')
+            ->postJson($this->reactUrl($postId), ['reaction_type_id' => $this->likeId])
+            ->assertOk();
+        $this->assertDatabaseHas('activity_logs', ['action' => 'reaction.add']);
+
+        // 전환 → reaction.change 로그
+        $this->actingAs($reactor, 'sanctum')
+            ->postJson($this->reactUrl($postId), ['reaction_type_id' => $this->dislikeId])
+            ->assertOk();
+        $this->assertDatabaseHas('activity_logs', ['action' => 'reaction.change']);
+
+        // 해제 → reaction.remove 로그
+        $this->actingAs($reactor, 'sanctum')
+            ->postJson($this->reactUrl($postId), ['reaction_type_id' => $this->dislikeId])
+            ->assertOk();
+        $this->assertDatabaseHas('activity_logs', ['action' => 'reaction.remove']);
     }
 }

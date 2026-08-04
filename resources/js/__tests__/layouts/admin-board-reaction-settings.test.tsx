@@ -24,6 +24,8 @@ const settingsJson = JSON.stringify(settingsTab);
 const formJson = JSON.stringify(formTab);
 
 describe('환경설정 기본값 탭 — 반응 사용 토글 + 유형 체크박스', () => {
+    // @scenario case=settings_toggle_and_checkbox_persist
+    // @effects settings_toggle_persists_use_reaction
     it('use_reaction 토글이 basic_defaults.use_reaction 에 바인딩된다', () => {
         expect(/"name":\s*"basic_defaults\.use_reaction"/.test(settingsJson)).toBe(true);
     });
@@ -37,6 +39,8 @@ describe('환경설정 기본값 탭 — 반응 사용 토글 + 유형 체크박
         expect(/"item_var":\s*"reactionType"/.test(settingsJson)).toBe(true);
     });
 
+    // @scenario case=settings_toggle_and_checkbox_persist
+    // @effects settings_checkbox_persists_active_reaction_types
     it('체크박스가 active_reaction_types(code 배열) 를 include/exclude 로 토글한다', () => {
         // 체크 상태: code 포함 여부
         expect(
