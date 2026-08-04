@@ -16,6 +16,22 @@
 
 ---
 
+## 목록·검색의 총 건수와 답변·댓글 상한
+
+게시판 목록에 `search` 를 얹으면 내부 검색이 수행됩니다. 매칭이 아주 많을 수 있으므로 총
+건수는 상한까지만 세며, 상한을 넘으면 응답의 `pagination` 에 정확도가 함께 실립니다
+(`total_relation` / `total_is_exact` / `result_cap`). 이때 `last_page` 는 `null` 이고
+`has_more_pages` 는 그대로 정확하므로, 마지막 페이지 점프만 감춰지고 다음 페이지 이동은
+끝까지 열려 있습니다. 상세 규약은 [pagination.md](../../../../../docs/backend/pagination.md) 를 참고하세요.
+
+검색어에 `+` `-` `*` `"` `<` `>` 같은 문자가 들어와도 오류가 나지 않습니다. 코어 정제기가
+FULLTEXT 연산자를 제거한 뒤 검색하며, 연산자만 입력한 경우에는 오류 대신 빈 결과를 돌려줍니다.
+
+게시글 상세 응답의 답변 트리와 댓글 목록에도 같은 상한이 적용됩니다. 한 글에 답변·댓글이
+극단적으로 많은 경우 그 지점에서 끊기며, 총 건수는 목록 응답의 집계로 확인할 수 있습니다.
+
+---
+
 
 ### POST /api/modules/sirsoft-board/admin/board/{slug}/attachments
 <!-- @generated:start:api.modules.sirsoft-board.admin.board.attachments.upload -->
@@ -864,6 +880,9 @@ _단건 응답: `data` 객체의 필드._
 | navigation | object | `{"prev":null,"next":null}` | 이전/다음 게시글 이동 정보. `prev`·`next` 키에 인접 게시글 요약(없으면 null)이 담기며, 상세 로드 시 함께 계산됩니다. |
 | parent | null | `null` | 상위 항목 객체 (parent 관계 파생) |
 | comments | array | `[{"id":760,"post_id":237,"parent_id":null,"content":"API …` | 게시글에 달린 댓글 목록(CommentResource 컬렉션). comments 관계가 로드된 경우에만 채워지며, 각 항목에 신고 여부가 사전 로드되어 담깁니다. |
+| comments_truncated | boolean | `false` | 댓글 목록이 상한에서 끊겼는지 여부. `true` 면 `comments` 에 실린 것이 전부가 아닙니다 |
+| comments_total | integer\|null | `12` | 댓글 총 건수. 끊기지 않았으면 `comments` 길이와 같고, 끊겼으면 상한값(그 이상)입니다 |
+| comments_total_is_exact | boolean | `true` | 위 총 건수가 정확한지 여부. `false` 면 "N건 이상" 으로 표기합니다 |
 | attachments | array | `[{"id":155,"hash":"apidocsmpl1","original_filename":"apid…` | 게시글 첨부파일 목록(AttachmentResource 컬렉션). 비밀글은 열람 권한이 없으면 빈 배열, 삭제된 게시글은 관리 권한이 없으면 연쇄 삭제된 첨부만 노출됩니다. |
 | replies | array | `[]` | 이 게시글에 달린 답변글 목록(PostResource 컬렉션, 재귀). replies 관계가 로드된 경우에만 채워지며, 아니면 null. |
 | is_already_reported | boolean | `false` | already reported 여부 |

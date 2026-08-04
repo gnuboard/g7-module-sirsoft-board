@@ -713,7 +713,8 @@
               "name": "Pagination",
               "props": {
                 "currentPage": "{{boardNotificationDefinitions?.data?.pagination?.current_page || 1}}",
-                "totalPages": "{{boardNotificationDefinitions?.data?.pagination?.last_page || 1}}"
+                "totalPages": "{{boardNotificationDefinitions?.data?.pagination?.last_page ?? null}}",
+                "hasMorePages": "{{boardNotificationDefinitions?.data?.pagination?.has_more_pages ?? false}}"
               },
               "actions": [
                 {

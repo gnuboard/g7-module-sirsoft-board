@@ -5,11 +5,17 @@ namespace Modules\Sirsoft\Board\Repositories;
 use App\Enums\PermissionType;
 use App\Helpers\PermissionHelper;
 use App\Repositories\Concerns\PaginatesWithDeferredJoin;
-use App\Search\Engines\DatabaseFulltextEngine;
+use App\Search\KeywordSearch;
+use App\Support\Query\BoundedCount;
+use App\Support\Query\BoundedPage;
+use App\Support\Query\BoundedPaginator;
+use App\Support\Query\KeysetPaginator;
+use App\Support\Query\PaginationLimits;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -88,26 +94,25 @@ class PostRepository implements PostRepositoryInterface
     {
         // 검색
         if (! empty($filters['search'])) {
-            $keyword = $this->escapeLikeKeyword($filters['search']);
+            // FULLTEXT 와 LIKE 는 이스케이프 규칙이 다르다. LIKE 용으로 이스케이프한 문자열을
+            // MATCH 에 그대로 넘기면 백슬래시가 검색어의 일부로 들어간다.
+            $rawKeyword = (string) $filters['search'];
+            $likeKeyword = $this->escapeLikeKeyword($rawKeyword);
             $searchField = $filters['search_field'] ?? 'all';
 
-            $query->where(function ($q) use ($keyword, $searchField) {
+            $query->where(function ($q) use ($rawKeyword, $likeKeyword, $searchField) {
                 // 제목+내용 검색: FULLTEXT 활용 (all, title_content)
+                // 코어 헬퍼를 거쳐야 BOOLEAN MODE 연산자(+ - * " 등) 입력이 500 이 되지 않는다.
                 if ($searchField === 'all' || $searchField === 'title_content') {
-                    if (DatabaseFulltextEngine::supportsFulltext()) {
-                        $q->orWhereRaw('MATCH(`title`, `content`) AGAINST(? IN BOOLEAN MODE)', [$keyword]);
-                    } else {
-                        $q->orWhere('title', 'like', "%{$keyword}%")
-                            ->orWhere('content', 'like', "%{$keyword}%");
-                    }
+                    KeywordSearch::apply($q, ['title', 'content'], $rawKeyword, 'or');
                 }
 
                 // 작성자 검색
                 if ($searchField === 'all' || $searchField === 'author' || $searchField === 'author_name') {
-                    $q->orWhere('author_name', 'like', "%{$keyword}%")
-                        ->orWhereHas('user', function ($uq) use ($keyword) {
-                            $uq->where('name', 'like', "%{$keyword}%")
-                                ->orWhere('email', 'like', "%{$keyword}%");
+                    $q->orWhere('author_name', 'like', "%{$likeKeyword}%")
+                        ->orWhereHas('user', function ($uq) use ($likeKeyword) {
+                            $uq->where('name', 'like', "%{$likeKeyword}%")
+                                ->orWhere('email', 'like', "%{$likeKeyword}%");
                         });
                 }
             });
@@ -301,19 +306,27 @@ class PostRepository implements PostRepositoryInterface
      *
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  게시글 ID
+     * @param  int|null  $boardId  게시판 ID (전달 시 슬러그 재조회 생략)
      * @return int 증가된 조회수
      */
-    public function incrementViewCount(string $slug, int $id): int
+    public function incrementViewCount(string $slug, int $id, ?int $boardId = null): int
     {
-        $board = Board::where('slug', $slug)->first();
+        // 상세 화면은 이미 게시판을 조회한 뒤 여기로 온다. 슬러그로 다시 찾으면 같은 요청에서
+        // 게시판을 두 번 읽는다 — 호출자가 알고 있으면 그대로 받는다.
+        if ($boardId === null) {
+            $boardId = Board::where('slug', $slug)->value('id');
+        }
 
-        Post::where('board_id', $board?->id)
+        Post::where('board_id', $boardId)
             ->where('id', $id)
             ->increment('view_count');
 
-        $post = $this->find($slug, $id);
-
-        return $post?->view_count ?? 0;
+        // 증가된 값만 필요하다. find() 는 게시판을 또 찾고 user 관계까지 적재하므로
+        // 조회수 하나 읽자고 쓰기에는 과하다.
+        return (int) (Post::withTrashed()
+            ->where('board_id', $boardId)
+            ->where('id', $id)
+            ->value('view_count') ?? 0);
     }
 
     /**
@@ -417,11 +430,16 @@ class PostRepository implements PostRepositoryInterface
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  게시글 ID
      * @param  int|null  $boardId  게시판 ID (전달 시 Board 재조회 생략)
+     * @param  Board|null  $board  이미 조회한 게시판 모델 (전달 시 board 관계 적재까지 생략)
      * @return Post|null 게시글 모델 (카운트 포함)
      */
-    public function findWithCounts(string $slug, int $id, ?int $boardId = null): ?Post
+    public function findWithCounts(string $slug, int $id, ?int $boardId = null, ?Board $board = null): ?Post
     {
-        // boardId가 전달되면 Board 모델 재조회 없이 직접 사용
+        // 호출자가 이미 손에 쥔 Board 를 넘기면 그 인스턴스를 그대로 쓴다 (#519 F3).
+        // $board 는 아래 답글 로딩에서 참조하므로 어느 경로로 오든 정의돼 있어야 한다
+        // (초기화가 없으면 boardId 를 받은 경로에서 미정의 변수 경고가 난다).
+        $boardId = $board?->id ?? $boardId;
+
         if (! $boardId) {
             $board = Board::where('slug', $slug)->first();
             $boardId = $board?->id;
@@ -434,12 +452,13 @@ class PostRepository implements PostRepositoryInterface
             || $this->checkBoardPermission($slug, 'admin.manage')
             || $this->checkBoardPermission($slug, 'manager', PermissionType::User);
 
+        // Board 를 이미 받았으면 관계로 같은 행을 다시 읽지 않는다 (조회 후 setRelation 으로 부착).
+        $relations = $board ? ['user', 'user.avatarAttachment'] : ['user', 'user.avatarAttachment', 'board'];
+
         $post = Post::withTrashed()
             ->where('board_id', $boardId)
             ->with([
-                'user',
-                'user.avatarAttachment',
-                'board',
+                ...$relations,
                 'parent' => function ($query) {
                     $query->withTrashed()
                         ->with('user');
@@ -462,6 +481,11 @@ class PostRepository implements PostRepositoryInterface
 
         // 모든 하위 답글을 재귀적으로 로드하여 트리 구조로 설정
         if ($post) {
+            // 호출자가 넘긴 Board 는 관계로 적재하지 않았으므로 여기서 부착한다.
+            if ($board) {
+                $post->setRelation('board', $board);
+            }
+
             // loadAllDescendantReplies는 board_id만 필요하므로 Board 모델 대신 조회된 board 사용
             $board = $board ?? $post->board;
             $allReplies = $this->loadAllDescendantReplies($post->id, $board, $hasDeletePermission);
@@ -529,9 +553,9 @@ class PostRepository implements PostRepositoryInterface
      * @param  string  $slug  게시판 슬러그
      * @param  array  $filters  필터 조건
      * @param  bool  $withTrashed  삭제된 게시글 포함 여부
-     * @return int 일반 게시글 수 (답글, 공지 제외)
+     * @return BoundedCount 일반 게시글 수 + 정확도 (답글, 공지 제외)
      */
-    public function countNormalPosts(string $slug, array $filters = [], bool $withTrashed = false): int
+    public function countNormalPosts(string $slug, array $filters = [], bool $withTrashed = false): BoundedCount
     {
         $board = Board::where('slug', $slug)->first();
 
@@ -554,7 +578,11 @@ class PostRepository implements PostRepositoryInterface
         // 필터 적용
         $this->applyFilters($query, $filters);
 
-        return $query->count();
+        // 총 건수는 상한까지만 센다. 검색어가 걸린 목록은 매칭 수가 데이터 증가에 비례하고,
+        // 이 값은 목록 화면이 열릴 때마다 계산된다. 상한 이하면 지금과 값이 같고, 초과할
+        // 때만 "이상" 으로 보고한다 — 페이지 이동은 simplePaginate 의 per_page + 1 실측이
+        // 담당하므로 상한과 무관하게 끝까지 열려 있다.
+        return BoundedPaginator::count($query, PaginationLimits::resultCap('board.posts'));
     }
 
     /**
@@ -862,11 +890,16 @@ class PostRepository implements PostRepositoryInterface
         }
 
         // 3단계: 모든 하위 답글 조회 (모든 depth 처리 — depth-1만이 아닌 depth-2+ 포함)
+        //
+        // 깊이별로 한 번씩 조회하되 누적 건수에 상한을 둔다. 상한이 없으면 답글이 많은
+        // 게시판에서 한 페이지를 여는 것만으로 그 게시판의 답글 전량을 메모리에 올린다.
         $parentIds = $parents->pluck('id')->toArray();
+        $replyCap = PaginationLimits::resultCap('board.reply_tree');
         $allReplies = collect([]);
 
         if (! empty($parentIds)) {
             $currentLevelIds = $parentIds;
+            $seenIds = array_flip($parentIds);
 
             while (! empty($currentLevelIds)) {
                 $levelQuery = Post::query()
@@ -884,6 +917,10 @@ class PostRepository implements PostRepositoryInterface
                     $levelQuery->with($relations);
                 }
 
+                if ($replyCap !== null) {
+                    $levelQuery->limit(max(1, $replyCap - $allReplies->count()));
+                }
+
                 $levelReplies = $levelQuery->get($columns);
 
                 if ($levelReplies->isEmpty()) {
@@ -892,17 +929,37 @@ class PostRepository implements PostRepositoryInterface
 
                 $allReplies = $allReplies->merge($levelReplies);
                 $currentLevelIds = $levelReplies->pluck('id')->toArray();
+
+                // 오염된 데이터(순환 참조)에서도 유한 종료를 보장한다.
+                $currentLevelIds = array_values(array_filter(
+                    $currentLevelIds,
+                    function ($id) use (&$seenIds) {
+                        if (isset($seenIds[$id])) {
+                            return false;
+                        }
+                        $seenIds[$id] = true;
+
+                        return true;
+                    }
+                ));
+
+                if ($replyCap !== null && $allReplies->count() >= $replyCap) {
+                    break;
+                }
             }
         }
 
         $replies = $allReplies;
 
         // 4단계: 병합 (원글 + 모든 하위 답글을 깊이 우선 순으로)
+        //
+        // 부모별로 한 번만 그룹지어 둔다. 노드마다 전체 컬렉션을 where 로 훑으면
+        // 답글 수의 제곱에 비례해 비교가 늘어난다.
+        $repliesByParent = $replies->sortBy('id')->groupBy('parent_id');
         $mergedItems = collect([]);
 
-        $appendReplies = function (int $postId) use (&$appendReplies, &$mergedItems, $replies): void {
-            $directReplies = $replies->where('parent_id', $postId)->sortBy('id');
-            foreach ($directReplies as $reply) {
+        $appendReplies = function (int $postId) use (&$appendReplies, &$mergedItems, $repliesByParent): void {
+            foreach ($repliesByParent->get($postId) ?? [] as $reply) {
                 $mergedItems->push($reply);
                 $appendReplies($reply->id);
             }
@@ -1273,23 +1330,32 @@ class PostRepository implements PostRepositoryInterface
      * @param  string  $keyword  검색 키워드
      * @param  string  $orderBy  정렬 컬럼
      * @param  string  $direction  정렬 방향 (asc, desc)
-     * @param  int  $limit  조회할 최대 항목 수
-     * @return array{total: int, items: \Illuminate\Database\Eloquent\Collection}
+     * @param  int  $perPage  페이지당 항목 수
+     * @param  int  $page  페이지 번호
+     * @return BoundedPage 페이지 결과 (총 건수 정확도 포함)
      */
-    public function searchByKeyword(string $slug, string $keyword, string $orderBy = 'created_at', string $direction = 'desc', int $limit = 10): array
-    {
-        $query = $this->buildPublicSearchQuery($slug, $keyword);
-        $total = $query->count();
-
-        $items = $query->with('user')
+    public function searchByKeyword(
+        string $slug,
+        string $keyword,
+        string $orderBy = 'created_at',
+        string $direction = 'desc',
+        int $perPage = 10,
+        int $page = 1
+    ): BoundedPage {
+        // 종전에는 같은 FULLTEXT 술어를 count() 로 한 번, get() 으로 또 한 번 실행했다.
+        // 페이지네이터 한 번으로 합치고, 총 건수에는 상한을 건다.
+        $query = $this->buildPublicSearchQuery($slug, $keyword)
+            ->with('user')
             ->orderBy($orderBy, $direction)
-            ->limit($limit)
-            ->get();
+            // 전순서 보장 — 정렬 컬럼이 비고유라 페이지 경계에서 행이 겹치거나 샐 수 있다
+            ->orderBy('id', $direction === 'asc' ? 'asc' : 'desc');
 
-        return [
-            'total' => $total,
-            'items' => $items,
-        ];
+        return BoundedPaginator::paginate(
+            $query,
+            perPage: $perPage,
+            page: $page,
+            resultCap: PaginationLimits::resultCap('search'),
+        );
     }
 
     /**
@@ -1297,11 +1363,14 @@ class PostRepository implements PostRepositoryInterface
      *
      * @param  string  $slug  게시판 슬러그
      * @param  string  $keyword  검색 키워드
-     * @return int 일치하는 게시글 수
+     * @return BoundedCount 일치하는 게시글 수 (정확도 포함)
      */
-    public function countByKeyword(string $slug, string $keyword): int
+    public function countByKeyword(string $slug, string $keyword): BoundedCount
     {
-        return $this->buildPublicSearchQuery($slug, $keyword)->count();
+        return BoundedPaginator::count(
+            $this->buildPublicSearchQuery($slug, $keyword),
+            PaginationLimits::resultCap('search')
+        );
     }
 
     /**
@@ -1313,23 +1382,53 @@ class PostRepository implements PostRepositoryInterface
      * @param  string  $direction  정렬 방향 (asc, desc)
      * @param  int  $perPage  페이지당 항목 수
      * @param  int  $page  페이지 번호
-     * @return array{total: int, items: \Illuminate\Database\Eloquent\Collection}
+     * @return BoundedPage 페이지 결과 (총 건수 정확도 포함)
      */
-    public function searchAcrossBoards(array $boardIds, string $keyword, string $orderBy = 'created_at', string $direction = 'desc', int $perPage = 10, int $page = 1): array
-    {
-        $query = $this->buildPublicSearchQueryByIds($boardIds, $keyword);
-        $total = $query->count();
-
-        $items = (clone $query)
+    public function searchAcrossBoards(
+        array $boardIds,
+        string $keyword,
+        string $orderBy = 'created_at',
+        string $direction = 'desc',
+        int $perPage = 10,
+        int $page = 1
+    ): BoundedPage {
+        // count() + get() 이중 실행을 페이지네이터 한 번으로 합친다.
+        // 다른 탭 조회 시 배지용 COUNT 까지 더해 같은 술어가 3회 실행되던 경로다.
+        $query = $this->buildPublicSearchQueryByIds($boardIds, $keyword)
             ->with('user', 'board')
             ->orderBy($orderBy, $direction)
-            ->forPage($page, $perPage)
-            ->get();
+            ->orderBy('id', $direction === 'asc' ? 'asc' : 'desc');
 
-        return [
-            'total' => $total,
-            'items' => $items,
-        ];
+        return BoundedPaginator::paginate(
+            $query,
+            perPage: $perPage,
+            page: $page,
+            resultCap: PaginationLimits::resultCap('search'),
+        );
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function searchAcrossBoardsByCursor(
+        array $boardIds,
+        string $keyword,
+        array $sortKeys,
+        int $perPage = 10,
+        ?string $cursor = null
+    ): CursorPaginator {
+        // 커서 모드에는 OFFSET 이 없다. 깊은 페이지에서 건너뛸 행을 실제로 읽던 비용이
+        // 사라지므로 상한 COUNT 도 이 경로에서는 하지 않는다 (총 건수는 배지 집계 담당).
+        $query = $this->buildPublicSearchQueryByIds($boardIds, $keyword)
+            ->with('user', 'board');
+
+        return KeysetPaginator::paginate(
+            query: $query,
+            perPage: $perPage,
+            sortKeys: $sortKeys,
+            uniqueKey: 'id',
+            cursor: $cursor,
+        );
     }
 
     /**
@@ -1337,11 +1436,14 @@ class PostRepository implements PostRepositoryInterface
      *
      * @param  array  $boardIds  검색 대상 게시판 ID 목록
      * @param  string  $keyword  검색 키워드
-     * @return int 키워드와 일치하는 게시글 수
+     * @return BoundedCount 키워드와 일치하는 게시글 수 (정확도 포함)
      */
-    public function countAcrossBoards(array $boardIds, string $keyword): int
+    public function countAcrossBoards(array $boardIds, string $keyword): BoundedCount
     {
-        return $this->buildPublicSearchQueryByIds($boardIds, $keyword)->count();
+        return BoundedPaginator::count(
+            $this->buildPublicSearchQueryByIds($boardIds, $keyword),
+            PaginationLimits::resultCap('search')
+        );
     }
 
     /**
@@ -1387,22 +1489,17 @@ class PostRepository implements PostRepositoryInterface
     /**
      * 키워드 검색 조건을 쿼리에 적용합니다.
      *
-     * FULLTEXT 인덱스가 지원되면 MATCH...AGAINST를, 아니면 LIKE fallback을 사용합니다.
+     * 어떤 조건이 붙는지는 활성 검색 엔진이 정합니다. 저장소는 "이 컬럼들로 이 키워드를
+     * 걸어라" 만 말하고 엔진 종류를 알지 않습니다 — 구체 엔진을 여기서 지목하면 플러그인이
+     * 등록한 검색 엔진이 호출될 기회 자체를 잃습니다. 정제·폴백(LIKE, 와일드카드 escape
+     * 포함)은 모두 코어 해석기가 단독으로 수행합니다.
      *
      * @param  Builder  $query  쿼리 빌더
      * @param  string  $keyword  검색 키워드
      */
     private function applyKeywordSearch(Builder $query, string $keyword): void
     {
-        if (DatabaseFulltextEngine::supportsFulltext()) {
-            $query->whereRaw('MATCH(`title`, `content`) AGAINST(? IN BOOLEAN MODE)', [$keyword]);
-        } else {
-            $escapedKeyword = $this->escapeLikeKeyword($keyword);
-            $query->where(function ($q) use ($escapedKeyword) {
-                $q->where('title', 'like', "%{$escapedKeyword}%")
-                    ->orWhere('content', 'like', "%{$escapedKeyword}%");
-            });
-        }
+        KeywordSearch::apply($query, ['title', 'content'], $keyword);
     }
 
     /**
@@ -1595,6 +1692,7 @@ class PostRepository implements PostRepositoryInterface
      */
     private function getInactiveBoardIds(): array
     {
+        // audit:allow query-unbounded-get reason: 게시판은 운영자가 만든 수만큼만 존재한다 (글 수와 무관)
         return Board::where('is_active', false)->pluck('id')->all();
     }
 

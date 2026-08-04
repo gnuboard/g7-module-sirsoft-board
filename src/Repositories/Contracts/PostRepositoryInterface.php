@@ -2,9 +2,12 @@
 
 namespace Modules\Sirsoft\Board\Repositories\Contracts;
 
+use App\Support\Query\BoundedCount;
+use App\Support\Query\BoundedPage;
 use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Modules\Sirsoft\Board\Models\Board;
 use Modules\Sirsoft\Board\Models\Post;
@@ -108,9 +111,10 @@ interface PostRepositoryInterface
      *
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  게시글 ID
+     * @param  int|null  $boardId  게시판 ID (전달 시 슬러그 재조회 생략)
      * @return int 증가된 조회수
      */
-    public function incrementViewCount(string $slug, int $id): int;
+    public function incrementViewCount(string $slug, int $id, ?int $boardId = null): int;
 
     /**
      * 해당 게시판의 게시글이 공지글인지 여부만 경량 조회합니다.
@@ -154,9 +158,10 @@ interface PostRepositoryInterface
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  게시글 ID
      * @param  int|null  $boardId  게시판 ID (전달 시 Board 재조회 생략)
+     * @param  Board|null  $board  이미 조회한 게시판 모델 (전달 시 board 관계 적재까지 생략)
      * @return Post|null 게시글 모델 (카운트 포함)
      */
-    public function findWithCounts(string $slug, int $id, ?int $boardId = null): ?Post;
+    public function findWithCounts(string $slug, int $id, ?int $boardId = null, ?Board $board = null): ?Post;
 
     /**
      * 전체 일반 게시글(원글) 수를 조회합니다.
@@ -165,9 +170,9 @@ interface PostRepositoryInterface
      * @param  string  $slug  게시판 슬러그
      * @param  array  $filters  필터 조건
      * @param  bool  $withTrashed  삭제된 게시글 포함 여부
-     * @return int 일반 게시글 수 (답글, 공지 제외)
+     * @return BoundedCount 일반 게시글 수 + 정확도 (답글, 공지 제외)
      */
-    public function countNormalPosts(string $slug, array $filters = [], bool $withTrashed = false): int;
+    public function countNormalPosts(string $slug, array $filters = [], bool $withTrashed = false): BoundedCount;
 
     /**
      * 이전/다음 게시글을 조회합니다.
@@ -198,19 +203,27 @@ interface PostRepositoryInterface
      * @param  string  $keyword  검색 키워드
      * @param  string  $orderBy  정렬 컬럼
      * @param  string  $direction  정렬 방향 (asc, desc)
-     * @param  int  $limit  조회할 최대 항목 수
-     * @return array{total: int, items: Collection}
+     * @param  int  $perPage  페이지당 항목 수
+     * @param  int  $page  페이지 번호
+     * @return BoundedPage 페이지 결과 (총 건수 정확도 포함)
      */
-    public function searchByKeyword(string $slug, string $keyword, string $orderBy = 'created_at', string $direction = 'desc', int $limit = 10): array;
+    public function searchByKeyword(
+        string $slug,
+        string $keyword,
+        string $orderBy = 'created_at',
+        string $direction = 'desc',
+        int $perPage = 10,
+        int $page = 1
+    ): BoundedPage;
 
     /**
      * 게시판에서 키워드와 일치하는 게시글 수를 조회합니다.
      *
      * @param  string  $slug  게시판 슬러그
      * @param  string  $keyword  검색 키워드
-     * @return int 일치하는 게시글 수
+     * @return BoundedCount 일치하는 게시글 수 (정확도 포함)
      */
-    public function countByKeyword(string $slug, string $keyword): int;
+    public function countByKeyword(string $slug, string $keyword): BoundedCount;
 
     /**
      * 여러 게시판에서 키워드로 게시글을 검색합니다 (단일 쿼리, DB 페이지네이션).
@@ -223,16 +236,44 @@ interface PostRepositoryInterface
      * @param  int  $page  페이지 번호
      * @return array{total: int, items: Collection}
      */
-    public function searchAcrossBoards(array $boardIds, string $keyword, string $orderBy = 'created_at', string $direction = 'desc', int $perPage = 10, int $page = 1): array;
+    public function searchAcrossBoards(
+        array $boardIds,
+        string $keyword,
+        string $orderBy = 'created_at',
+        string $direction = 'desc',
+        int $perPage = 10,
+        int $page = 1
+    ): BoundedPage;
+
+    /**
+     * 여러 게시판에서 키워드로 게시글을 커서(키셋)로 검색합니다.
+     *
+     * 커서 적용 가능 여부 판정은 코어가 담당하므로, 이 메서드는 이미 검증된 정렬 키를
+     * 받아 조회만 수행합니다.
+     *
+     * @param  array  $boardIds  검색 대상 게시판 ID 목록
+     * @param  string  $keyword  검색 키워드
+     * @param  array<int, array{0: string, 1: string}>  $sortKeys  [[컬럼, 방향], ...]
+     * @param  int  $perPage  페이지당 항목 수
+     * @param  string|null  $cursor  인코딩된 커서 (첫 페이지면 null)
+     * @return CursorPaginator 커서 페이지 결과
+     */
+    public function searchAcrossBoardsByCursor(
+        array $boardIds,
+        string $keyword,
+        array $sortKeys,
+        int $perPage = 10,
+        ?string $cursor = null
+    ): CursorPaginator;
 
     /**
      * 여러 게시판에서 키워드와 일치하는 게시글 수를 조회합니다 (단일 쿼리).
      *
      * @param  array  $boardIds  검색 대상 게시판 ID 목록
      * @param  string  $keyword  검색 키워드
-     * @return int 키워드와 일치하는 게시글 수
+     * @return BoundedCount 키워드와 일치하는 게시글 수 (정확도 포함)
      */
-    public function countAcrossBoards(array $boardIds, string $keyword): int;
+    public function countAcrossBoards(array $boardIds, string $keyword): BoundedCount;
 
     /**
      * 사용자의 게시글 활동 통계를 조회합니다.

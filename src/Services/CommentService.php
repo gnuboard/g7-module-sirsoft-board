@@ -5,6 +5,8 @@ namespace Modules\Sirsoft\Board\Services;
 use App\Contracts\Extension\CacheInterface;
 use App\Enums\PermissionType;
 use App\Extension\HookManager;
+use App\Support\Query\BoundedCount;
+use App\Support\Query\BoundedPage;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -87,6 +89,66 @@ class CommentService
     }
 
     /**
+     * 특정 게시글의 댓글을 원댓글 기준으로 페이지네이션해 조회합니다.
+     *
+     * 댓글이 상한을 넘는 글에서도 뒤쪽 댓글에 도달할 수 있게 하는 경로입니다.
+     * 정렬 방향·권한 스코프 해석은 전량 조회와 동일합니다.
+     *
+     * @param  string  $slug  게시판 슬러그
+     * @param  int  $postId  게시글 ID
+     * @param  int  $perPage  페이지당 원댓글 수
+     * @param  int  $page  현재 페이지
+     * @param  string  $context  컨텍스트 (admin 또는 user)
+     * @param  bool|null  $withTrashed  삭제된 댓글 포함 여부 (null이면 권한으로 결정)
+     * @param  int|null  $boardId  게시판 ID
+     * @param  Board|null  $board  게시판 모델
+     * @return BoundedPage 원댓글 기준 페이지 (트리 정렬된 댓글 컬렉션)
+     */
+    public function paginateCommentsByPostId(
+        string $slug,
+        int $postId,
+        int $perPage,
+        int $page = 1,
+        string $context = 'admin',
+        ?bool $withTrashed = null,
+        ?int $boardId = null,
+        ?Board $board = null
+    ): BoundedPage {
+        if ($withTrashed === null) {
+            $withTrashed = $this->checkBoardPermission($slug, 'admin.control')
+                || $this->checkBoardPermission($slug, 'admin.manage')
+                || $this->checkBoardPermission($slug, 'manager', PermissionType::User);
+        }
+
+        if (! $board) {
+            $board = $boardId
+                ? $this->boardRepository->find($boardId)
+                : $this->boardRepository->findBySlug($slug);
+        }
+        $boardId = $boardId ?? $board?->id;
+        $commentOrder = $board?->comment_order;
+
+        $orderDirection = $commentOrder instanceof \BackedEnum
+            ? $commentOrder->value
+            : ($commentOrder ?? 'DESC');
+
+        $scopePermission = $context === 'admin'
+            ? "sirsoft-board.{$slug}.admin.comments.read"
+            : "sirsoft-board.{$slug}.comments.read";
+
+        return $this->commentRepository->paginateRootsByPostId(
+            $slug,
+            $postId,
+            $perPage,
+            $page,
+            $withTrashed,
+            $orderDirection,
+            $scopePermission,
+            $boardId
+        );
+    }
+
+    /**
      * ID로 댓글을 조회합니다.
      *
      * @param  string  $slug  게시판 슬러그
@@ -95,6 +157,33 @@ class CommentService
      * @return Comment 댓글 모델
      *
      * @throws ModelNotFoundException
+     */
+    /**
+     * 특정 게시글의 댓글 총 건수를 조회합니다.
+     *
+     * 목록이 상한에서 끊긴 경우에만 부르도록 설계돼 있습니다 — 상한 이하면 이미 전량을
+     * 받았으므로 세는 쿼리를 다시 실행할 이유가 없습니다.
+     *
+     * @param  string  $slug  게시판 슬러그
+     * @param  int  $postId  게시글 ID
+     * @param  bool  $withTrashed  삭제 댓글 포함 여부
+     * @param  int|null  $boardId  게시판 ID (전달 시 Board 재조회 생략)
+     * @return BoundedCount 댓글 총 건수 (정확도 포함)
+     */
+    public function countCommentsByPostId(string $slug, int $postId, bool $withTrashed = false, ?int $boardId = null): BoundedCount
+    {
+        return $this->commentRepository->countByPostId($slug, $postId, $withTrashed, $boardId);
+    }
+
+    /**
+     * 댓글 하나를 조회합니다.
+     *
+     * @param  string  $slug  게시판 슬러그
+     * @param  int  $id  댓글 ID
+     * @param  int|null  $postId  게시글 ID (전달 시 상위 스코프까지 검사)
+     * @return Comment 조회된 댓글
+     *
+     * @throws ModelNotFoundException 댓글이 없거나 상위 스코프가 다를 때
      */
     public function getComment(string $slug, int $id, ?int $postId = null): Comment
     {

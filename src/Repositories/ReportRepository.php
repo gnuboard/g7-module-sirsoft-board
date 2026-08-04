@@ -3,9 +3,11 @@
 namespace Modules\Sirsoft\Board\Repositories;
 
 use App\Helpers\PermissionHelper;
+use App\Repositories\Concerns\FiltersByDateRange;
 use App\Repositories\Concerns\PaginatesWithDeferredJoin;
 use App\Repositories\Concerns\ResolvesSortSpec;
-use App\Search\Engines\DatabaseFulltextEngine;
+use App\Search\KeywordSearch;
+use App\Support\Query\PaginationLimits;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -29,6 +31,7 @@ use Modules\Sirsoft\Board\Repositories\Contracts\ReportRepositoryInterface;
  */
 class ReportRepository implements ReportRepositoryInterface
 {
+    use FiltersByDateRange;
     use PaginatesWithDeferredJoin;
     use ResolvesSortSpec;
 
@@ -92,6 +95,7 @@ class ReportRepository implements ReportRepositoryInterface
             sort: [['column' => 'created_at', 'direction' => 'desc']],
             perPage: $perPage,
             relations: ['board', 'author', 'processor'],
+            resultCap: PaginationLimits::resultCap('admin.reports'),
         );
     }
 
@@ -358,6 +362,7 @@ class ReportRepository implements ReportRepositoryInterface
                 // 대상 글 ID — 게시글 신고는 target_id 자체, 댓글 신고는 그 댓글이 달린 글
                 $outer->addSelect(['target_post_id_comment' => $targetColumn(Comment::class, 'comment', 'post_id')]);
             },
+            resultCap: PaginationLimits::resultCap('admin.reports'),
         );
 
         // 갈래별로 나눠 읽은 대상 정보를 화면이 쓰는 단일 속성으로 합친다.
@@ -398,7 +403,7 @@ class ReportRepository implements ReportRepositoryInterface
             // 추가 필드: post_title (paginateGrouped 전용 — logs 첫 번째 snapshot 기준)
             if (in_array('post_title', $extraFields) && ($searchField === 'all' || $searchField === 'post_title')) {
                 $q->orWhereHas('logs', function ($lq) use ($keyword) {
-                    DatabaseFulltextEngine::whereFulltext($lq, 'snapshot', $keyword);
+                    KeywordSearch::apply($lq, 'snapshot', $keyword);
                     $lq->oldest();
                 });
             }
@@ -406,7 +411,7 @@ class ReportRepository implements ReportRepositoryInterface
             // 게시판명 검색
             if ($searchField === 'all' || $searchField === 'board_name') {
                 $q->orWhereHas('board', function ($bq) use ($keyword) {
-                    DatabaseFulltextEngine::whereFulltext($bq, 'name', $keyword);
+                    KeywordSearch::apply($bq, 'name', $keyword);
                 });
             }
 
@@ -463,9 +468,11 @@ class ReportRepository implements ReportRepositoryInterface
      */
     public function countTodayReportsByUser(int $userId): int
     {
-        return ReportLog::where('reporter_id', $userId)
-            ->whereDate('created_at', today())
-            ->count();
+        // whereDate 는 컬럼에 DATE() 를 씌워 인덱스를 무력화한다 — 범위 조건으로 준다.
+        $query = ReportLog::where('reporter_id', $userId);
+        $this->applyDayFilter($query, 'created_at', today());
+
+        return $query->count();
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Enums\PermissionType;
 use App\Http\Middleware\PermissionMiddleware;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Modules\Sirsoft\Board\Support\BoardPermissionCacheKeys;
 
 /**
  * 게시판 권한 체크 Trait
@@ -125,7 +126,8 @@ trait ChecksBoardPermission
      */
     public static function clearPermissionCache(): void
     {
-        request()->attributes->remove('_board_permission_cache');
+        request()->attributes->remove(BoardPermissionCacheKeys::PERMISSION);
+        request()->attributes->remove(BoardPermissionCacheKeys::ABILITIES);
     }
 
     /**
@@ -145,7 +147,7 @@ trait ChecksBoardPermission
         $cacheKey = $userId.'|'.$permission.'|'.$type->value.'|'.($requireAll ? '1' : '0');
 
         // 요청 인스턴스에 권한 캐시를 저장하여 요청 단위로 자동 격리
-        $cache = $request->attributes->get('_board_permission_cache', []);
+        $cache = $request->attributes->get(BoardPermissionCacheKeys::PERMISSION, []);
 
         if (isset($cache[$cacheKey])) {
             return $cache[$cacheKey];
@@ -167,7 +169,7 @@ trait ChecksBoardPermission
         );
 
         $cache[$cacheKey] = $passed;
-        $request->attributes->set('_board_permission_cache', $cache);
+        $request->attributes->set(BoardPermissionCacheKeys::PERMISSION, $cache);
 
         return $passed;
     }
