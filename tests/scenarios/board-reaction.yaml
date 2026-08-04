@@ -38,6 +38,8 @@ axes:
     - reaction_type_label_localized
     - reaction_type_label_falls_back
     - react_logs_activity
+    - react_failure_rolls_back
+    - react_pending_disables_button
 
 effects:
   # 등록/전환/해제 + 카운트 증감 정합성
@@ -67,6 +69,9 @@ effects:
   - missing_locale_falls_back_to_default
   # 활동 로그
   - react_logs_add_change_remove_activity
+  # 프론트 UX (낙관 하이라이트 + 응답값 개수 + 실패 롤백)
+  - reaction_failure_rolls_back_optimistic_state
+  - reaction_pending_disables_button
   # E2E 흐름
   - detail_register_then_switch_then_remove_updates_ui
 

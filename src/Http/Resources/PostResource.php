@@ -493,14 +493,19 @@ class PostResource extends BaseApiResource
      * 반응 카운트를 응답용으로 반환합니다.
      *
      * 게시판이 켠(활성) 유형 전체를 키로 항상 포함하며, 저장된 카운트가 없는 유형은
-     * 0 으로 채웁니다 (확정 09 — 활성 유형은 개수 0이어도 항상 노출). 키는 유형 ID 문자열.
+     * 0 으로 채웁니다 (확정 09 — 활성 유형은 개수 0이어도 항상 노출). 키는 유형 ID.
      *
-     * @return array<string, int> 유형 ID 문자열 => 개수
+     * 반드시 stdClass(객체)로 반환한다 — 키가 정수(유형 ID)뿐이면 배열이 list 로 오인되어
+     * JsonResource::resolve() 가 `[count1, count2]` 로 재인덱싱하고, 그러면 프론트가
+     * `reaction_counts[유형ID]` 로 읽을 때 엉뚱한 인덱스를 읽어 개수가 항상 0/어긋난다.
+     * stdClass 는 array 필터의 재인덱싱을 타지 않아 항상 `{"유형ID": 개수}` JSON 객체로 나간다.
+     *
+     * @return \stdClass 유형 ID => 개수 (JSON 객체)
      */
-    private function getReactionCountsForResponse(): array
+    private function getReactionCountsForResponse(): \stdClass
     {
         if (! $this->relationLoaded('board') || ! $this->board) {
-            return [];
+            return new \stdClass;
         }
 
         $stored = $this->reaction_counts ?? [];
@@ -512,7 +517,7 @@ class PostResource extends BaseApiResource
             $counts[$key] = (int) ($stored[$key] ?? 0);
         }
 
-        return $counts;
+        return (object) $counts;
     }
 
     /**

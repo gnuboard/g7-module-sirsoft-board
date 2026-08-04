@@ -192,6 +192,41 @@ class ReactionApiTest extends BoardTestCase
     }
 
     /**
+     * 게시글 상세 응답의 reaction_counts 가 유형 ID 키를 보존한다 (JSON 객체, 배열 재인덱싱 금지).
+     *
+     * 회귀: PostResource 의 reaction_counts 키가 정수 [1,2] 라 JsonResource::resolve() 가
+     * list 로 오인해 [count1, count2] 로 재인덱싱하면, 프론트가 reaction_counts[유형ID] 로
+     * 읽을 때 엉뚱한 인덱스를 읽어 개수가 항상 0/어긋나게 표시된다. 키는 항상 유형 ID 여야 한다.
+     */
+    public function test_post_detail_reaction_counts_preserves_type_id_keys(): void
+    {
+        // 상세 조회는 posts.read 권한이 필요하다
+        $this->grantUserRolePermissions(['posts.read', 'posts.write']);
+
+        $reactor = $this->createUser();
+        $postId = $this->createTestPost(['user_id' => $this->createUser()->id]);
+
+        // 추천 1회 등록
+        $this->actingAs($reactor, 'sanctum')
+            ->postJson($this->reactUrl($postId), ['reaction_type_id' => $this->likeId])
+            ->assertOk();
+
+        // 게시글 상세 조회 — reaction_counts 는 유형 ID 키로 개수를 담아야 한다
+        $detail = $this->actingAs($reactor, 'sanctum')
+            ->getJson("/api/modules/sirsoft-board/boards/{$this->board->slug}/posts/{$postId}");
+
+        $detail->assertOk()
+            ->assertJsonPath("data.reaction_counts.{$this->likeId}", 1)
+            ->assertJsonPath("data.reaction_counts.{$this->dislikeId}", 0)
+            ->assertJsonPath('data.my_reaction_type_id', $this->likeId);
+
+        // 키가 유형 ID 로 보존되는지 직접 확인 (0-기반 재인덱싱 아님)
+        $counts = $detail->json('data.reaction_counts');
+        $this->assertArrayHasKey((string) $this->likeId, $counts);
+        $this->assertArrayNotHasKey('0', $counts);
+    }
+
+    /**
      * 반응 등록/전환/해제 시 활동 로그가 기록된다 (after_react 훅 → 리스너).
      *
      * @scenario case=react_logs_activity
