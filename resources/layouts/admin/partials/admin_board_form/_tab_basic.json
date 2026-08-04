@@ -161,7 +161,7 @@
                       "name": "Icon",
                       "props": {
                         "name": "circle-info",
-                        "className": "text-secondary w-4 h-4 mt-0.5 flex-shrink-0"
+                        "className": "text-secondary text-base mt-0.5 flex-shrink-0"
                       }
                     },
                     {
@@ -671,6 +671,129 @@
                 "disabled": "{{_computed.isReadOnly}}",
                 "className": "flex-shrink-0 ml-4"
               }
+            }
+          ]
+        },
+        {
+          "id": "field_use_reaction",
+          "type": "basic",
+          "name": "Div",
+          "children": [
+            {
+              "type": "basic",
+              "name": "Div",
+              "props": {
+                "className": "flex-start justify-between"
+              },
+              "children": [
+                {
+                  "type": "basic",
+                  "name": "Div",
+                  "props": {
+                    "className": "flex-1"
+                  },
+                  "children": [
+                    {
+                      "type": "basic",
+                      "name": "Label",
+                      "props": {
+                        "className": "text-heading"
+                      },
+                      "text": "$t:sirsoft-board.admin.form.fields.use_reaction"
+                    },
+                    {
+                      "type": "basic",
+                      "name": "P",
+                      "props": {
+                        "className": "form-hint"
+                      },
+                      "text": "$t:sirsoft-board.admin.form.descriptions.use_reaction"
+                    }
+                  ]
+                },
+                {
+                  "type": "composite",
+                  "name": "Toggle",
+                  "props": {
+                    "name": "use_reaction",
+                    "disabled": "{{_computed.isReadOnly}}",
+                    "className": "flex-shrink-0 ml-4"
+                  }
+                }
+              ]
+            },
+            {
+              "comment": "사용할 반응 유형 선택 — 반응 사용 on 일 때만 노출. DB 등록 유형 전체(reactionTypes)를 순회해 체크박스로 active_reaction_types(code 배열) 를 토글.",
+              "type": "basic",
+              "name": "Div",
+              "if": "{{_local.form?.use_reaction === true}}",
+              "props": {
+                "className": "mt-3 pl-1"
+              },
+              "children": [
+                {
+                  "type": "basic",
+                  "name": "P",
+                  "props": {
+                    "className": "form-hint mb-2"
+                  },
+                  "text": "$t:sirsoft-board.admin.form.fields.active_reaction_types"
+                },
+                {
+                  "type": "basic",
+                  "name": "Div",
+                  "props": {
+                    "className": "flex flex-col gap-2"
+                  },
+                  "children": [
+                    {
+                      "type": "basic",
+                      "name": "Div",
+                      "iteration": {
+                        "source": "{{reactionTypes?.data?.reaction_types ?? []}}",
+                        "item_var": "reactionType",
+                        "index_var": "reactionIdx"
+                      },
+                      "children": [
+                        {
+                          "type": "basic",
+                          "name": "Label",
+                          "props": {
+                            "className": "flex-start gap-2 cursor-pointer"
+                          },
+                          "children": [
+                            {
+                              "type": "basic",
+                              "name": "Input",
+                              "props": {
+                                "type": "checkbox",
+                                "className": "checkbox-aligned",
+                                "disabled": "{{_computed.isReadOnly}}",
+                                "checked": "{{(_local.form?.active_reaction_types ?? []).includes(reactionType.code)}}"
+                              },
+                              "actions": [
+                                {
+                                  "type": "change",
+                                  "handler": "setState",
+                                  "params": {
+                                    "target": "local",
+                                    "form.active_reaction_types": "{{(_local.form?.active_reaction_types ?? []).includes(reactionType.code) ? (_local.form?.active_reaction_types ?? []).filter(c => c !== reactionType.code) : [...(_local.form?.active_reaction_types ?? []), reactionType.code]}}"
+                                  }
+                                }
+                              ]
+                            },
+                            {
+                              "type": "basic",
+                              "name": "Span",
+                              "text": "{{reactionType.name ?? reactionType.code}}"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
             }
           ]
         }

@@ -134,6 +134,8 @@ HTTP/1.1 200
 | use_comment | body | boolean | 예 | — | 댓글 기능 사용 여부 |
 | use_reply | body | boolean | 예 | — | 게시글 답변(원글에 대한 답글) 기능 사용 여부 |
 | use_report | body | boolean | 예 | — | 게시글/댓글 신고 기능 사용 여부 |
+| use_reaction | body | boolean | 예 | — | 게시글 반응(추천/비추천) 기능 사용 여부 |
+| active_reaction_types | body | array | 아니오 | — | 이 게시판에서 켠 반응 유형 code 목록 (문자열 배열, 예: `["like","dislike"]`) |
 | comment_order | body | string | 예 | `ASC`, `DESC` | 댓글 정렬 순서 (ASC 오름차순 / DESC 내림차순) |
 | new_display_hours | body | integer | 아니오 | min 0, max 720 | 신규(NEW) 표시를 유지할 기간 (시간 단위, 최대 720시간=30일). `0` 은 NEW 배지를 표시하지 않음 |
 | min_title_length | body | integer | 아니오 | min 0, max 200 | 게시글 제목 최소 글자 수 |
@@ -1251,6 +1253,8 @@ HTTP/1.1 200
 | use_comment | body | boolean | 예 | — | 댓글 기능 사용 여부 |
 | use_reply | body | boolean | 예 | — | 게시글 답변(원글에 대한 답글) 기능 사용 여부 |
 | use_report | body | boolean | 예 | — | 게시글/댓글 신고 기능 사용 여부 |
+| use_reaction | body | boolean | 예 | — | 게시글 반응(추천/비추천) 기능 사용 여부 |
+| active_reaction_types | body | array | 아니오 | — | 이 게시판에서 켠 반응 유형 code 목록 (문자열 배열, 예: `["like","dislike"]`) |
 | comment_order | body | string | 예 | `ASC`, `DESC` | 댓글 정렬 순서 (ASC 오름차순 / DESC 내림차순) |
 | new_display_hours | body | integer | 아니오 | min 0, max 720 | 신규(NEW) 표시를 유지할 기간 (시간 단위, 최대 720시간=30일). `0` 은 NEW 배지를 표시하지 않음 |
 | min_title_length | body | integer | 아니오 | min 0, max 200 | 게시글 제목 최소 글자 수 |
