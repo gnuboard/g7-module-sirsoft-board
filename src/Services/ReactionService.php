@@ -2,15 +2,16 @@
 
 namespace Modules\Sirsoft\Board\Services;
 
+use App\Enums\PermissionType;
 use App\Extension\HookManager;
 use Illuminate\Support\Facades\DB;
 use Modules\Sirsoft\Board\Exceptions\PostNotFoundException;
 use Modules\Sirsoft\Board\Exceptions\ReactionNotAllowedException;
 use Modules\Sirsoft\Board\Models\Board;
-use Modules\Sirsoft\Board\Models\Post;
 use Modules\Sirsoft\Board\Repositories\Contracts\PostRepositoryInterface;
 use Modules\Sirsoft\Board\Repositories\Contracts\ReactionRepositoryInterface;
 use Modules\Sirsoft\Board\Repositories\Contracts\ReactionTypeRepositoryInterface;
+use Modules\Sirsoft\Board\Traits\ChecksBoardPermission;
 
 /**
  * 반응 서비스
@@ -21,6 +22,8 @@ use Modules\Sirsoft\Board\Repositories\Contracts\ReactionTypeRepositoryInterface
  */
 class ReactionService
 {
+    use ChecksBoardPermission;
+
     /**
      * 현재 지원하는 반응 대상 타입 (확정 10 — 게시글만, 향후 comment 확장 가능).
      */
@@ -74,6 +77,14 @@ class ReactionService
         // 본인 글 반응 차단 (확정 08)
         if ((int) $post->user_id === $userId) {
             throw ReactionNotAllowedException::selfPost();
+        }
+
+        // 비밀글 반응 차단 — 본문 열람 권한이 없는 사용자는 반응 불가.
+        // 신고(PostResource::canViewSecretContent)와 동일한 판정을 재사용해,
+        // 본문을 못 보는 사용자가 반응만 남기는 우회를 막는다.
+        // 작성자 본인은 위에서 이미 차단되므로 여기서는 게시판별 비밀글 열람 권한만 본다.
+        if ($post->is_secret && ! $this->canReactToSecretPost($board->slug)) {
+            throw ReactionNotAllowedException::secretDenied();
         }
 
         // 요청 유형이 존재하는 활성 유형이면서 게시판이 켠 유형인지 확인 (확정 11)
@@ -149,5 +160,22 @@ class ReactionService
         );
 
         return $result;
+    }
+
+    /**
+     * 비밀글에 반응할 수 있는 열람 권한이 있는지 확인합니다.
+     *
+     * 반응은 사용자(User) 페이지 전용 기능이므로 게시판별 비밀글 읽기 권한
+     * (posts.read-secret) 또는 게시판 매니저 권한만 인정합니다. 작성자 본인은
+     * 호출 이전에 이미 selfPost 로 차단되므로 여기서는 고려하지 않습니다.
+     * `PostResource::canViewSecretContent` 의 게시판 권한 판정과 동일한 기준입니다.
+     *
+     * @param  string  $slug  대상 게시판 슬러그
+     * @return bool 비밀글 반응 가능 여부
+     */
+    private function canReactToSecretPost(string $slug): bool
+    {
+        return $this->checkBoardPermission($slug, 'posts.read-secret', PermissionType::User)
+            || $this->checkBoardPermission($slug, 'manager', PermissionType::User);
     }
 }

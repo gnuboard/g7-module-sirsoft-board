@@ -14,6 +14,7 @@ use Modules\Sirsoft\Board\Tests\BoardTestCase;
  * 차단, 본인 글 차단, 비로그인 차단을 종단 검증한다 (이슈 #525 §10 테스트 범위).
  *
  * @scenario case=guest_react_blocked
+ *
  * @effects guest_react_returns_401
  */
 class ReactionApiTest extends BoardTestCase
@@ -192,6 +193,70 @@ class ReactionApiTest extends BoardTestCase
     }
 
     /**
+     * 비밀글에 열람 권한이 없는 사용자는 반응할 수 없다 (422, secret_denied).
+     *
+     * 회귀: 반응 서비스가 비밀글 열람 권한을 검사하지 않으면, 본문(content=null)을
+     * 못 보는 사용자가 추천/비추천만 남기는 우회가 가능하다. 신고(canViewSecretContent)와
+     * 동일하게 열람 권한 없는 비밀글 반응을 서버가 최종 차단해야 한다.
+     *
+     * @scenario case=secret_post_react_blocked
+     *
+     * @effects secret_post_without_permission_returns_422
+     */
+    public function test_react_blocked_on_secret_post_without_permission(): void
+    {
+        $author = $this->createUser();
+        $reactor = $this->createUser();
+        $postId = $this->createTestPost([
+            'user_id' => $author->id,
+            'is_secret' => true,
+        ]);
+
+        $this->actingAs($reactor, 'sanctum')
+            ->postJson($this->reactUrl($postId), ['reaction_type_id' => $this->likeId])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.code', 'reaction_not_allowed');
+
+        // 반응 이력이 남지 않아야 한다
+        $this->assertDatabaseMissing('board_reactions', [
+            'user_id' => $reactor->id,
+            'target_id' => $postId,
+        ]);
+    }
+
+    /**
+     * 비밀글 열람 권한(posts.read-secret)이 있는 사용자는 비밀글에도 반응할 수 있다.
+     *
+     * 비밀글 가드가 열람 권한자까지 막지 않는지 확인한다 (신고 판정과 동일 기준).
+     *
+     * @scenario case=secret_post_react_allowed_with_permission
+     *
+     * @effects secret_post_with_read_secret_permission_allows_react
+     */
+    public function test_react_allowed_on_secret_post_with_read_secret_permission(): void
+    {
+        $this->grantUserRolePermissions(['posts.read-secret']);
+
+        $author = $this->createUser();
+        $reactor = $this->createUser();
+        $postId = $this->createTestPost([
+            'user_id' => $author->id,
+            'is_secret' => true,
+        ]);
+
+        $this->actingAs($reactor, 'sanctum')
+            ->postJson($this->reactUrl($postId), ['reaction_type_id' => $this->likeId])
+            ->assertOk()
+            ->assertJsonPath('data.action', 'add');
+
+        $this->assertDatabaseHas('board_reactions', [
+            'user_id' => $reactor->id,
+            'target_id' => $postId,
+            'reaction_type_id' => $this->likeId,
+        ]);
+    }
+
+    /**
      * 게시글 상세 응답의 reaction_counts 가 유형 ID 키를 보존한다 (JSON 객체, 배열 재인덱싱 금지).
      *
      * 회귀: PostResource 의 reaction_counts 키가 정수 [1,2] 라 JsonResource::resolve() 가
@@ -230,6 +295,7 @@ class ReactionApiTest extends BoardTestCase
      * 반응 등록/전환/해제 시 활동 로그가 기록된다 (after_react 훅 → 리스너).
      *
      * @scenario case=react_logs_activity
+     *
      * @effects react_logs_add_change_remove_activity
      */
     public function test_react_writes_activity_log(): void

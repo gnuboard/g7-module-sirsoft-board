@@ -134,6 +134,7 @@ return [
         'disabled' => 'Reactions are disabled for this board.',
         'inactive_type' => 'This reaction type is not available on this board.',
         'self_post' => 'You cannot react to your own post.',
+        'secret_denied' => 'You cannot react to a secret post you are not allowed to view.',
         'login_required' => 'You need to sign in to use this feature.',
     ],
 

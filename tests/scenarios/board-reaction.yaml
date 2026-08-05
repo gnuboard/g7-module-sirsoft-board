@@ -40,6 +40,9 @@ axes:
     - react_logs_activity
     - react_failure_rolls_back
     - react_pending_disables_button
+    - secret_post_react_blocked
+    - secret_post_react_allowed_with_permission
+    - reaction_area_hidden_on_inaccessible_secret_post
 
 effects:
   # 등록/전환/해제 + 카운트 증감 정합성
@@ -54,6 +57,10 @@ effects:
   - inactive_type_react_returns_422
   - use_reaction_off_react_returns_422
   - post_not_in_board_returns_404
+  # 비밀글 열람 권한 가드 (신고와 동일 기준)
+  - secret_post_without_permission_returns_422
+  - secret_post_with_read_secret_permission_allows_react
+  - reaction_area_hidden_when_secret_content_inaccessible
   # 화면 렌더 (확정 09·11)
   - active_types_always_shown_even_zero_count
   - reaction_area_hidden_when_no_active_types

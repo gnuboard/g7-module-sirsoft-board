@@ -17,8 +17,8 @@
  */
 import { test, expect, authenticatePage } from '../../fixtures/board-auth';
 
-const SLUG = 'notice';
-const POST_ID = 1;
+const SLUG = 'free';
+const POST_ID = 18;
 const POST_PATH = `/board/${SLUG}/${POST_ID}`;
 const REACT_API = `**/api/modules/sirsoft-board/boards/${SLUG}/posts/${POST_ID}/react`;
 
@@ -26,7 +26,7 @@ const REACT_API = `**/api/modules/sirsoft-board/boards/${SLUG}/posts/${POST_ID}/
 const LIKE_ID = 1;
 const DISLIKE_ID = 2;
 
-test.describe.skip('게시판 반응 등록→전환→해제 흐름 (#525)', () => {
+test.describe('게시판 반응 등록→전환→해제 흐름 (#525)', () => {
   // @scenario surface=detail_register_switch_remove
   // @effects register_inserts_row_and_increments_count, switch_updates_row_and_adjusts_both_counts, remove_deletes_row_and_decrements_count
   test('추천 등록 → 비추천 전환 → 비추천 해제 시 버튼 하이라이트·개수가 갱신된다', async ({
@@ -66,19 +66,28 @@ test.describe.skip('게시판 반응 등록→전환→해제 흐름 (#525)', ()
     const dislikeButton = page.getByRole('button', { name: /비추천|Not Recommend/ }).first();
 
     // 1) 추천 등록 → count +1, reaction_type_id = like
+    // 처리 중에는 버튼이 disabled(스피너) 되므로, 응답 도착 후 스피너가 완전히 걷히고
+    // 카운트 텍스트가 갱신될 때까지 기다린 다음 다음 클릭을 보낸다 — 그렇지 않으면 아직
+    // 리렌더 중인 버튼에 클릭이 씹혀 요청이 누락된다.
+    // step 자체를 폴링한다(2·3단계 모두 reaction_type_id=DISLIKE_ID 로 동일하므로,
+    // reactBody 값만 보면 세 번째 요청이 발생하지 않아도 이전 값과 우연히 일치해 통과해버린다).
     await likeButton.click();
-    await expect.poll(() => reactBody?.reaction_type_id, { timeout: 5_000 }).toBe(LIKE_ID);
+    await expect.poll(() => step, { timeout: 5_000 }).toBe(1);
+    expect((reactBody as Record<string, unknown> | null)?.reaction_type_id).toBe(LIKE_ID);
+    await expect(likeButton).toHaveText(/추천\s*1/, { timeout: 5_000 });
+    await expect(dislikeButton).toBeEnabled({ timeout: 5_000 });
 
     // 2) 비추천 전환 → like -1 · dislike +1
     await dislikeButton.click();
-    await expect.poll(() => reactBody?.reaction_type_id, { timeout: 5_000 }).toBe(DISLIKE_ID);
+    await expect.poll(() => step, { timeout: 5_000 }).toBe(2);
+    expect((reactBody as Record<string, unknown> | null)?.reaction_type_id).toBe(DISLIKE_ID);
+    await expect(dislikeButton).toHaveText(/비추천\s*1/, { timeout: 5_000 });
+    await expect(dislikeButton).toBeEnabled({ timeout: 5_000 });
 
     // 3) 비추천 재클릭 → 해제 (같은 유형 재요청)
     await dislikeButton.click();
-    await expect.poll(() => reactBody?.reaction_type_id, { timeout: 5_000 }).toBe(DISLIKE_ID);
-
-    // 세 번의 react 호출이 모두 발생 (등록/전환/해제)
-    expect(step).toBe(3);
+    await expect.poll(() => step, { timeout: 5_000 }).toBe(3);
+    expect((reactBody as Record<string, unknown> | null)?.reaction_type_id).toBe(DISLIKE_ID);
   });
 
   // @scenario surface=detail_register_switch_remove

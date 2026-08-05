@@ -19,7 +19,7 @@ use Illuminate\Http\JsonResponse;
 class ReactionNotAllowedException extends Exception
 {
     /**
-     * @param  string  $reason  거절 사유 (disabled | inactive_type | self_post)
+     * @param  string  $reason  거절 사유 (disabled | inactive_type | self_post | secret_denied)
      * @param  string  $message  사용자에게 보일 메시지
      */
     public function __construct(
@@ -57,6 +57,16 @@ class ReactionNotAllowedException extends Exception
     public static function selfPost(): self
     {
         return new self('self_post', __('sirsoft-board::messages.reaction.self_post'));
+    }
+
+    /**
+     * 열람 권한이 없는 비밀글 반응 시도에 대한 예외를 생성합니다.
+     *
+     * @return self 비밀글 열람 권한 없음 사유 예외
+     */
+    public static function secretDenied(): self
+    {
+        return new self('secret_denied', __('sirsoft-board::messages.reaction.secret_denied'));
     }
 
     /**
