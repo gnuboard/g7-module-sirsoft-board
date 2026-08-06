@@ -40,53 +40,21 @@ Authorization: Bearer {YOUR_TOKEN}
 
 _목록 응답: `data.data[]` 배열 항목의 필드 + `data.pagination`._
 
+> **목록은 경량 표현이다.** 관리자 게시판 목록 화면이 쓰는 행 필드는 `id`/`name`/`slug`/`type`/`is_active`/`categories`/`abilities`/`posts_count` 뿐이다. 종전에는 행마다 매니저·스텝 역할에 속한 **모든 사용자(uuid·이름·이메일)** 까지 함께 직렬화하면서 행 수만큼 역할 조회가 추가로 나갔다. 역할/사용자 정보는 게시판 수정 화면(단건 조회 `GET .../admin/boards/{slug}`)이 공급한다.
+
+
 | 필드 | 타입 | 실측 예시값 | 용도/설명 |
 | --- | --- | --- | --- |
 | id | integer | `12` | 기본 키 (내부 식별자) |
-| name | string | `API 문서 샘플 게시판` | 게시판명 (다국어 JSON) |
+| name | string | `API 문서 샘플 게시판` | 게시판명 (현재 로케일로 해석된 문자열) |
 | slug | string | `apidoc-sample-board` | 게시판 슬러그 (URL/테이블명) |
-| is_active | boolean | `true` | active 여부 |
+| description | string | `` | 게시판 설명 (현재 로케일로 해석된 문자열) |
+| posts_count | integer | `0` | 게시글 수 (집계) |
 | type | string | `basic` | 게시판 타입 (basic, gallery, card 등) |
-| description | string | `` | 게시판 설명 (다국어 JSON) |
-| per_page | integer | `20` | 페이지당 게시글 수 (PC) |
-| per_page_mobile | integer | `15` | 페이지당 게시글 수 (Mobile) |
-| order_by | string | `created_at` | 정렬 기준 (created_at, view_count, title, author) |
-| order_direction | string | `DESC` | 정렬 방향 (ASC, DESC) |
+| is_active | boolean | `true` | 활성 여부 |
 | categories | array | `[]` | 분류 목록 (배열) |
-| show_view_count | boolean | `true` | 조회수 노출 |
-| secret_mode | string | `disabled` | 비밀글 설정 (disabled: 사용안함, enabled: 사용함, always: 고정) |
-| use_comment | boolean | `true` | 댓글 기능 사용 |
-| use_reply | boolean | `true` | 게시글 답변 기능 사용 (댓글에 대한 답글 아님) |
-| max_reply_depth | integer | `5` | 답변글 최대 깊이 (1~5) |
-| use_report | boolean | `true` | 게시글/댓글 신고 기능 사용 |
-| comment_order | string | `ASC` | 댓글 정렬 순서 (ASC: 오름차순, DESC: 내림차순) |
-| max_comment_depth | integer | `10` | 대댓글 최대 깊이 (1~10) |
-| min_title_length | integer | `2` | 최소 제목 글자 수 |
-| max_title_length | integer | `200` | 최대 제목 글자 수 |
-| min_content_length | integer | `10` | 최소 게시글 글자 수 |
-| max_content_length | integer | `10000` | 최대 게시글 글자 수 |
-| min_comment_length | integer | `2` | 최소 댓글 글자 수 |
-| max_comment_length | integer | `1000` | 최대 댓글 글자 수 |
-| blocked_keywords | array | `[]` | 금지어 목록 (배열) |
-| use_file_upload | boolean | `true` | 파일 업로드 사용 |
-| max_file_size | integer | `10` | 최대 파일 크기 (MB) |
-| max_file_count | integer | `5` | max file 개수 (집계) |
-| allowed_extensions | array | `["jpg","jpeg","png","gif","pdf","zip"]` | 허용 확장자 배열 |
-| add_to_menu | null | `null` | 관리자 메뉴 등록 여부 (폼 요청에서만 채워지는 토글 초기값 — 조회 응답에서는 항상 null) |
-| new_display_hours | integer | `24` | 신규 게시글 표시 기간 (시간 단위) |
-| board_managers | array | `[]` | 게시판 관리자로 지정된 사용자 목록 (manager 역할 사용자의 uuid/name/email — 역할 기반 파생) |
-| board_steps | array | `[]` | 게시판 승인/처리 담당자(스텝)로 지정된 사용자 목록 (step 역할 사용자의 uuid/name/email — 역할 기반 파생) |
-| board_manager_ids | array | `[]` | board manager 식별자 배열 (연관 리소스 참조) |
-| board_step_ids | array | `[]` | board step 식별자 배열 (연관 리소스 참조) |
-| notify_author | boolean | `true` | 작성자 이메일 알림 (댓글, 대댓글, 답변글, 관리자 처리 시) |
-| notify_admin_on_post | boolean | `true` | 관리자 이메일 알림 (게시글 등록 시) |
-| created_at | string | `2026-07-07 09:34:50` | 생성 일시 |
-| updated_at | string | `2026-07-07 09:34:50` | 최종 수정 일시 |
-| permissions | null | `null` | 연결된 권한 목록 (id/identifier/name — 역할 경유 권한 관계 파생) |
-| category_post_counts | null | `null` | 분류별 게시글 개수 맵 (요청 시 조건부로만 채워지며, 미포함 시 null) |
-| posts_count | integer | `0` | posts 개수 (집계) |
-| user_abilities | null | `null` | 현재 사용자의 게시판별 세부 권한 맵 (can_read/can_write/can_read_secret/can_manage 등 — include_user_abilities 요청 시에만 채워지며 미포함 시 null) |
-| abilities | object | `{"can_create":true,"can_update":true,"can_delete":true}` | 현재 사용자가 이 리소스에 수행 가능한 작업 불리언 맵 (can_update, can_delete 등 — 권한 맵 기반) |
+| is_owner | boolean | `false` | 현재 인증 사용자가 이 게시판의 소유자인지 여부 |
+| abilities | object | `{"can_create":true,"can_update":true,"can_delete":true}` | 현재 사용자가 이 리소스에 수행 가능한 작업 불리언 맵 |
 
 **응답 예시**
 
@@ -97,81 +65,32 @@ HTTP/1.1 200
 ```json
 {
     "success": true,
-    "message": "게시판 정보를 조회했습니다.",
+    "message": "게시판 목록을 조회했습니다.",
     "data": {
         "data": [
             {
-                "id": 1,
+                "id": 12,
                 "name": "API 문서 샘플 게시판",
                 "slug": "apidoc-sample-board",
-                "is_active": true,
-                "type": "basic",
                 "description": "",
-                "per_page": 20,
-                "per_page_mobile": 15,
-                "order_by": "created_at",
-                "order_direction": "DESC",
-                "categories": [],
-                "show_view_count": true,
-                "secret_mode": "{MASKED}",
-                "use_comment": true,
-                "use_reply": true,
-                "max_reply_depth": 5,
-                "use_report": true,
-                "comment_order": "ASC",
-                "max_comment_depth": 10,
-                "min_title_length": 2,
-                "max_title_length": 200,
-                "min_content_length": 10,
-                "max_content_length": 10000,
-                "min_comment_length": 2,
-                "max_comment_length": 1000,
-                "blocked_keywords": [],
-                "use_file_upload": true,
-                "max_file_size": 10,
-                "max_file_count": 5,
-                "allowed_extensions": [
-                    "jpg",
-                    "jpeg",
-                    "png",
-                    "gif",
-                    "pdf",
-                    "zip"
-                ],
-                "add_to_menu": null,
-                "new_display_hours": 24,
-                "board_managers": [],
-                "board_steps": [],
-                "board_manager_ids": [],
-                "board_step_ids": [],
-                "notify_author": true,
-                "notify_admin_on_post": true,
-                "created_at": "2026-07-08 10:41:34",
-                "updated_at": "2026-07-08 10:41:34",
-                "permissions": null,
-                "category_post_counts": null,
                 "posts_count": 0,
-                "user_abilities": null,
+                "type": "basic",
+                "is_active": true,
+                "categories": [],
+                "is_owner": false,
                 "abilities": {
                     "can_create": true,
                     "can_update": true,
                     "can_delete": true
                 }
-            }
+            },
+            "... (총 3건 중 1건 표시)"
         ],
         "pagination": {
             "current_page": 1,
             "last_page": 1,
-            "per_page": 25,
-            "total": 1,
-            "from": 1,
-            "to": 1,
-            "has_more_pages": false
-        },
-        "abilities": {
-            "can_create": true,
-            "can_update": true,
-            "can_delete": true
+            "per_page": 20,
+            "total": 3
         }
     }
 }
@@ -2879,7 +2798,7 @@ HTTP/1.1 200
 
 | 상태코드 | 의미 | 발생 조건 |
 | --- | --- | --- |
-| 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.posts.write|sirsoft-board.{slug}.manager`)이 없는 경우 |
+| 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.posts.write| sirsoft-board.{slug}.manager`)이 없는 경우 |
 | 404 | Not Found | path 파라미터에 해당하는 리소스가 없는 경우 |
 
 <!-- @generated:end -->
@@ -3333,7 +3252,7 @@ HTTP/1.1 200
 
 | 상태코드 | 의미 | 발생 조건 |
 | --- | --- | --- |
-| 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.posts.write|sirsoft-board.{slug}.manager`)이 없는 경우 |
+| 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.posts.write| sirsoft-board.{slug}.manager`)이 없는 경우 |
 | 422 | Unprocessable Entity | 요청 파라미터가 검증 규칙을 위반한 경우 (`error.errors` 에 필드별 메시지) |
 | 404 | Not Found | path 파라미터에 해당하는 리소스가 없는 경우 |
 
@@ -3702,7 +3621,7 @@ HTTP/1.1 200
 
 | 상태코드 | 의미 | 발생 조건 |
 | --- | --- | --- |
-| 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.comments.write|sirsoft-board.{slug}.manager`)이 없는 경우 |
+| 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.comments.write| sirsoft-board.{slug}.manager`)이 없는 경우 |
 | 404 | Not Found | path 파라미터에 해당하는 리소스가 없는 경우 |
 
 <!-- @generated:end -->
@@ -3747,7 +3666,7 @@ Authorization: Bearer {YOUR_TOKEN}   (optional.sanctum: 비회원은 헤더 생�
 
 | 상태코드 | 의미 | 발생 조건 |
 | --- | --- | --- |
-| 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.comments.write|sirsoft-board.{slug}.manager`)이 없는 경우 |
+| 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.comments.write| sirsoft-board.{slug}.manager`)이 없는 경우 |
 | 422 | Unprocessable Entity | 요청 파라미터가 검증 규칙을 위반한 경우 (`error.errors` 에 필드별 메시지) |
 | 404 | Not Found | path 파라미터에 해당하는 리소스가 없는 경우 |
 

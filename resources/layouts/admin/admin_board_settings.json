@@ -37,7 +37,6 @@
     ]
   },
   "initLocal": {
-    "activeNotificationChannel": null,
     "editingDefinition": null,
     "editingTemplate": null,
     "editingRecipients": [],
@@ -128,7 +127,8 @@
         "page": "{{query.page || 1}}",
         "per_page": "{{query.per_page || 20}}",
         "search": "{{query.search}}",
-        "search_type": "{{query.search_type}}"
+        "search_type": "{{query.search_type}}",
+        "template_channel": "{{query.channel ?? 'mail'}}"
       },
       "initLocal": {
         "_merge": "deep",
