@@ -3,6 +3,7 @@
 namespace Modules\Sirsoft\Board\Tests\Feature;
 
 use Illuminate\Support\Facades\DB;
+use Modules\Sirsoft\Board\Models\Comment;
 use Modules\Sirsoft\Board\Models\Post;
 use Modules\Sirsoft\Board\Tests\BoardTestCase;
 use Tests\Concerns\CountsQueries;
@@ -120,6 +121,48 @@ class PostDetailQueryCountRegressionTest extends BoardTestCase
             1,
             $boardSelects,
             '게시글 상세에서 게시판 테이블 SELECT 가 '.$boardSelects.'회 — 이미 조회한 게시판을 다시 찾고 있다.'
+        );
+    }
+
+    /**
+     * 딸린 데이터가 늘어도 상세 화면의 쿼리 수가 늘지 않는지 확인
+     *
+     * 앞의 두 단언은 "같은 행을 두 번 읽지 않는다" 만 본다. 그것만으로는 댓글처럼
+     * 개수가 변하는 자식 데이터에 항목별 쿼리가 붙는 형태를 잡지 못한다 — 그 형태는
+     * 글 행을 한 번만 읽으면서도 댓글 수만큼 쿼리를 낸다.
+     *
+     * 그래서 댓글을 3배로 늘려 놓고 같은 화면을 다시 재, 쿼리 수가 그대로인지 본다.
+     *
+     * @effects post_detail_query_count_does_not_grow_with_comment_count
+     */
+    public function test_query_count_does_not_grow_with_comment_count(): void
+    {
+        $seedComments = function (int $count, string $prefix): void {
+            for ($i = 0; $i < $count; $i++) {
+                Comment::create([
+                    'board_id' => $this->board->id,
+                    'post_id' => $this->post->id,
+                    'content' => $prefix.' '.$i,
+                    'author_name' => '댓글쓴이',
+                    'ip_address' => '127.0.0.1',
+                ]);
+            }
+        };
+
+        $seedComments(3, '초기');
+
+        // 모집단 확인 — 상세 응답이 댓글을 싣지 않게 되면 아래 단언은 "댓글을 늘려도
+        // 쿼리가 안 는다" 를 아무 근거 없이 통과시킨다. 댓글을 실제로 읽는지 먼저 고정한다.
+        $commentReads = array_filter(
+            $this->captureDetailQueries(),
+            fn (string $sql) => str_contains($sql, '`'.DB::getTablePrefix().'board_comments`')
+        );
+        $this->assertNotEmpty($commentReads, '상세 응답이 댓글을 조회하지 않는다 — 측정 전제가 무너졌다');
+
+        $this->assertQueryCountStableAsDataGrows(
+            measure: fn () => $this->captureDetailQueries(),
+            grow: fn () => $seedComments(9, '추가'),
+            context: '게시글 상세(댓글 3건 → 12건)'
         );
     }
 }
