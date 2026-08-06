@@ -744,7 +744,7 @@
                                             "props": {
                                                 "className": "inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-blue-600 text-white dark:bg-blue-500"
                                             },
-                                            "text": "{{row.number}}",
+                                            "text": "{{row.number ?? '-'}}",
                                             "if": "{{row.row_type === 'notice'}}"
                                         },
                                         {
@@ -753,7 +753,7 @@
                                             "props": {
                                                 "className": "inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
                                             },
-                                            "text": "{{row.number}}",
+                                            "text": "{{row.number ?? '-'}}",
                                             "if": "{{row.row_type === 'reply'}}"
                                         },
                                         {
@@ -762,7 +762,7 @@
                                             "props": {
                                                 "className": "font-medium text-gray-900 dark:text-white"
                                             },
-                                            "text": "{{row.number}}",
+                                            "text": "{{row.number ?? '-'}}",
                                             "if": "{{row.row_type === 'normal'}}"
                                         }
                                     ]
@@ -1003,7 +1003,8 @@
                             "pageSize": 15,
                             "serverSidePagination": true,
                             "serverCurrentPage": "{{posts?.data?.pagination?.current_page ?? 1}}",
-                            "serverTotalPages": "{{posts?.data?.pagination?.last_page ?? 1}}",
+                            "serverTotalPages": "{{posts?.data?.pagination?.last_page ?? null}}",
+                            "serverHasMorePages": "{{posts?.data?.pagination?.has_more_pages ?? false}}",
                             "selectable": false,
                             "responsiveBreakpoint": 768,
                             "showFirstLast": true,
