@@ -217,6 +217,173 @@ class BoardManagementTest extends ModuleTestCase
     }
 
     /**
+     * 관리자 게시판 목록에는 역할 소속 사용자 정보가 실리지 않는다 (#518 / 공개 #76).
+     *
+     * 종전에는 행마다 매니저/스텝 역할을 조회해 그 역할에 속한 **사용자 전원의 uuid·이름·이메일**을
+     * 목록에 실었다. 목록 화면은 그 값을 쓰지 않으면서 행 수만큼 추가 쿼리가 나가고 개인정보가
+     * 노출됐다. 역할 편집은 게시판 상세/설정 화면이 공급한다.
+     *
+     * @scenario endpoint=admin_list,role_assignment=assigned
+     *
+     * @effects admin_list_omits_role_member_payload
+     */
+    public function test_board_list_omits_role_member_payload(): void
+    {
+        Board::factory()->count(2)->create(['is_active' => true]);
+
+        $response = $this->actingAs($this->adminUser)
+            ->getJson('/api/modules/sirsoft-board/admin/boards');
+
+        $response->assertStatus(200);
+
+        foreach ($response->json('data.data') as $row) {
+            foreach (['board_managers', 'board_steps', 'board_manager_ids', 'board_step_ids'] as $heavy) {
+                $this->assertArrayNotHasKey($heavy, $row, "게시판 목록에 {$heavy} 가 실리면 안 된다");
+            }
+        }
+    }
+
+    /**
+     * 관리자 목록 화면이 쓰는 표시 필드는 그대로 남는다 (기능 축소 아님).
+     *
+     * @scenario endpoint=admin_list,role_assignment=unassigned
+     *
+     * @effects admin_list_keeps_display_fields
+     */
+    public function test_board_list_keeps_admin_display_fields(): void
+    {
+        Board::factory()->create(['is_active' => true]);
+
+        $response = $this->actingAs($this->adminUser)
+            ->getJson('/api/modules/sirsoft-board/admin/boards');
+
+        $response->assertStatus(200);
+
+        $row = $response->json('data.data.0');
+
+        foreach (['id', 'name', 'slug', 'type', 'is_active', 'categories', 'posts_count', 'abilities'] as $field) {
+            $this->assertArrayHasKey($field, $row, "관리자 목록이 쓰는 {$field} 가 사라졌다");
+        }
+    }
+
+    /**
+     * 목록 응답 어디에도 사용자 이메일이 실리지 않는다.
+     *
+     * 키 이름만 검사하면 필드가 다른 이름으로 되살아났을 때 통과한다. 노출되면 안 되는 것은
+     * 특정 키가 아니라 **값**이므로 응답 전문에서 이메일 문자열 자체를 찾는다.
+     *
+     * @effects admin_list_never_exposes_member_email
+     */
+    public function test_board_list_never_exposes_member_email(): void
+    {
+        $manager = User::factory()->create(['email' => 'board-manager-probe@example.com']);
+        $board = Board::factory()->create(['is_active' => true]);
+
+        $managerRole = Role::firstOrCreate(
+            ['identifier' => "sirsoft-board.{$board->slug}.manager"],
+            ['name' => json_encode(['ko' => '매니저', 'en' => 'Manager']), 'is_active' => true]
+        );
+        $managerRole->users()->syncWithoutDetaching([$manager->id]);
+
+        $response = $this->actingAs($this->adminUser)
+            ->getJson('/api/modules/sirsoft-board/admin/boards');
+
+        $response->assertStatus(200);
+        $this->assertStringNotContainsString(
+            'board-manager-probe@example.com',
+            $response->getContent(),
+            '게시판 목록 응답에 역할 소속 사용자의 이메일이 실렸다'
+        );
+    }
+
+    /**
+     * 목록에서 뺀 역할 배정은 상세 조회가 여전히 공급한다 (기능 축소 아님).
+     *
+     * @scenario endpoint=detail,role_assignment=assigned
+     *
+     * @effects detail_still_provides_role_assignments
+     */
+    public function test_board_detail_still_provides_role_assignments(): void
+    {
+        $manager = User::factory()->create();
+        $board = Board::factory()->create(['is_active' => true]);
+
+        $managerRole = Role::firstOrCreate(
+            ['identifier' => "sirsoft-board.{$board->slug}.manager"],
+            ['name' => json_encode(['ko' => '매니저', 'en' => 'Manager']), 'is_active' => true]
+        );
+        $managerRole->users()->syncWithoutDetaching([$manager->id]);
+
+        $response = $this->actingAs($this->adminUser)
+            ->getJson("/api/modules/sirsoft-board/admin/boards/{$board->id}");
+
+        $response->assertStatus(200);
+
+        $data = $response->json('data');
+
+        $this->assertArrayHasKey('board_manager_ids', $data, '상세에서 역할 배정이 사라지면 설정 화면이 비어 열린다');
+        $this->assertContains($manager->uuid, $data['board_manager_ids']);
+    }
+
+    /**
+     * 역할이 배정되지 않은 게시판도 상세에서 필드 자체는 유지된다 (빈 배열).
+     *
+     * 필드가 통째로 사라지면 화면이 "아직 안 불러온 상태" 와 "배정이 없는 상태" 를 구분하지
+     * 못한다.
+     *
+     * @scenario endpoint=detail,role_assignment=unassigned
+     *
+     * @effects detail_still_provides_role_assignments
+     */
+    public function test_board_detail_returns_empty_role_assignments_when_unassigned(): void
+    {
+        $board = Board::factory()->create(['is_active' => true]);
+
+        $response = $this->actingAs($this->adminUser)
+            ->getJson("/api/modules/sirsoft-board/admin/boards/{$board->id}");
+
+        $response->assertStatus(200);
+
+        $data = $response->json('data');
+
+        $this->assertArrayHasKey('board_manager_ids', $data);
+        $this->assertSame([], $data['board_manager_ids']);
+    }
+
+    /**
+     * 게시판 수가 늘어도 역할 조회가 늘지 않는다 (행당 재조회 부재).
+     *
+     * @effects role_query_count_does_not_scale_with_board_count
+     */
+    public function test_board_list_role_query_count_does_not_grow_with_rows(): void
+    {
+        Board::factory()->count(2)->create(['is_active' => true]);
+
+        // 권한/설정 캐시 워밍 (측정 대상 제외)
+        $this->actingAs($this->adminUser)->getJson('/api/modules/sirsoft-board/admin/boards')->assertOk();
+
+        $queries = [];
+        DB::listen(function ($query) use (&$queries) {
+            $queries[] = $query->sql;
+        });
+
+        $this->actingAs($this->adminUser)->getJson('/api/modules/sirsoft-board/admin/boards')->assertOk();
+        $baseline = count(array_filter($queries, fn (string $sql) => $this->isBoardRoleMemberQuery($sql)));
+
+        Board::factory()->count(8)->create(['is_active' => true]);
+
+        $queries = [];
+        $this->actingAs($this->adminUser)->getJson('/api/modules/sirsoft-board/admin/boards')->assertOk();
+        $grown = count(array_filter($queries, fn (string $sql) => $this->isBoardRoleMemberQuery($sql)));
+
+        $this->assertSame(
+            $baseline,
+            $grown,
+            "게시판 수에 비례해 역할 조회가 늘었다 (기준: {$baseline}, 증가 후: {$grown})"
+        );
+    }
+
+    /**
      * 게시판 목록 조회 시 is_active 필드 포함 테스트
      */
     public function test_board_list_includes_is_active_field(): void
@@ -778,5 +945,20 @@ class BoardManagementTest extends ModuleTestCase
         // Then: 역할명이 변경되지 않음
         $managerRole->refresh();
         $this->assertEquals($originalName, $managerRole->name);
+    }
+
+    /**
+     * 게시판 역할 **소속 사용자 조회** 쿼리인지 판정합니다.
+     *
+     * 권한 체크(`hasPermission`)도 같은 피벗 테이블을 참조하지만 그쪽은 `exists(...)` 서브쿼리이며,
+     * 행마다 실행되는 그 N+1 은 별도 이슈(#519)가 소유한다. 이 테스트는 목록이 게시판마다 역할
+     * 소속 사용자를 다시 끌어오지 않는지만 본다.
+     *
+     * @param  string  $sql  실행된 SQL
+     * @return bool 역할 소속 사용자 조회 여부
+     */
+    private function isBoardRoleMemberQuery(string $sql): bool
+    {
+        return str_contains($sql, 'user_roles') && ! str_contains($sql, 'exists(');
     }
 }

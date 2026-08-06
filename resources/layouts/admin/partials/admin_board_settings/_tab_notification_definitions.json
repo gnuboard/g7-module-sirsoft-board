@@ -146,7 +146,7 @@
           },
           "props": {
             "type": "button",
-            "className": "{{(_local.activeNotificationChannel ?? query.channel ?? (availableChannels?.data?.channels ?? [])[0]?.id ?? 'mail') === ch.id ? 'border-b-2 border-indigo-500 dark:border-indigo-400 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}} px-4 py-2.5 text-sm font-medium whitespace-nowrap flex-center gap-2"
+            "className": "{{(query.channel ?? 'mail') === ch.id ? 'border-b-2 border-indigo-500 dark:border-indigo-400 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}} px-4 py-2.5 text-sm font-medium whitespace-nowrap flex-center gap-2"
           },
           "children": [
             {
@@ -169,13 +169,6 @@
               "handler": "sequence",
               "params": {
                 "actions": [
-                  {
-                    "handler": "setState",
-                    "params": {
-                      "target": "local",
-                      "activeNotificationChannel": "{{ch.id}}"
-                    }
-                  },
                   {
                     "handler": "navigate",
                     "params": {
@@ -400,16 +393,16 @@
                             {
                               "type": "basic",
                               "name": "P",
-                              "if": "{{(def.templates ?? []).find(t => t.channel === (_local.activeNotificationChannel ?? query.channel ?? 'mail'))}}",
+                              "if": "{{(def.templates ?? []).find(t => t.channel === (query.channel ?? 'mail'))}}",
                               "props": {
                                 "className": "text-label-subtle truncate"
                               },
-                              "text": "{{(def.templates ?? []).find(t => t.channel === (_local.activeNotificationChannel ?? query.channel ?? 'mail'))?.subject?.[$locale] ?? ''}}"
+                              "text": "{{(def.templates ?? []).find(t => t.channel === (query.channel ?? 'mail'))?.subject?.[$locale] ?? ''}}"
                             },
                             {
                               "type": "basic",
                               "name": "P",
-                              "if": "{{!(def.templates ?? []).find(t => t.channel === (_local.activeNotificationChannel ?? query.channel ?? 'mail'))}}",
+                              "if": "{{!(def.templates ?? []).find(t => t.channel === (query.channel ?? 'mail'))}}",
                               "props": {
                                 "className": "text-sm text-gray-400 dark:text-gray-500 italic"
                               },
@@ -419,7 +412,7 @@
                               "id": "board_recipients_badge_{{defIdx}}",
                               "type": "basic",
                               "name": "Div",
-                              "if": "{{((def.templates ?? []).find(t => t.channel === (_local.activeNotificationChannel ?? query.channel ?? 'mail'))?.recipients ?? []).length > 0}}",
+                              "if": "{{((def.templates ?? []).find(t => t.channel === (query.channel ?? 'mail'))?.recipients ?? []).length > 0}}",
                               "props": {
                                 "className": "flex-center flex-wrap gap-1.5 mt-2"
                               },
@@ -436,7 +429,7 @@
                                   "type": "basic",
                                   "name": "Span",
                                   "iteration": {
-                                    "source": "{{(def.templates ?? []).find(t => t.channel === (_local.activeNotificationChannel ?? query.channel ?? 'mail'))?.recipients ?? []}}",
+                                    "source": "{{(def.templates ?? []).find(t => t.channel === (query.channel ?? 'mail'))?.recipients ?? []}}",
                                     "item_var": "rcpt"
                                   },
                                   "props": {
@@ -505,7 +498,7 @@
                               "name": "notification_definition_row_footer",
                               "props": {
                                 "definition": "{{def}}",
-                                "activeChannel": "{{_local.activeNotificationChannel ?? query.channel ?? 'mail'}}"
+                                "activeChannel": "{{query.channel ?? 'mail'}}"
                               }
                             }
                           ]
@@ -520,9 +513,9 @@
                             {
                               "type": "composite",
                               "name": "Toggle",
-                              "if": "{{(def.templates ?? []).find(t => t.channel === (_local.activeNotificationChannel ?? query.channel ?? 'mail'))}}",
+                              "if": "{{(def.templates ?? []).find(t => t.channel === (query.channel ?? 'mail'))}}",
                               "props": {
-                                "checked": "{{(def.templates ?? []).find(t => t.channel === (_local.activeNotificationChannel ?? query.channel ?? 'mail'))?.is_active ?? false}}",
+                                "checked": "{{(def.templates ?? []).find(t => t.channel === (query.channel ?? 'mail'))?.is_active ?? false}}",
                                 "disabled": "{{_computed.isNotificationReadOnly}}"
                               },
                               "actions": [
@@ -530,7 +523,7 @@
                                   "type": "change",
                                   "handler": "apiCall",
                                   "auth_required": true,
-                                  "target": "{{'/api/admin/notification-templates/' + (def.templates ?? []).find(t => t.channel === (_local.activeNotificationChannel ?? query.channel ?? 'mail'))?.id + '/toggle-active'}}",
+                                  "target": "{{'/api/admin/notification-templates/' + (def.templates ?? []).find(t => t.channel === (query.channel ?? 'mail'))?.id + '/toggle-active'}}",
                                   "params": {
                                     "method": "PATCH"
                                   },
@@ -581,9 +574,9 @@
                                         "params": {
                                           "target": "global",
                                           "board_notification_template_form_modal": {
-                                            "template": "{{(def.templates ?? []).find(t => t.channel === (_local.activeNotificationChannel ?? query.channel ?? 'mail'))}}",
+                                            "template": "{{(def.templates ?? []).find(t => t.channel === (query.channel ?? 'mail'))}}",
                                             "definition": "{{def}}",
-                                            "recipients": "{{JSON.parse(JSON.stringify((def.templates ?? []).find(t => t.channel === (_local.activeNotificationChannel ?? query.channel ?? 'mail'))?.recipients ?? []))}}",
+                                            "recipients": "{{JSON.parse(JSON.stringify((def.templates ?? []).find(t => t.channel === (query.channel ?? 'mail'))?.recipients ?? []))}}",
                                             "editLang": "{{$locale}}",
                                             "errors": null,
                                             "isSaving": false,
@@ -604,7 +597,7 @@
                             {
                               "type": "basic",
                               "name": "Button",
-                              "if": "{{!def.is_default || (def.templates ?? []).some(t => t.is_default === false)}}",
+                              "if": "{{!def.is_default || def.has_customized_templates === true}}",
                               "props": {
                                 "type": "button",
                                 "disabled": "{{_computed.isNotificationReadOnly}}",
@@ -656,7 +649,7 @@
                           "type": "composite",
                           "name": "HtmlContent",
                           "props": {
-                            "content": "{{(def.templates ?? []).find(t => t.channel === (_local.activeNotificationChannel ?? query.channel ?? 'mail'))?.body?.[$locale] ?? ''}}",
+                            "content": "{{(def.templates ?? []).find(t => t.channel === (query.channel ?? 'mail'))?.body?.[$locale] ?? ''}}",
                             "isHtml": true,
                             "className": "prose dark:prose-invert prose-sm max-w-none bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 max-h-48 overflow-y-auto dark:text-white"
                           }
