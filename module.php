@@ -880,6 +880,26 @@ class Module extends AbstractModule
                 'seed_overrides' => ['board_id' => 1, 'is_notice' => 0, 'parent_id' => null],
                 'soft_delete' => true,
             ],
+            'board_posts_by_view_count' => [
+                'type' => 'list',
+                'label' => '게시글 목록 (조회순)',
+                'table' => 'board_posts',
+                'columns' => [
+                    'id', 'board_id', 'user_id', 'parent_id', 'category',
+                    'title', 'author_name', 'content_mode',
+                    'is_notice', 'is_secret', 'status', 'depth',
+                    'view_count', 'comments_count', 'replies_count', 'attachments_count',
+                    'trigger_type', 'ip_address', 'created_at', 'updated_at', 'deleted_at',
+                ],
+                // 조회수 정렬은 화면에서 실제로 도달 가능한 경로다 — 게시판 설정
+                // `order_by='view_count'` 와 목록 URL `?sort_by=view_count` 둘 다 있고,
+                // 저장소 정렬 화이트리스트에도 들어 있다. 작성일 정렬과 같은 술어에
+                // 정렬 축만 다르므로 별도 프로파일로 재야 인덱스 커버리지가 판정된다.
+                'order' => [['view_count', 'desc'], ['id', 'desc']],
+                'filters' => ['board_id' => 1, 'is_notice' => 0, 'parent_id' => null],
+                'seed_overrides' => ['board_id' => 1, 'is_notice' => 0, 'parent_id' => null],
+                'soft_delete' => true,
+            ],
             // 댓글은 계측 프로파일을 두지 않는다. 페이지네이션되는 댓글 목록은 회원 본인 댓글
             // 목록뿐이고(CommentRepository), 그 쿼리에는 회원 스코프 · 삭제 게시글 제외
             // (whereExists 서브쿼리) · 비활성 게시판 제외가 무조건 붙는다. 선언형 필터로
