@@ -396,6 +396,8 @@ _단건 응답: `data` 객체의 필드._
 | comment_order | string | `ASC` | 댓글 정렬 순서 (ASC: 오름차순, DESC: 내림차순) |
 | show_view_count | boolean | `true` | 조회수 노출 |
 | use_report | boolean | `false` | 게시글/댓글 신고 기능 사용 |
+| use_reaction | boolean | `true` | 게시글 반응(추천/비추천) 기능 사용 |
+| active_reaction_types | array | `["like","dislike"]` | 이 게시판에서 켠 반응 유형 code 목록. 생성 모드에서는 환경설정 기본값(`basic_defaults.active_reaction_types`)이 채워짐 |
 | min_title_length | integer | `2` | 최소 제목 글자 수 |
 | max_title_length | integer | `200` | 최대 제목 글자 수 |
 | min_content_length | integer | `2` | 최소 게시글 글자 수 |

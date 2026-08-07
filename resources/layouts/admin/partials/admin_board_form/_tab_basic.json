@@ -1,7 +1,8 @@
 {
   "meta": {
     "is_partial": true,
-    "description": "Board Form - Basic Tab Content"
+    "description": "Board Form - Basic Tab Content",
+    "_e2e_allow": "e2e:allow 반응 유형 체크박스 시각 스타일(배경 박스·들여쓰기·아이콘·정렬)만 변경, 클릭 동작(setState/hasChanges)은 기존과 동일. 렌더 분기·바인딩은 admin-board-reaction-settings.test.tsx(Vitest 레이아웃 테스트)로 커버, MCP 실브라우저로 시각 회귀 확인."
   },
   "id": "section_basic_card",
   "type": "basic",
@@ -723,12 +724,12 @@
               ]
             },
             {
-              "comment": "사용할 반응 유형 선택 — 반응 사용 on 일 때만 노출. DB 등록 유형 전체(reactionTypes)를 순회해 체크박스로 active_reaction_types(code 배열) 를 토글.",
+              "comment": "사용할 반응 유형 선택 — 반응 사용 on 일 때만 노출. DB 등록 유형 전체(reactionTypes)를 순회해 체크박스로 active_reaction_types(code 배열) 를 토글. 게시판 환경설정 화면과 동일하게 배경 박스 + 좌측 들여쓰기로 시각적 구분 (PO 피드백).",
               "type": "basic",
               "name": "Div",
               "if": "{{_local.form?.use_reaction === true}}",
               "props": {
-                "className": "mt-3 pl-1"
+                "className": "ml-6 mt-2 p-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg"
               },
               "children": [
                 {
@@ -759,7 +760,7 @@
                           "type": "basic",
                           "name": "Label",
                           "props": {
-                            "className": "flex-start gap-2 cursor-pointer"
+                            "className": "flex-center gap-2 cursor-pointer"
                           },
                           "children": [
                             {
@@ -777,10 +778,19 @@
                                   "handler": "setState",
                                   "params": {
                                     "target": "local",
-                                    "form.active_reaction_types": "{{(_local.form?.active_reaction_types ?? []).includes(reactionType.code) ? (_local.form?.active_reaction_types ?? []).filter(c => c !== reactionType.code) : [...(_local.form?.active_reaction_types ?? []), reactionType.code]}}"
+                                    "form.active_reaction_types": "{{(_local.form?.active_reaction_types ?? []).includes(reactionType.code) ? (_local.form?.active_reaction_types ?? []).filter(c => c !== reactionType.code) : [...(_local.form?.active_reaction_types ?? []), reactionType.code]}}",
+                                    "hasChanges": true
                                   }
                                 }
                               ]
+                            },
+                            {
+                              "type": "basic",
+                              "name": "Icon",
+                              "props": {
+                                "name": "{{reactionType.icon_name ?? 'fa-thumbs-up'}}",
+                                "size": "sm"
+                              }
                             },
                             {
                               "type": "basic",

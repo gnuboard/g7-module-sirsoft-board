@@ -1,7 +1,8 @@
 {
   "meta": {
     "is_partial": true,
-    "description": "게시판 설정 > 기본 탭 (기본 설정 + 일괄 적용)"
+    "description": "게시판 설정 > 기본 탭 (기본 설정 + 일괄 적용)",
+    "_e2e_allow": "e2e:allow 반응 유형 체크박스 시각 스타일(배경 박스·들여쓰기·아이콘·정렬)만 변경, 클릭 동작(setState/hasChanges)은 기존과 동일. 렌더 분기·바인딩은 admin-board-reaction-settings.test.tsx(Vitest 레이아웃 테스트)로 커버, MCP 실브라우저로 시각 회귀 확인."
   },
   "id": "basic",
   "type": "basic",
@@ -545,12 +546,12 @@
                   ]
                 },
                 {
-                  "comment": "사용할 반응 유형 선택 — 반응 사용 on 일 때만 노출. DB 등록 유형 전체(reactionTypes)를 순회해 체크박스로 basic_defaults.active_reaction_types(code 배열) 를 토글.",
+                  "comment": "사용할 반응 유형 선택 — 반응 사용 on 일 때만 노출. DB 등록 유형 전체(reactionTypes)를 순회해 체크박스로 basic_defaults.active_reaction_types(code 배열) 를 토글. 좌측 일괄적용 체크박스(bulkApplyFields)와 형태가 같아 혼동되기 쉬우므로, 배경 박스 + 좌측 들여쓰기로 '설정값 입력 영역'임을 시각적으로 분리한다 (PO 피드백).",
                   "type": "basic",
                   "name": "Div",
                   "if": "{{_local.form?.basic_defaults?.use_reaction === true}}",
                   "props": {
-                    "className": "row-content-indent mt-2"
+                    "className": "row-content-indent ml-6 mt-2 p-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg"
                   },
                   "children": [
                     {
@@ -581,7 +582,7 @@
                               "type": "basic",
                               "name": "Label",
                               "props": {
-                                "className": "flex-start gap-2 cursor-pointer"
+                                "className": "flex-center gap-2 cursor-pointer"
                               },
                               "children": [
                                 {
@@ -604,6 +605,14 @@
                                       }
                                     }
                                   ]
+                                },
+                                {
+                                  "type": "basic",
+                                  "name": "Icon",
+                                  "props": {
+                                    "name": "{{reactionType.icon_name ?? 'fa-thumbs-up'}}",
+                                    "size": "sm"
+                                  }
                                 },
                                 {
                                   "type": "basic",

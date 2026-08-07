@@ -42,8 +42,10 @@ class ReactionTypeApiTest extends ModuleTestCase
             ->assertJsonPath('data.reaction_types.0.code', 'like')
             ->assertJsonPath('data.reaction_types.0.name', '추천')
             ->assertJsonPath('data.reaction_types.0.icon', 'fas fa-thumbs-up')
+            ->assertJsonPath('data.reaction_types.0.icon_name', 'fa-thumbs-up')
             ->assertJsonPath('data.reaction_types.1.code', 'dislike')
-            ->assertJsonPath('data.reaction_types.1.name', '비추천');
+            ->assertJsonPath('data.reaction_types.1.name', '비추천')
+            ->assertJsonPath('data.reaction_types.1.icon_name', 'fa-thumbs-down');
     }
 
     /**

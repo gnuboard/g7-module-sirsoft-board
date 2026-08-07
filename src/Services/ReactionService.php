@@ -100,6 +100,15 @@ class ReactionService
         HookManager::doAction('sirsoft-board.reaction.before_react', $userId, $post, $reactionTypeId);
 
         $result = DB::transaction(function () use ($userId, $board, $post, $reactionTypeId) {
+            // 이 게시글에 대한 반응 처리를 직렬화 — 짧은 시간에 연속 전송된 요청이
+            // 서버 도착 순서와 다르게 처리되어도(A→B→C 전송, B→A→C 처리 등) existing
+            // 조회부터 upsert/delete·카운트 재집계까지가 이 잠금 하나로 묶여, 이후
+            // 로직이 항상 "이 트랜잭션 차례가 됐을 때의 실제 최신 상태"를 기준으로
+            // 판단하도록 보장한다. 잠금 없이 existing 을 먼저 읽으면 다른 트랜잭션이
+            // 그 사이 상태를 바꿔도 반영되지 않아, 이미 지워진 반응을 다시 지우거나
+            // 캐시 카운트가 실제 반응 행 수와 어긋나는 결함으로 이어진다.
+            $this->reactionRepository->lockPostForReaction($post->id);
+
             $existing = $this->reactionRepository->findByUserAndTarget(
                 $userId,
                 self::TARGET_POST,
@@ -109,17 +118,13 @@ class ReactionService
             // 같은 유형 재요청 → 해제
             if ($existing !== null && (int) $existing->reaction_type_id === $reactionTypeId) {
                 $this->reactionRepository->delete($existing);
-                $counts = $this->reactionRepository->adjustPostReactionCounts(
-                    $post->id,
-                    [$reactionTypeId => -1],
-                );
+                $counts = $this->reactionRepository->recalculatePostReactionCounts($post->id);
 
                 return ['action' => 'remove', 'reaction_type_id' => null, 'reaction_counts' => $counts];
             }
 
             // 다른 유형 → 전환 (이전 -1, 신규 +1)
             if ($existing !== null) {
-                $previousTypeId = (int) $existing->reaction_type_id;
                 $this->reactionRepository->upsert(
                     $userId,
                     self::TARGET_POST,
@@ -127,10 +132,7 @@ class ReactionService
                     $reactionTypeId,
                     $board->id,
                 );
-                $counts = $this->reactionRepository->adjustPostReactionCounts(
-                    $post->id,
-                    [$previousTypeId => -1, $reactionTypeId => 1],
-                );
+                $counts = $this->reactionRepository->recalculatePostReactionCounts($post->id);
 
                 return ['action' => 'change', 'reaction_type_id' => $reactionTypeId, 'reaction_counts' => $counts];
             }
@@ -143,10 +145,7 @@ class ReactionService
                 $reactionTypeId,
                 $board->id,
             );
-            $counts = $this->reactionRepository->adjustPostReactionCounts(
-                $post->id,
-                [$reactionTypeId => 1],
-            );
+            $counts = $this->reactionRepository->recalculatePostReactionCounts($post->id);
 
             return ['action' => 'add', 'reaction_type_id' => $reactionTypeId, 'reaction_counts' => $counts];
         });

@@ -116,7 +116,8 @@ Authorization: Bearer {YOUR_TOKEN}
 | id | integer | `1` | 반응 유형 ID |
 | code | string | `like` | 내부 식별자 (예: `like`/`dislike`) |
 | name | string | `추천` | 현재 로케일 라벨. 미입력 언어는 사이트 기본 언어로 폴백됩니다. |
-| icon | string\|null | `fas fa-thumbs-up` | Font Awesome 아이콘 클래스 |
+| icon | string\|null | `fas fa-thumbs-up` | 저장된 원본 Font Awesome 클래스 (스타일 접두사 포함) |
+| icon_name | string\|null | `fa-thumbs-up` | Icon 컴포넌트 `name` prop 용 토큰 (스타일 접두사 제거). Icon 컴포넌트가 접두사를 자체 부착하므로 `icon` 을 그대로 넘기면 접두사가 중복됩니다. |
 
 **응답 예시**
 
@@ -126,8 +127,8 @@ Authorization: Bearer {YOUR_TOKEN}
   "message": "반응 유형 목록을 조회했습니다.",
   "data": {
     "reaction_types": [
-      { "id": 1, "code": "like", "name": "추천", "icon": "fas fa-thumbs-up" },
-      { "id": 2, "code": "dislike", "name": "비추천", "icon": "fas fa-thumbs-down" }
+      { "id": 1, "code": "like", "name": "추천", "icon": "fas fa-thumbs-up", "icon_name": "fa-thumbs-up" },
+      { "id": 2, "code": "dislike", "name": "비추천", "icon": "fas fa-thumbs-down", "icon_name": "fa-thumbs-down" }
     ]
   }
 }

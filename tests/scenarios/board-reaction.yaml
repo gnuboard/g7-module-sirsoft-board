@@ -24,6 +24,7 @@ axes:
     - switch_like_to_dislike
     - remove_same_type
     - count_never_negative_on_over_remove
+    - polluted_cache_self_heals_on_next_reaction
     - guest_react_blocked
     - self_post_react_blocked
     - inactive_type_react_blocked
@@ -51,6 +52,7 @@ effects:
   - remove_deletes_row_and_decrements_count
   - reaction_count_never_negative
   - switch_count_atomic_in_single_transaction
+  - reaction_counts_matches_actual_rows_after_recalculation
   # 어뷰징/상태 차단
   - guest_react_returns_401
   - self_post_react_returns_422
@@ -79,6 +81,7 @@ effects:
   # 프론트 UX (낙관 하이라이트 + 응답값 개수 + 실패 롤백)
   - reaction_failure_rolls_back_optimistic_state
   - reaction_pending_disables_button
+  - self_post_click_shows_denied_toast
   # E2E 흐름
   - detail_register_then_switch_then_remove_updates_ui
 

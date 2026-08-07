@@ -10,7 +10,7 @@
  * 재조회 → 화면 갱신의 종단 흐름을 담당한다.
  *
  * @scenario surface=detail_register_switch_remove
- * @effects detail_register_then_switch_then_remove_updates_ui,register_inserts_row_and_increments_count,switch_updates_row_and_adjusts_both_counts,remove_deletes_row_and_decrements_count
+ * @effects detail_register_then_switch_then_remove_updates_ui,register_inserts_row_and_increments_count,switch_updates_row_and_adjusts_both_counts,remove_deletes_row_and_decrements_count,self_post_click_shows_denied_toast
  *
  * 활성화 절차: PlaywrightIssueToken 발급 + 반응 유형이 켜진 공개 게시판/게시글 시드가 가능한
  *   환경에서 test.describe.skip → test.describe. SLUG/POST_ID 는 시드에 맞춰 조정.
@@ -25,6 +25,11 @@ const REACT_API = `**/api/modules/sirsoft-board/boards/${SLUG}/posts/${POST_ID}/
 // 유형 ID (시드 순서상 like=1, dislike=2 가정 — 시드에 맞춰 조정)
 const LIKE_ID = 1;
 const DISLIKE_ID = 2;
+
+// reactionToken 발급 계정이 작성자인 게시글 ID (본인 글 반응 차단 검증용) — 시드에 맞춰 조정
+const OWN_POST_ID = 19;
+const OWN_POST_PATH = `/board/${SLUG}/${OWN_POST_ID}`;
+const OWN_POST_REACT_API = `**/api/modules/sirsoft-board/boards/${SLUG}/posts/${OWN_POST_ID}/react`;
 
 test.describe('게시판 반응 등록→전환→해제 흐름 (#525)', () => {
   // @scenario surface=detail_register_switch_remove
@@ -103,5 +108,34 @@ test.describe('게시판 반응 등록→전환→해제 흐름 (#525)', () => {
     // 비로그인 → 로그인 페이지로 이동 (redirect 파라미터로 원글 경로 전달)
     await expect.poll(() => page.url(), { timeout: 5_000 }).toContain('/login');
     expect(page.url()).toContain('redirect');
+  });
+
+  // @scenario surface=detail_register_switch_remove
+  // @effects self_post_click_shows_denied_toast
+  test('본인 글 반응 버튼 클릭 시 API 호출 없이 안내 토스트가 표시된다', async ({
+    page,
+    reactionToken,
+  }) => {
+    await authenticatePage(page, reactionToken);
+
+    // disabled 버튼은 클릭 이벤트 자체가 발생하지 않아 안내를 줄 수 없으므로, 본인 글에서는
+    // 버튼을 시각적으로만 비활성 톤으로 두고 클릭은 받아 switch 분기에서 토스트로 안내한다
+    // (트러블슈팅: PO 피드백 — disabled 버튼은 "왜 안 눌리는지" 사용자가 알 수 없음).
+    let reactCalled = false;
+    await page.route(OWN_POST_REACT_API, async (route) => {
+      reactCalled = true;
+      await route.abort();
+    });
+
+    await page.goto(OWN_POST_PATH);
+    await page.waitForLoadState('domcontentloaded', { timeout: 30_000 });
+
+    const likeButton = page.getByRole('button', { name: /추천|Recommend/ }).first();
+    await likeButton.click();
+
+    await expect(page.getByText(/본인 글에는 반응할 수 없습니다|cannot react to your own post/i)).toBeVisible({
+      timeout: 5_000,
+    });
+    expect(reactCalled).toBe(false);
   });
 });

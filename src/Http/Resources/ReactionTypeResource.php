@@ -24,6 +24,7 @@ class ReactionTypeResource extends BaseApiResource
             'code' => $this->code,
             'name' => $this->getLocalizedName(),
             'icon' => $this->icon,
+            'icon_name' => $this->getIconName(),
         ];
     }
 }

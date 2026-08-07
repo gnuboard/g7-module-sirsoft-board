@@ -296,31 +296,8 @@ class BoardResource extends BaseApiResource
             'name' => $type->getLocalizedName(),
             'icon' => $type->icon,
             // Icon 컴포넌트 name prop 용 — 스타일 접두사(fas/far 등)를 떼고 fa-* 토큰만 추출
-            'icon_name' => self::normalizeIconName($type->icon),
+            'icon_name' => $type->getIconName(),
         ])->values()->all();
-    }
-
-    /**
-     * 저장된 Font Awesome 클래스(`fas fa-thumbs-up`)에서 Icon 컴포넌트 name prop 용
-     * 아이콘 토큰(`fa-thumbs-up`)만 추출합니다. Icon 컴포넌트가 스타일 접두사를 자체 부착하므로
-     * 원본 클래스를 그대로 name 에 넘기면 접두사가 중복됩니다.
-     *
-     * @param  string|null  $icon  저장된 아이콘 클래스
-     * @return string|null Icon name prop 값 (없으면 null)
-     */
-    private static function normalizeIconName(?string $icon): ?string
-    {
-        if ($icon === null || $icon === '') {
-            return null;
-        }
-
-        foreach (preg_split('/\s+/', trim($icon)) as $token) {
-            if (str_starts_with($token, 'fa-')) {
-                return $token;
-            }
-        }
-
-        return $icon;
     }
 
     /**

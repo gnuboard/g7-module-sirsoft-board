@@ -13,7 +13,7 @@ use Modules\Sirsoft\Board\Tests\BoardTestCase;
 /**
  * ReactionRepository / ReactionTypeRepository 검증.
  *
- * upsert(등록/전환)·delete(해제)·adjustPostReactionCounts(원자 카운트) 및
+ * upsert(등록/전환)·delete(해제)·recalculatePostReactionCounts(실제 행 기준 재집계) 및
  * 유형 조회(getActive/findByCodes/findById/findByIds)를 검증한다.
  */
 class ReactionRepositoryTest extends BoardTestCase
@@ -92,26 +92,29 @@ class ReactionRepositoryTest extends BoardTestCase
     }
 
     /**
-     * adjustPostReactionCounts 는 유형별 증감을 적용하고 0 미만으로 내려가지 않는다.
+     * recalculatePostReactionCounts 는 board_reactions 실제 행 수를 그대로 반영한다
+     * (델타 누적이 아닌 COUNT 재집계 — 캐시가 실제 데이터와 항상 일치해야 함).
      */
-    public function test_adjust_post_reaction_counts_applies_deltas_and_clamps(): void
+    public function test_recalculate_post_reaction_counts_reflects_actual_rows(): void
     {
-        $postId = $this->createTestPost(['reaction_counts' => json_encode([(string) $this->likeId => 2])]);
+        $postId = $this->createTestPost(['reaction_counts' => json_encode([(string) $this->likeId => 99])]);
 
-        $counts = $this->reactionRepository->adjustPostReactionCounts($postId, [
-            $this->likeId => -1,
-            $this->dislikeId => 1,
-        ]);
+        // 실제 반응 행 없음 → 캐시에 남아있던 오염된 값(99)은 사라지고, 이전에
+        // 노출됐던 유형 키는 0으로 유지된다 (API 응답 계약 — 키 자체는 보존).
+        $counts = $this->reactionRepository->recalculatePostReactionCounts($postId);
+        $this->assertSame([(string) $this->likeId => 0], $counts);
 
+        $userA = $this->createUser();
+        $userB = $this->createUser();
+        $this->reactionRepository->upsert($userA->id, 'post', $postId, $this->likeId, $this->board->id);
+        $this->reactionRepository->upsert($userB->id, 'post', $postId, $this->dislikeId, $this->board->id);
+
+        $counts = $this->reactionRepository->recalculatePostReactionCounts($postId);
         $this->assertSame(1, $counts[(string) $this->likeId]);
         $this->assertSame(1, $counts[(string) $this->dislikeId]);
 
-        // 클램프: 0 아래로 내려가지 않음
-        $clamped = $this->reactionRepository->adjustPostReactionCounts($postId, [$this->likeId => -5]);
-        $this->assertSame(0, $clamped[(string) $this->likeId]);
-
         $post = Post::findOrFail($postId);
-        $this->assertSame(0, $post->reaction_counts[(string) $this->likeId]);
+        $this->assertSame($counts, $post->reaction_counts);
     }
 
     /**

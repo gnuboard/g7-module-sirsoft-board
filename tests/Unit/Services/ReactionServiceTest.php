@@ -142,6 +142,38 @@ class ReactionServiceTest extends BoardTestCase
     }
 
     /**
+     * 캐시된 reaction_counts 가 실제 board_reactions 행 수와 어긋나 있어도(예: 짧은
+     * 시간에 연속 전송된 요청이 서버 도착 순서와 다르게 처리되어 캐시가 오염된 경우),
+     * 다음 반응 처리가 실제 행을 재집계해 캐시를 실제 데이터와 일치하는 값으로
+     * 정정한다. 델타(증감) 누적 방식은 이런 오염을 스스로 고치지 못하고 계속
+     * 누적시키므로, 실제 COUNT 재집계 방식임을 검증한다.
+     *
+     * @scenario case=polluted_cache_self_heals_on_next_reaction
+     * @effects reaction_counts_matches_actual_rows_after_recalculation
+     */
+    public function test_react_recalculates_from_actual_rows_and_heals_polluted_cache(): void
+    {
+        $author = $this->createUser();
+        $reactor = $this->createUser();
+        // 캐시에는 실제와 무관한 오염된 값(양쪽 다 1)을 미리 심어둔다.
+        $postId = $this->createTestPost([
+            'user_id' => $author->id,
+            'reaction_counts' => json_encode([(string) $this->likeId => 1, (string) $this->dislikeId => 1]),
+        ]);
+
+        $result = $this->service->react($reactor->id, $this->board, $postId, $this->likeId);
+
+        // 실제 반응 행은 이번에 등록된 like 1건뿐 — 오염된 dislike=1 은 사라지고
+        // 캐시가 실제 상태(like=1, dislike=0)로 정정되어야 한다.
+        $this->assertSame(1, $result['reaction_counts'][(string) $this->likeId]);
+        $this->assertSame(0, $result['reaction_counts'][(string) $this->dislikeId]);
+        $this->assertSame(
+            1,
+            Reaction::query()->where('target_id', $postId)->where('target_type', 'post')->count(),
+        );
+    }
+
+    /**
      * use_reaction 이 꺼진 게시판은 반응이 차단된다.
      *
      * @scenario case=use_reaction_off_react_blocked
