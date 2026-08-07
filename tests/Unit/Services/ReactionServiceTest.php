@@ -2,12 +2,14 @@
 
 namespace Modules\Sirsoft\Board\Tests\Unit\Services;
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Modules\Sirsoft\Board\Database\Seeders\BoardReactionTypeSeeder;
 use Modules\Sirsoft\Board\Exceptions\PostNotFoundException;
 use Modules\Sirsoft\Board\Exceptions\ReactionNotAllowedException;
 use Modules\Sirsoft\Board\Models\Reaction;
 use Modules\Sirsoft\Board\Models\ReactionType;
+use Modules\Sirsoft\Board\Repositories\Contracts\ReactionRepositoryInterface;
 use Modules\Sirsoft\Board\Services\ReactionService;
 use Modules\Sirsoft\Board\Tests\BoardTestCase;
 
@@ -236,5 +238,39 @@ class ReactionServiceTest extends BoardTestCase
 
         $this->expectException(PostNotFoundException::class);
         $this->service->react($reactor->id, $this->board, 999999, $this->likeId);
+    }
+
+    /**
+     * 스코프 검증 통과 직후·락 획득 시점 사이에 게시글이 삭제되는 레이스 상황에서도
+     * PostNotFoundException 으로 일관되게 처리된다.
+     *
+     * lockPostForReaction() 은 findOrFail() 을 사용해 락을 거는데, 이 시점에 게시글이
+     * 없으면 Eloquent 의 ModelNotFoundException 이 던져진다. 이를 감싸지 않으면 컨트롤러의
+     * catch 블록 어디에도 걸리지 않아 일반 \Exception 으로 떨어져 500 에러가 되고, 사용자는
+     * "반응 처리에 실패했습니다"만 보게 되어 게시글이 없다는 실제 원인을 알 수 없다.
+     *
+     * @scenario case=post_deleted_between_scope_check_and_lock
+     * @effects post_not_in_board_returns_404
+     */
+    public function test_react_wraps_model_not_found_during_lock_as_post_not_found(): void
+    {
+        $author = $this->createUser();
+        $reactor = $this->createUser();
+        $postId = $this->createTestPost(['user_id' => $author->id]);
+
+        $repository = $this->mock(ReactionRepositoryInterface::class);
+        $repository->shouldReceive('lockPostForReaction')
+            ->once()
+            ->with($postId)
+            ->andThrow(new ModelNotFoundException());
+
+        $service = new ReactionService(
+            $repository,
+            app(\Modules\Sirsoft\Board\Repositories\Contracts\ReactionTypeRepositoryInterface::class),
+            app(\Modules\Sirsoft\Board\Repositories\Contracts\PostRepositoryInterface::class),
+        );
+
+        $this->expectException(PostNotFoundException::class);
+        $service->react($reactor->id, $this->board, $postId, $this->likeId);
     }
 }

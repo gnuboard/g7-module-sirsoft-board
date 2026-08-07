@@ -107,7 +107,17 @@ class ReactionService
             // 판단하도록 보장한다. 잠금 없이 existing 을 먼저 읽으면 다른 트랜잭션이
             // 그 사이 상태를 바꿔도 반영되지 않아, 이미 지워진 반응을 다시 지우거나
             // 캐시 카운트가 실제 반응 행 수와 어긋나는 결함으로 이어진다.
-            $this->reactionRepository->lockPostForReaction($post->id);
+            //
+            // 스코프 검증 통과 직후·락 획득 시점 사이에 게시글이 삭제되는 레이스에서는
+            // findOrFail() 이 ModelNotFoundException 을 던진다. 컨트롤러는 이 예외를
+            // 모르므로 그대로 두면 일반 500 으로 새어나가 사용자가 원인을 알 수 없다 —
+            // 이미 위에서 존재를 확인한 게시글이 사라진 것과 같은 의미이므로 동일하게
+            // PostNotFoundException 으로 변환한다.
+            try {
+                $this->reactionRepository->lockPostForReaction($post->id);
+            } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+                throw new PostNotFoundException($post->id);
+            }
 
             $existing = $this->reactionRepository->findByUserAndTarget(
                 $userId,

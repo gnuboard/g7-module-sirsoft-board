@@ -30,6 +30,7 @@ axes:
     - inactive_type_react_blocked
     - use_reaction_off_react_blocked
     - post_not_in_board
+    - post_deleted_between_scope_check_and_lock
     - detail_shows_active_types_even_zero
     - detail_hidden_when_no_active_types
     - detail_hidden_when_use_reaction_off
