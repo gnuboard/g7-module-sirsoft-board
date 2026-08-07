@@ -803,6 +803,16 @@ class PostRepository implements PostRepositoryInterface
                 $noticeQuery->with($relations);
             }
 
+            // 공지는 운영자가 등록하는 데이터라 통상 소수지만, 개수를 막는 장치가 없으면
+            // 잘못 늘어난 게시판에서 한 페이지를 여는 것만으로 전량이 메모리에 올라온다.
+            // `created_at desc` 정렬이므로 상한에 걸릴 때 최신 공지가 우선 보존된다 —
+            // 잘린 공지는 후속 페이지에 노출될 경로가 없어 이 순서가 유일한 안전판이다.
+            // 조정은 코어 필터 훅 `core.pagination.filter_result_cap` (context: board.notices).
+            $noticeCap = PaginationLimits::resultCap('board.notices');
+            if ($noticeCap !== null) {
+                $noticeQuery->limit($noticeCap);
+            }
+
             $notices = $noticeQuery->get($columns);
         }
 

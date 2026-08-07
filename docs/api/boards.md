@@ -389,7 +389,7 @@ _단건 응답: `data` 객체의 필드._
 | secret_mode | string | `disabled` | 비밀글 설정 (disabled: 사용안함, enabled: 사용함, always: 고정) |
 | use_comment | boolean | `true` | 댓글 기능 사용 |
 | use_reply | boolean | `true` | 게시글 답변 기능 사용 (댓글에 대한 답글 아님) |
-| max_reply_depth | integer | `5` | 답변글 최대 깊이 (1~5) |
+| max_reply_depth | integer | `5` | 답변글 최대 깊이 (1~10) |
 | max_comment_depth | integer | `10` | 대댓글 최대 깊이 (1~10) |
 | comment_order | string | `ASC` | 댓글 정렬 순서 (ASC: 오름차순, DESC: 내림차순) |
 | show_view_count | boolean | `true` | 조회수 노출 |
@@ -754,7 +754,7 @@ _단건 응답: `data` 객체의 필드._
 | secret_mode | string | `disabled` | 비밀글 설정 (disabled: 사용안함, enabled: 사용함, always: 고정) |
 | use_comment | boolean | `true` | 댓글 기능 사용 |
 | use_reply | boolean | `true` | 게시글 답변 기능 사용 (댓글에 대한 답글 아님) |
-| max_reply_depth | integer | `5` | 답변글 최대 깊이 (1~5) |
+| max_reply_depth | integer | `5` | 답변글 최대 깊이 (1~10) |
 | use_report | boolean | `true` | 게시글/댓글 신고 기능 사용 |
 | comment_order | string | `ASC` | 댓글 정렬 순서 (ASC: 오름차순, DESC: 내림차순) |
 | max_comment_depth | integer | `10` | 대댓글 최대 깊이 (1~10) |
@@ -972,7 +972,7 @@ _단건 응답: `data` 객체의 필드._
 | secret_mode | string | `disabled` | 비밀글 설정 (disabled: 사용안함, enabled: 사용함, always: 고정) |
 | use_comment | boolean | `true` | 댓글 기능 사용 |
 | use_reply | boolean | `true` | 게시글 답변 기능 사용 (댓글에 대한 답글 아님) |
-| max_reply_depth | integer | `5` | 답변글 최대 깊이 (1~5) |
+| max_reply_depth | integer | `5` | 답변글 최대 깊이 (1~10) |
 | use_report | boolean | `true` | 게시글/댓글 신고 기능 사용 |
 | comment_order | string | `ASC` | 댓글 정렬 순서 (ASC: 오름차순, DESC: 내림차순) |
 | max_comment_depth | integer | `10` | 대댓글 최대 깊이 (1~10) |
@@ -1979,7 +1979,7 @@ _단건 응답: `data` 객체의 필드._
 | secret_mode | string | `disabled` | 비밀글 설정 (disabled: 사용안함, enabled: 사용함, always: 고정) |
 | use_comment | boolean | `true` | 댓글 기능 사용 |
 | use_reply | boolean | `true` | 게시글 답변 기능 사용 (댓글에 대한 답글 아님) |
-| max_reply_depth | integer | `5` | 답변글 최대 깊이 (1~5) |
+| max_reply_depth | integer | `5` | 답변글 최대 깊이 (1~10) |
 | use_report | boolean | `true` | 게시글/댓글 신고 기능 사용 |
 | comment_order | string | `ASC` | 댓글 정렬 순서 (ASC: 오름차순, DESC: 내림차순) |
 | max_comment_depth | integer | `10` | 대댓글 최대 깊이 (1~10) |
