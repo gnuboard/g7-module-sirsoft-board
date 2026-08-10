@@ -159,21 +159,6 @@
       }
     },
     {
-      "id": "reactionTypes",
-      "label_key": "$t:sirsoft-board.editor.data_source.reactionTypes",
-      "type": "api",
-      "endpoint": "/api/modules/sirsoft-board/admin/reaction-types",
-      "method": "GET",
-      "if": "{{(query.tab || _global.activeBoardSettingsTab || 'general') === 'basic_defaults'}}",
-      "auto_fetch": true,
-      "auth_required": true,
-      "fallback": {
-        "data": {
-          "reaction_types": []
-        }
-      }
-    },
-    {
       "id": "boardIdentityPolicies",
       "label_key": "$t:sirsoft-board.editor.data_source.boardIdentityPolicies",
       "type": "api",
