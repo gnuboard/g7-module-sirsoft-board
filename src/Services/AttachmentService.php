@@ -203,13 +203,14 @@ class AttachmentService
     public function linkTempAttachments(string $slug, string $tempKey, int $postId): int
     {
         // 연결 대상 후보를 먼저 조회하여 링크 후 재조회 → 훅 발화를 위한 식별자 확보
+        // (getByTempKey → linkTempAttachments → findById 순)
         $tempAttachments = $this->repository->getByTempKey($slug, $tempKey);
 
         $linkedCount = $this->repository->linkTempAttachments($slug, $tempKey, $postId);
 
         // 각 첨부에 대해 after_link 훅 발화 → 카운트 리스너가 post_id 기준으로 동기화 가능
         foreach ($tempAttachments as $tempAttachment) {
-            $linked = $this->repository->getById($slug, $tempAttachment->id);
+            $linked = $this->repository->findById($slug, $tempAttachment->id);
             if ($linked && $linked->post_id === $postId) {
                 HookManager::doAction('sirsoft-board.attachment.after_link', $linked);
             }
