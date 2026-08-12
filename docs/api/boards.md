@@ -2961,6 +2961,7 @@ HTTP/1.1 200
 | 이름 | 위치 | 타입 | 필수 | 허용값 | 용도 |
 | --- | --- | --- | --- | --- | --- |
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
+| is_secret | body | boolean | 아니오 | — | 비밀글 여부. 문자열 `"true"`/`"false"`/`"1"`/`"0"` 도 수용해 boolean 으로 정규화한다 (해석 불가값은 422) |
 
 > 이 엔드포인트는 확장이 파라미터를 추가할 수 있습니다 (`sirsoft-board.user_post.store_validation_rules`).
 
@@ -3628,6 +3629,7 @@ HTTP/1.1 200
 | id | path | string | 예 | — | 대상 리소스의 식별자 |
 | attachment_ids | body | integer[] | 아니오 | — | 미리 업로드해 둔 첨부 ID 목록. 게시글에 연결된다 (관리자 수정 경로와 동일) |
 | temp_key | body | string | 아니오 | 최대 64자 | 임시 업로드 묶음 키. 해당 묶음의 첨부가 게시글로 이동·연결된다 |
+| is_secret | body | boolean | 아니오 | — | 비밀글 여부. 문자열 `"true"`/`"false"`/`"1"`/`"0"` 도 수용해 boolean 으로 정규화한다 (해석 불가값은 422) |
 
 > 이 엔드포인트는 확장이 파라미터를 추가할 수 있습니다 (`sirsoft-board.user_post.update_validation_rules`).
 
