@@ -4,6 +4,12 @@
 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/)를 따르며,
 [Semantic Versioning](https://semver.org/lang/ko/)을 준수합니다.
 
+## [1.0.4] - 2026-08-12
+
+### Changed
+
+- 글 저장·수정 시 비밀글 여부 값을 문자열(`"true"`/`"false"`)로 보내는 클라이언트도 수용하도록 해석을 관대화했습니다. 해석할 수 없는 값은 종전과 동일하게 거부됩니다.
+
 ## [1.0.3] - 2026-08-10
 
 ### Security

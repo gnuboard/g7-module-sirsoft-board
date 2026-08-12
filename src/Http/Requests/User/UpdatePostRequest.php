@@ -8,7 +8,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Modules\Sirsoft\Board\Enums\PostStatus;
 use Modules\Sirsoft\Board\Http\Requests\Concerns\ValidatesAttachmentCount;
-use Modules\Sirsoft\Board\Models\Board;
+use Modules\Sirsoft\Board\Repositories\Contracts\BoardRepositoryInterface;
 use Modules\Sirsoft\Board\Rules\BlockedKeywordsRule;
 
 /**
@@ -34,6 +34,28 @@ class UpdatePostRequest extends FormRequest
     }
 
     /**
+     * 검증 전 입력값을 정규화합니다.
+     *
+     * 비밀글 여부를 문자열 "true"/"false" 로 보내는 클라이언트도 수용하도록
+     * boolean 으로 정규화합니다. (해석 불가값은 유지 → boolean 규칙이 422 처리)
+     */
+    protected function prepareForValidation(): void
+    {
+        $merge = [];
+
+        if ($this->has('is_secret')) {
+            $normalized = filter_var($this->input('is_secret'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($normalized !== null) {
+                $merge['is_secret'] = $normalized;
+            }
+        }
+
+        if ($merge) {
+            $this->merge($merge);
+        }
+    }
+
+    /**
      * 요청에 적용할 검증 규칙
      *
      * @return array<string, mixed>
@@ -41,7 +63,7 @@ class UpdatePostRequest extends FormRequest
     public function rules(): array
     {
         $slug = $this->route('slug');
-        $board = Board::where('slug', $slug)->first();
+        $board = app(BoardRepositoryInterface::class)->findBySlug((string) $slug);
 
         if (! $board) {
             return [];
@@ -134,7 +156,7 @@ class UpdatePostRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
-            $board = Board::where('slug', $this->route('slug'))->first();
+            $board = app(BoardRepositoryInterface::class)->findBySlug((string) $this->route('slug'));
             $postId = $this->route('id');
             $this->validateAttachmentTotal($validator, $board, is_numeric($postId) ? (int) $postId : null);
         });
