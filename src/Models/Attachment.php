@@ -127,6 +127,8 @@ class Attachment extends Model
 
     /**
      * 게시판과의 관계를 정의합니다.
+     *
+     * @return BelongsTo 게시판 관계
      */
     public function board(): BelongsTo
     {
@@ -135,6 +137,8 @@ class Attachment extends Model
 
     /**
      * 게시글과의 관계를 정의합니다.
+     *
+     * @return BelongsTo 게시글 관계
      */
     public function post(): BelongsTo
     {
@@ -143,6 +147,8 @@ class Attachment extends Model
 
     /**
      * 업로더와의 관계를 정의합니다.
+     *
+     * @return BelongsTo 업로더 사용자 관계
      */
     public function creator(): BelongsTo
     {
@@ -178,7 +184,21 @@ class Attachment extends Model
             ? $this->board->slug
             : Board::find($this->board_id)?->slug;
 
-        return '/api/modules/sirsoft-board/boards/'.$boardSlug.'/attachment/'.$this->hash.'/preview';
+        return $this->previewUrlForSlug((string) $boardSlug);
+    }
+
+    /**
+     * 슬러그가 이미 해석된 컨텍스트의 미리보기 URL 조립 단일 지점.
+     *
+     * 목록 직렬화(PostResource)처럼 slug 를 라우트/관계에서 이미 알고 있어
+     * Board::find() 재조회(N+1)를 피해야 하는 호출측이 사용합니다.
+     *
+     * @param  string  $slug  게시판 슬러그
+     * @return string 미리보기 URL
+     */
+    public function previewUrlForSlug(string $slug): string
+    {
+        return '/api/modules/sirsoft-board/boards/'.$slug.'/attachment/'.$this->hash.'/preview';
     }
 
     /**

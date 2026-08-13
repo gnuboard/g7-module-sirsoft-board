@@ -312,7 +312,7 @@ class PostResource extends BaseApiResource
             $slug = request()->route('slug') ?? ($this->relationLoaded('board') ? $this->board?->slug : null);
 
             if ($slug && $attachment->hash) {
-                return '/api/modules/sirsoft-board/boards/'.$slug.'/attachment/'.$attachment->hash.'/preview';
+                return $attachment->previewUrlForSlug($slug);
             }
 
             return null;
