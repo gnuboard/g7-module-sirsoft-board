@@ -186,6 +186,9 @@ class BoardSettingsService implements ModuleSettingsInterface
         // 캐시 초기화
         $this->settings = null;
 
+        // 상주 프로세스의 config 미러도 함께 갱신한다 (공개이슈 #109)
+        g7_refresh_module_settings_config('sirsoft-board');
+
         // report_policy 설정 변경 시 알림 정의 활성 상태 동기화
         // 저장된 최종 설정을 사용 (boolean 보정 후 값)
         if (isset($settings['report_policy'])) {
@@ -323,6 +326,9 @@ class BoardSettingsService implements ModuleSettingsInterface
     {
         $this->defaults = null;
         $this->settings = null;
+
+        // 상주 프로세스의 config 미러도 함께 갱신한다 (공개이슈 #109)
+        g7_refresh_module_settings_config('sirsoft-board');
     }
 
     /**
