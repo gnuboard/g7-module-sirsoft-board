@@ -775,6 +775,8 @@ HTTP/1.1 200
 
 **설명** 게시판 모듈의 환경설정을 저장합니다. `auth:sanctum` 인증과 `sirsoft-board.settings.update` 권한이 필요합니다. `_tab`으로 지정한 탭 단위로 검증된 설정을 저장하며, `report_permissions`가 포함된 경우 신고 권한 역할도 함께 동기화합니다. 저장 성공 시 갱신된 전체 설정과 신고 권한 역할을 반환합니다.
 
+저장이 성공하면 코어 모듈 설정 저장 훅(`core.module_settings.after_save`)이 `('sirsoft-board', 저장한 카테고리 배열, true)` 페이로드로 발화합니다. 이 훅을 구독하는 리스너가 게시판 SEO 미리 생성 캐시를 무효화하고 설정 변경을 활동 로그에 남기므로, 확장도 같은 훅으로 저장 완료 시점에 개입할 수 있습니다. 검증 실패(422)나 저장 실패 시에는 발화하지 않습니다.
+
 
 ### POST /api/modules/sirsoft-board/admin/settings/bulk-apply
 <!-- @generated:start:api.modules.sirsoft-board.admin.settings.bulk-apply -->
