@@ -225,6 +225,7 @@ return [
         'permission_denied' => '권한이 없습니다.',
         'validation_failed' => '입력값이 올바르지 않습니다.',
         'duplicate_report' => '이미 신고한 내역이 있습니다.',
+        'operation_failed' => '작업 처리 중 오류가 발생했습니다.',
     ],
 
     // 경고 메시지 (Warning)
