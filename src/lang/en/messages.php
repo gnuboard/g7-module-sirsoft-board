@@ -225,6 +225,7 @@ return [
         'permission_denied' => 'Permission denied.',
         'validation_failed' => 'Validation failed.',
         'duplicate_report' => 'You have already reported this content.',
+        'operation_failed' => 'An error occurred while processing the operation.',
     ],
 
     // Warning messages

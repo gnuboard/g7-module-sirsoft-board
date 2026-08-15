@@ -400,7 +400,12 @@ class PostController extends PublicBaseController
             );
         } catch (AttachmentLimitExceededException $e) {
             // 게시판 첨부 개수 상한 초과 — generic 500 이 아닌 422 명시 차단
-            return $this->error($e->getMessage(), 422, ['code' => 'attachment_limit_exceeded']);
+            return $this->error(
+                $e->getMessageKey(),
+                422,
+                ['code' => 'attachment_limit_exceeded'],
+                $e->getMessageParams()
+            );
         } catch (BoardNotFoundException $e) {
             throw $e;
         } catch (\Exception $e) {
@@ -455,7 +460,12 @@ class PostController extends PublicBaseController
             );
         } catch (AttachmentLimitExceededException $e) {
             // 게시판 첨부 개수 상한 초과 — generic 500 이 아닌 422 명시 차단
-            return $this->error($e->getMessage(), 422, ['code' => 'attachment_limit_exceeded']);
+            return $this->error(
+                $e->getMessageKey(),
+                422,
+                ['code' => 'attachment_limit_exceeded'],
+                $e->getMessageParams()
+            );
         } catch (AccessDeniedHttpException $e) {
             return $this->error('auth.scope_denied', 403);
         } catch (ModelNotFoundException $e) {

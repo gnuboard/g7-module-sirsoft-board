@@ -197,7 +197,12 @@ class PostController extends AdminBaseController
             );
         } catch (AttachmentLimitExceededException $e) {
             // 게시판 첨부 개수 상한 초과 — generic 500 이 아닌 422 명시 차단
-            return $this->error($e->getMessage(), 422, ['code' => 'attachment_limit_exceeded']);
+            return $this->error(
+                $e->getMessageKey(),
+                422,
+                ['code' => 'attachment_limit_exceeded'],
+                $e->getMessageParams()
+            );
         } catch (\Exception $e) {
             return $this->error('sirsoft-board::messages.posts.create_failed', 500, $e->getMessage());
         }
@@ -252,7 +257,12 @@ class PostController extends AdminBaseController
             );
         } catch (AttachmentLimitExceededException $e) {
             // 게시판 첨부 개수 상한 초과 — generic 500 이 아닌 422 명시 차단
-            return $this->error($e->getMessage(), 422, ['code' => 'attachment_limit_exceeded']);
+            return $this->error(
+                $e->getMessageKey(),
+                422,
+                ['code' => 'attachment_limit_exceeded'],
+                $e->getMessageParams()
+            );
         } catch (ModelNotFoundException $e) {
             throw new PostNotFoundException($id);
         } catch (AccessDeniedHttpException $e) {

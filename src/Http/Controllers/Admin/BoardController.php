@@ -335,7 +335,7 @@ class BoardController extends AdminBaseController
 
             return $this->success('sirsoft-board::messages.boards.menu_added_success', ['menu' => $menu]);
         } catch (MenuAlreadyExistsException $e) {
-            return $this->error($e->getMessage(), $e->getCode());
+            return $this->error($e->getMessageKey(), $e->getCode(), null, $e->getMessageParams());
         } catch (ModelNotFoundException $e) {
             return $this->notFound('sirsoft-board::messages.boards.error_404');
         } catch (AccessDeniedHttpException $e) {
