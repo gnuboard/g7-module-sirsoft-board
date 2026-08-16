@@ -504,8 +504,8 @@ Route::post('boards/{slug}/comments/{commentId}/verify-password', [UserCommentCo
 | 로그인한 회원의 게시글 활동(작성, 댓글, 신고)을 조회하는 API입니다.
 | - 회원만 접근 가능하므로 auth:sanctum 미들웨어 필요
 |
-| 최종 URL 예시: /api/me/board-activities
-| 최종 Name 예시: api.me.board-activities.index
+| 최종 URL 예시: /api/modules/sirsoft-board/me/board-activities
+| 최종 Name 예시: api.modules.sirsoft-board.me.board-activities.index
 |
 */
 Route::get('/me/board-activities', [UserActivityController::class, 'index'])

@@ -10,8 +10,10 @@ use Illuminate\Support\Facades\Auth;
 use Modules\Sirsoft\Board\Enums\PostStatus;
 use Modules\Sirsoft\Board\Enums\ReportReasonType;
 use Modules\Sirsoft\Board\Enums\TriggerType;
+use Modules\Sirsoft\Board\Models\Post;
 use Modules\Sirsoft\Board\Repositories\Contracts\ReportRepositoryInterface;
 use Modules\Sirsoft\Board\Support\BoardPermissionCacheKeys;
+use Modules\Sirsoft\Board\Support\SecretContentGate;
 use Modules\Sirsoft\Board\Traits\ChecksBoardPermission;
 use Modules\Sirsoft\Board\Traits\FormatsBoardDate;
 
@@ -686,30 +688,24 @@ class PostResource extends BaseApiResource
      */
     private function canViewSecretContent(Request $request, ?string $slug = null): bool
     {
-        // 1. 작성자 본인 (회원 게시글)
-        $user = Auth::user();
-        if ($user && $this->user_id && $this->user_id === $user->id) {
-            return true;
-        }
+        // 판정 규칙은 SecretContentGate(SSoT)에 있다 — 리스너·댓글 경로와 규칙을 공유해
+        // 드리프트를 방지한다.
+        return self::canViewSecretForPost($this->resource, $request);
+    }
 
-        // 2. 비밀번호 검증 완료
-        if ($this->password_verified === true) {
-            return true;
-        }
-
-        // 3-4. 게시판별 권한 체크
-        $slug = $slug ?? $this->getSlug($request);
-        if (! $slug) {
-            return false;
-        }
-
-        if ($this->isAdminRequest($request)) {
-            return $this->checkBoardPermission($slug, 'admin.posts.read-secret')
-                || $this->checkBoardPermission($slug, 'admin.manage');
-        }
-
-        return $this->checkBoardPermission($slug, 'posts.read-secret', PermissionType::User)
-            || $this->checkBoardPermission($slug, 'manager', PermissionType::User);
+    /**
+     * 주어진 게시글의 비밀 원문 열람 권한을 판정합니다 (SSoT 진입점).
+     *
+     * PostResource 외 경로(이커머스 문의 연동 훅, 댓글 목록/리소스, 첨부 서빙)가
+     * 동일 규칙으로 서버측 마스킹을 수행하도록 공유합니다(KVE-2026-1914).
+     *
+     * @param  Post  $post  대상 게시글
+     * @param  Request|null  $request  HTTP 요청 (미지정 시 현재 요청)
+     * @return bool 열람 가능 여부
+     */
+    public static function canViewSecretForPost(Post $post, ?Request $request = null): bool
+    {
+        return app(SecretContentGate::class)->canView($post, $request);
     }
 
     // =========================================================================

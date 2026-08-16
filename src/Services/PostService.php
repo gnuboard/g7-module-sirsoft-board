@@ -882,9 +882,12 @@ class PostService
             $filters['user_id'] = $requestParams['user_id'] ?? null;
             $filters['created_at_from'] = $requestParams['created_at_from'] ?? null;
             $filters['created_at_to'] = $requestParams['created_at_to'] ?? null;
-        } else {
-            $filters['exclude_blinded'] = true;
         }
+        // 사용자 컨텍스트에는 추가 필터가 없다. 예전에는 여기서 `exclude_blinded` 를 세웠지만
+        // 저장소가 그 키를 읽지 않아 한 번도 적용되지 않았고, 뒤늦게 배선하면 블라인드 글이
+        // 사용자 목록에서 통째로 사라진다 — 이 모듈은 블라인드 글을 **행은 남기고 본문만
+        // 가리는** 방식으로 다루며(PostResource::getMaskedContentPreviewForList) 레이아웃도
+        // 블라인드 배지를 그린다. 죽은 키를 살리는 대신 제거해 표시만 오해를 주던 상태를 없앤다.
 
         // 페이지당 항목 수 계산
         $requestedPerPage = isset($requestParams['per_page']) ? (int) $requestParams['per_page'] : null;
@@ -1070,6 +1073,10 @@ class PostService
             }
         }
 
+        // 본인 활동 화면(`/me/board-activities`)이므로 열람자 = 대상 본인이다.
+        // 저장소는 이 값이 없으면 타인 관점으로 보고 비밀글·미발행글을 걸러낸다(fail-closed).
+        $filters['viewer_id'] = $userId;
+
         $result = $this->postRepository->getUserActivities($userId, $filters, $perPage);
 
         // 캐시 미적중 시 paginate 결과의 total을 캐시에 저장
@@ -1105,9 +1112,12 @@ class PostService
     /**
      * 사용자의 공개 게시글 목록을 조회합니다 (공개 프로필용).
      *
-     * 기존 getUserActivities()를 재사용합니다.
-     * 타인 프로필에서 해당 사용자의 모든 게시글을 표시합니다 (비밀글/블라인드 포함).
-     * UI에서 배지로 비밀글/블라인드 상태를 구분합니다.
+     * 기존 getUserActivities()를 재사용합니다. 이 목록은 본문 일부(content_plain)를 함께
+     * 싣기 때문에, 열람자가 본인이 아니면 비밀글·블라인드 글의 **본문만** 비운다. 행과
+     * 제목은 남는다 — 게시판 목록에서 이미 같은 수준으로 보이고(PostResource 의 목록 규칙:
+     * 제목은 노출, 본문만 차단) 프로필 UI 가 그 배지를 그리므로, 행을 지우면 결함 차단에
+     * 필요한 범위를 넘어 기능이 깎인다.
+     * 판정은 저장소가 `viewer_id` 로 수행한다(fail-closed — 값이 없으면 타인 관점).
      *
      * @param  int  $userId  사용자 ID
      * @param  array  $filters  필터 옵션 (board_slug, sort 등)
@@ -1116,10 +1126,9 @@ class PostService
      */
     public function getUserPublicPosts(int $userId, array $filters = [], int $perPage = 20): LengthAwarePaginator
     {
-        // 기존 getUserActivities 재사용
-        // 타인 프로필에서 해당 사용자의 모든 게시글 표시 (비밀글/블라인드 포함, 배지로 구분)
         return $this->postRepository->getUserActivities($userId, array_merge($filters, [
             'activity_type' => 'authored',  // 작성글만
+            'viewer_id' => Auth::id(),      // 비로그인은 null → 타인 관점
         ]), $perPage);
     }
 

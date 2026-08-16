@@ -1064,7 +1064,7 @@ class PostRepository implements PostRepositoryInterface
      * 사용자가 작성한 게시글, 댓글을 단 게시글을 통합하여 반환합니다.
      *
      * @param  int  $userId  사용자 ID
-     * @param  array  $filters  필터 조건 (board_slug, search, activity_type, sort, is_public)
+     * @param  array  $filters  필터 조건 (board_slug, search, activity_type, sort, viewer_id, exclude_board_slugs)
      * @param  int  $perPage  페이지당 항목 수
      * @return LengthAwarePaginator 게시글 활동 목록
      */
@@ -1074,7 +1074,15 @@ class PostRepository implements PostRepositoryInterface
         $search = $filters['search'] ?? null;
         $activityType = $filters['activity_type'] ?? 'authored';
         $sort = $filters['sort'] ?? 'latest'; // latest, oldest, views
-        $isPublic = $filters['is_public'] ?? false; // 공개 프로필용 필터 (비밀글 제외, 공개 게시글만)
+        // 열람자 관점. 이 값이 대상 사용자와 다르면(비로그인 포함) **타인 관점**이므로
+        // 비밀글·미발행글을 내보내지 않는다.
+        //
+        // 종전에는 `is_public` 옵트인 플래그로 이 판정을 했는데, 그 키를 설정하는 코드가
+        // 저장소 어디에도 없어서 필터가 한 번도 적용되지 않았다(사문). 옵트인은 호출부가
+        // 빠뜨리면 조용히 열리는 방향이라, 열람자 신원으로 판정하는 fail-closed 로 뒤집는다 —
+        // viewer_id 가 없으면 자동으로 가장 좁은 가시성이 된다.
+        $viewerId = $filters['viewer_id'] ?? null;
+        $isOwnView = $viewerId !== null && $viewerId === $userId;
         $excludeBoardSlugs = $filters['exclude_board_slugs'] ?? [];
 
         // board_slug 필터용 board_id 조회
@@ -1099,12 +1107,15 @@ class PostRepository implements PostRepositoryInterface
 
         $cachedTotal = $filters['cached_total'] ?? null;
 
-        if ($activityType === 'commented' && ! $isPublic) {
-            return $this->getUserCommentedActivities($userId, $boardIdFilter, $excludeBoardIds, $search, $orderColumn, $orderDirection, $perPage, $cachedTotal);
+        // 분기 선택은 activity_type 만 본다. 가시성은 각 분기 안에서 처리한다 —
+        // 여기서 열람자까지 보고 분기를 바꾸면 `commented` 요청이 조용히 `authored` 결과를
+        // 돌려주게 되어 저장소 계약이 깨진다.
+        if ($activityType === 'commented') {
+            return $this->getUserCommentedActivities($userId, $boardIdFilter, $excludeBoardIds, $search, $orderColumn, $orderDirection, $perPage, $cachedTotal, $viewerId);
         }
 
         // authored (기본값, 공개 프로필 포함)
-        return $this->getUserAuthoredActivities($userId, $boardIdFilter, $excludeBoardIds, $search, $isPublic, $orderColumn, $orderDirection, $perPage, $cachedTotal);
+        return $this->getUserAuthoredActivities($userId, $boardIdFilter, $excludeBoardIds, $search, $isOwnView, $orderColumn, $orderDirection, $perPage, $cachedTotal);
     }
 
     /**
@@ -1113,7 +1124,7 @@ class PostRepository implements PostRepositoryInterface
      * @param  int  $userId  사용자 ID
      * @param  int|null  $boardIdFilter  게시판 ID 필터
      * @param  string|null  $search  검색 키워드
-     * @param  bool  $isPublic  공개 프로필 여부 (비밀글 제외)
+     * @param  bool  $isOwnView  열람자가 대상 본인인지 여부 (아니면 비밀글·미발행글 제외)
      * @param  string  $orderColumn  정렬 컬럼
      * @param  string  $orderDirection  정렬 방향
      * @param  int  $perPage  페이지당 항목 수
@@ -1123,7 +1134,7 @@ class PostRepository implements PostRepositoryInterface
         ?int $boardIdFilter,
         array $excludeBoardIds,
         ?string $search,
-        bool $isPublic,
+        bool $isOwnView,
         string $orderColumn,
         string $orderDirection,
         int $perPage,
@@ -1143,11 +1154,6 @@ class PostRepository implements PostRepositoryInterface
 
         if (! empty($allExcludeIds)) {
             $query->whereNotIn('board_posts.board_id', $allExcludeIds);
-        }
-
-        if ($isPublic) {
-            $query->where('board_posts.status', PostStatus::Published->value)
-                ->where('board_posts.is_secret', false);
         }
 
         if ($search) {
@@ -1180,7 +1186,15 @@ class PostRepository implements PostRepositoryInterface
         );
 
         // paginate 후 10건에만 PHP 가공 적용 (N+1 아님)
-        $paginator->through(function ($post) {
+        $paginator->through(function ($post) use ($isOwnView) {
+            // 이 목록은 본문 일부(content_plain)를 함께 싣는다. 타인이 볼 때 비밀글·블라인드
+            // 글의 본문이 그대로 나가던 것이 결함이었다 — 행과 제목은 게시판 목록에서 이미
+            // 같은 수준으로 보이므로(PostResource 의 목록 규칙: 제목은 노출, 본문만 차단)
+            // 여기서도 **행은 남기고 본문만** 비운다. 행을 지우면 프로필의 비밀글/블라인드
+            // 배지가 사문이 되어 필요 이상으로 기능이 깎인다.
+            $hideContent = ! $isOwnView
+                && ((bool) $post->is_secret || $post->status === PostStatus::Blinded);
+
             return [
                 'id' => $post->id,
                 'board_slug' => $post->board?->slug,
@@ -1194,9 +1208,11 @@ class PostRepository implements PostRepositoryInterface
                 'comment_count' => (int) ($post->comments_count ?? 0),
                 'created_at' => $this->formatCreatedAt($post->created_at),
                 'created_at_formatted' => $this->formatCreatedAtFormat($post->created_at, g7_module_settings('sirsoft-board', 'display.date_display_format', 'standard')),
-                'content_plain' => ($post->content_mode ?? 'text') === 'html'
-                    ? $this->stripHtmlToPlainText($post->content ?? '')
-                    : ($post->content ?? ''),
+                'content_plain' => $hideContent
+                    ? ''
+                    : (($post->content_mode ?? 'text') === 'html'
+                        ? $this->stripHtmlToPlainText($post->content ?? '')
+                        : ($post->content ?? '')),
             ];
         });
 
@@ -1222,7 +1238,8 @@ class PostRepository implements PostRepositoryInterface
         string $orderColumn,
         string $orderDirection,
         int $perPage,
-        ?int $cachedTotal = null
+        ?int $cachedTotal = null,
+        ?int $viewerId = null
     ): LengthAwarePaginator {
         // 테이블명은 모델에서 얻는다 — 문자열로 박으면 테이블명이 바뀔 때 조용히 깨진다
         $postsTable = (new Post)->getTable();
@@ -1308,7 +1325,15 @@ class PostRepository implements PostRepositoryInterface
         );
 
         // paginate 후 10건에만 PHP 가공 적용
-        $paginator->through(function ($post) {
+        $paginator->through(function ($post) use ($viewerId) {
+            // 이 목록은 "내가 댓글 단 글" 이라 **타인이 쓴 비밀글**이 섞인다. 행은 내 활동
+            // 기록이므로 남기되 본문은 내보내지 않는다 — 목록 미리보기를 빈 문자열로 만드는
+            // PostResource::getMaskedContentPreviewForList 와 같은 규칙이다.
+            // (블라인드 글도 동일: 상세·목록 어느 경로에서도 본문이 나가지 않는다.)
+            // 열람자 미상($viewerId === null)이면 비밀글은 전부 가린다(fail-closed).
+            $hideContent = ((bool) $post->is_secret && (int) $post->user_id !== $viewerId)
+                || $post->status === PostStatus::Blinded;
+
             return [
                 'id' => $post->id,
                 'board_slug' => $post->board?->slug,
@@ -1322,9 +1347,11 @@ class PostRepository implements PostRepositoryInterface
                 'comment_count' => (int) ($post->comments_count ?? 0),
                 'created_at' => $this->formatCreatedAt($post->created_at),
                 'created_at_formatted' => $this->formatCreatedAtFormat($post->created_at, g7_module_settings('sirsoft-board', 'display.date_display_format', 'standard')),
-                'content_plain' => ($post->content_mode ?? 'text') === 'html'
-                    ? $this->stripHtmlToPlainText($post->content ?? '')
-                    : ($post->content ?? ''),
+                'content_plain' => $hideContent
+                    ? ''
+                    : (($post->content_mode ?? 'text') === 'html'
+                        ? $this->stripHtmlToPlainText($post->content ?? '')
+                        : ($post->content ?? '')),
             ];
         });
 

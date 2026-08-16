@@ -6,6 +6,7 @@ use App\Contracts\Extension\HookListenerInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Modules\Sirsoft\Board\Http\Resources\PostResource;
 use Modules\Sirsoft\Board\Models\Post;
 use Modules\Sirsoft\Board\Repositories\Contracts\BoardRepositoryInterface;
 use Modules\Sirsoft\Board\Repositories\Contracts\PostRepositoryInterface;
@@ -90,7 +91,7 @@ class EcommerceInquiryHookListener implements HookListenerInterface
     /**
      * 기본 훅 핸들러 (HookListenerInterface 필수 메서드)
      *
-     * @param mixed ...$args 훅 인자
+     * @param  mixed  ...$args  훅 인자
      * @return void
      */
     public function handle(...$args): void
@@ -116,9 +117,11 @@ class EcommerceInquiryHookListener implements HookListenerInterface
                 $data['user_id'] = null;
             }
 
-            // ip_address: board_posts.ip_address NOT NULL 제약 충족
+            // ip_address: board_posts.ip_address NOT NULL 제약 충족.
+            // 클라이언트 IP 는 요청 경계(호출 서비스 ProductInquiryService)가 payload 로
+            // 주입한다 — Listener 는 request() 를 직접 참조하지 않는다(입력 우회 방지).
             if (empty($data['ip_address'])) {
-                $data['ip_address'] = request()->ip() ?? '0.0.0.0';
+                $data['ip_address'] = '0.0.0.0';
             }
 
             // parent_id 있으면 답변글 → 부모 Post 제목으로 Re: 원글제목 설정
@@ -151,13 +154,20 @@ class EcommerceInquiryHookListener implements HookListenerInterface
     }
 
     /**
-     * ID 목록으로 Post 데이터 배열 반환
+     * ID 목록으로 Post 데이터 배열 반환 (`sirsoft-ecommerce.inquiry.get_by_ids` 필터 훅)
      *
      * 이커머스 모듈이 문의 목록을 구성할 때 게시글 데이터를 일괄 조회합니다.
      *
+     * 반환 payload 계약(KVE-2026-1914): 각 항목은 비밀글 열람 권위 플래그
+     * `can_view_secret`(bool)을 반드시 포함해야 한다. 소비자(`ProductInquiryService`)는
+     * 이 플래그로 title/content/reply/attachments 마스킹을 최종 확정하며, **플래그가
+     * 없으면 fail-closed 로 전부 마스킹**한다. 3자 확장이 이 훅을 대체 구현할 때
+     * `can_view_secret` 를 누락하면 비밀 아닌 문의까지 조용히 마스킹되는 기능 회귀가
+     * 발생하므로, 대체 리스너도 요청자 신원으로 이 플래그를 채워야 한다.
+     *
      * @param  array  $carry  이전 필터 결과 (초기값: [])
      * @param  array  $context  조회 컨텍스트 ['ids' => int[], 'slug' => string]
-     * @return array Post 데이터 배열
+     * @return array Post 데이터 배열 (각 항목에 `can_view_secret` bool 필수)
      */
     public function getByIds(array $carry, array $context): array
     {
@@ -171,6 +181,12 @@ class EcommerceInquiryHookListener implements HookListenerInterface
             $posts = $this->postRepository->findByIdsWithRelations($ids);
 
             return $posts->map(function (Post $post) {
+                // 비밀글 서버측 게이팅(KVE-2026-1914): 열람 권한이 없으면 원문을 마스킹한다.
+                // 규칙은 PostResource 와 동일한 SecretContentGate(SSoT)를 공유한다.
+                // 리스트 컨텍스트라 password_verified 는 적용되지 않는다(작성자/관리 권한만).
+                $isSecret = (bool) $post->is_secret;
+                $canViewSecret = ! $isSecret || PostResource::canViewSecretForPost($post);
+
                 return [
                     'id' => $post->id,
                     'board_id' => $post->board_id,
@@ -178,26 +194,34 @@ class EcommerceInquiryHookListener implements HookListenerInterface
                     'parent_id' => $post->parent_id,
                     'user_id' => $post->user_id,
                     'author_name' => $post->author_name,
-                    'title' => $post->title,
-                    'content' => $post->content,
+                    'title' => $canViewSecret
+                        ? $post->title
+                        : __('sirsoft-board::messages.post.secret_post_title'),
+                    'content' => $canViewSecret ? $post->content : null,
                     'category' => $post->category,
-                    'is_secret' => (bool) $post->is_secret,
+                    'is_secret' => $isSecret,
+                    // 서버가 요청자 신원으로 내린 열람 판정(SSoT). 소비 서비스가 이 값으로
+                    // 마스킹을 재확인(이중 방어)할 수 있도록 함께 실어 보낸다. 소비측은 자기
+                    // 권한을 재계산하지 말고 이 값만 신뢰해야 게이트 강도가 갈리지 않는다.
+                    'can_view_secret' => $canViewSecret,
                     'status' => $post->status?->value,
                     'view_count' => $post->view_count,
                     'created_at' => $post->created_at?->toIso8601String(),
                     'updated_at' => $post->updated_at?->toIso8601String(),
-                    // 첨부파일 목록
-                    'attachments' => $post->attachments->map(fn ($a) => [
-                        'id' => $a->id,
-                        'original_filename' => $a->original_filename,
-                        'size' => $a->size,
-                        'size_formatted' => $a->size_formatted,
-                        'is_image' => $a->is_image,
-                        'preview_url' => $a->preview_url,
-                        'download_url' => $a->download_url,
-                    ])->values()->all(),
-                    // 답변 게시글 (parent_id가 있는 자식 글)
-                    'reply' => $this->getReplyForPost($post),
+                    // 첨부파일 목록 (비밀글 비열람자는 빈 배열)
+                    'attachments' => $canViewSecret
+                        ? $post->attachments->map(fn ($a) => [
+                            'id' => $a->id,
+                            'original_filename' => $a->original_filename,
+                            'size' => $a->size,
+                            'size_formatted' => $a->size_formatted,
+                            'is_image' => $a->is_image,
+                            'preview_url' => $a->preview_url,
+                            'download_url' => $a->download_url,
+                        ])->values()->all()
+                        : [],
+                    // 답변 게시글 (parent_id가 있는 자식 글, 비밀글 비열람자는 null)
+                    'reply' => $canViewSecret ? $this->getReplyForPost($post) : null,
                 ];
             })->all();
         } catch (\Exception $e) {
@@ -229,18 +253,18 @@ class EcommerceInquiryHookListener implements HookListenerInterface
             }
 
             return [
-                'secret_mode'            => $board->secret_mode?->value ?? 'disabled',
-                'categories'             => $board->categories ?? [],
-                'use_file_upload'        => (bool) $board->use_file_upload,
-                'max_file_count'         => $board->max_file_count ?? 5,
-                'max_file_size'          => $board->max_file_size ?? 10,
-                'allowed_extensions'     => $board->allowed_extensions ?? [],
-                'min_title_length'       => $board->min_title_length ?? 2,
-                'max_title_length'       => $board->max_title_length ?? 200,
-                'min_content_length'     => $board->min_content_length ?? 10,
-                'max_content_length'     => $board->max_content_length ?? 10000,
-                'attachment_upload_url'  => '/api/modules/sirsoft-board/boards/' . $board->slug . '/attachments',
-                'attachment_delete_url'  => '/api/modules/sirsoft-board/boards/' . $board->slug . '/attachments/:id',
+                'secret_mode' => $board->secret_mode?->value ?? 'disabled',
+                'categories' => $board->categories ?? [],
+                'use_file_upload' => (bool) $board->use_file_upload,
+                'max_file_count' => $board->max_file_count ?? 5,
+                'max_file_size' => $board->max_file_size ?? 10,
+                'allowed_extensions' => $board->allowed_extensions ?? [],
+                'min_title_length' => $board->min_title_length ?? 2,
+                'max_title_length' => $board->max_title_length ?? 200,
+                'min_content_length' => $board->min_content_length ?? 10,
+                'max_content_length' => $board->max_content_length ?? 10000,
+                'attachment_upload_url' => '/api/modules/sirsoft-board/boards/'.$board->slug.'/attachments',
+                'attachment_delete_url' => '/api/modules/sirsoft-board/boards/'.$board->slug.'/attachments/:id',
             ];
         } catch (\Exception $e) {
             Log::error('EcommerceInquiryHookListener: 게시판 설정 조회 실패', [
@@ -270,7 +294,7 @@ class EcommerceInquiryHookListener implements HookListenerInterface
             $post = $this->postRepository->findWithBoard($postId);
 
             if (! $post || ! $post->board) {
-                throw new ModelNotFoundException("Post {$postId} 또는 소속 Board를 찾을 수 없습니다.");
+                throw new ModelNotFoundException("Post {$postId} or its board could not be found.");
             }
 
             $attachmentIds = $data['attachment_ids'] ?? [];
@@ -278,7 +302,7 @@ class EcommerceInquiryHookListener implements HookListenerInterface
         } catch (ModelNotFoundException $e) {
             Log::warning('EcommerceInquiryHookListener: Post 수정 실패 - 게시글 또는 게시판 없음', [
                 'post_id' => $postId,
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             throw new \RuntimeException(
@@ -287,7 +311,7 @@ class EcommerceInquiryHookListener implements HookListenerInterface
         } catch (\Exception $e) {
             Log::error('EcommerceInquiryHookListener: Post 수정 실패', [
                 'post_id' => $postId,
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             throw new \RuntimeException(
@@ -315,7 +339,7 @@ class EcommerceInquiryHookListener implements HookListenerInterface
             $post = $this->postRepository->findWithBoard($postId);
 
             if (! $post || ! $post->board) {
-                throw new ModelNotFoundException("Post {$postId} 또는 소속 Board를 찾을 수 없습니다.");
+                throw new ModelNotFoundException("Post {$postId} or its board could not be found.");
             }
 
             // 이커머스 경로: 알림 발송 SKIP (createPost와 동일한 skip_notification 패턴)
@@ -323,7 +347,7 @@ class EcommerceInquiryHookListener implements HookListenerInterface
         } catch (ModelNotFoundException $e) {
             Log::warning('EcommerceInquiryHookListener: Post 삭제 실패 - 게시글 또는 게시판 없음', [
                 'post_id' => $postId,
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             throw new \RuntimeException(
@@ -332,7 +356,7 @@ class EcommerceInquiryHookListener implements HookListenerInterface
         } catch (\Exception $e) {
             Log::error('EcommerceInquiryHookListener: Post 삭제 실패', [
                 'post_id' => $postId,
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             throw new \RuntimeException(
@@ -367,7 +391,7 @@ class EcommerceInquiryHookListener implements HookListenerInterface
             }
 
             if (! $reply->board) {
-                throw new ModelNotFoundException("Reply Post {$reply->id} 소속 Board를 찾을 수 없습니다.");
+                throw new ModelNotFoundException("Reply Post {$reply->id}'s board could not be found.");
             }
 
             $this->postService->updatePost($reply->board->slug, $reply->id, $data);
@@ -376,7 +400,7 @@ class EcommerceInquiryHookListener implements HookListenerInterface
         } catch (ModelNotFoundException $e) {
             Log::warning('EcommerceInquiryHookListener: Reply Post 수정 실패 - 게시글 또는 게시판 없음', [
                 'parent_post_id' => $parentPostId,
-                'error'          => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             throw new \RuntimeException(
@@ -385,7 +409,7 @@ class EcommerceInquiryHookListener implements HookListenerInterface
         } catch (\Exception $e) {
             Log::error('EcommerceInquiryHookListener: Reply Post 수정 실패', [
                 'parent_post_id' => $parentPostId,
-                'error'          => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             throw new \RuntimeException(
@@ -419,7 +443,7 @@ class EcommerceInquiryHookListener implements HookListenerInterface
             }
 
             if (! $reply->board) {
-                throw new ModelNotFoundException("Reply Post {$reply->id} 소속 Board를 찾을 수 없습니다.");
+                throw new ModelNotFoundException("Reply Post {$reply->id}'s board could not be found.");
             }
 
             // 이커머스 경로: 알림 발송 SKIP (createPost와 동일한 skip_notification 패턴)
@@ -429,7 +453,7 @@ class EcommerceInquiryHookListener implements HookListenerInterface
         } catch (ModelNotFoundException $e) {
             Log::warning('EcommerceInquiryHookListener: Reply Post 삭제 실패 - 게시글 또는 게시판 없음', [
                 'parent_post_id' => $parentPostId,
-                'error'          => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             throw new \RuntimeException(
@@ -438,7 +462,7 @@ class EcommerceInquiryHookListener implements HookListenerInterface
         } catch (\Exception $e) {
             Log::error('EcommerceInquiryHookListener: Reply Post 삭제 실패', [
                 'parent_post_id' => $parentPostId,
-                'error'          => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             throw new \RuntimeException(

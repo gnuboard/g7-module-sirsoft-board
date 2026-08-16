@@ -78,6 +78,27 @@ class AttachmentRepository implements AttachmentRepositoryInterface
     }
 
     /**
+     * 첨부파일이 속한 게시글을 게시판 스코프로 조회합니다(비밀 게이팅용).
+     *
+     * @param  string  $slug  게시판 슬러그
+     * @param  int  $postId  게시글 ID
+     * @return Post|null 게시글 모델 또는 null
+     */
+    public function findPostForGate(string $slug, int $postId): ?Post
+    {
+        $board = Board::where('slug', $slug)->first();
+
+        if (! $board) {
+            return null;
+        }
+
+        return Post::withTrashed()
+            ->where('board_id', $board->id)
+            ->where('id', $postId)
+            ->first(['id', 'board_id', 'user_id', 'is_secret', 'status', 'deleted_at']);
+    }
+
+    /**
      * 여러 ID로 첨부파일 조회 (order 정렬)
      *
      * @param  string  $slug  게시판 슬러그
