@@ -3,6 +3,7 @@
 namespace Modules\Sirsoft\Board\Repositories;
 
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Modules\Sirsoft\Board\Enums\PostStatus;
 use Modules\Sirsoft\Board\Enums\TriggerType;
@@ -430,5 +431,52 @@ class AttachmentRepository implements AttachmentRepositoryInterface
     public function forceDeleteByBoardId(int $boardId): int
     {
         return Attachment::where('board_id', $boardId)->forceDelete();
+    }
+
+    /**
+     * 게시글에 연결되지 않은 채 방치된 임시 첨부를 오래된 순으로 조회합니다.
+     *
+     * @param  Carbon  $threshold  기준 시각
+     * @param  int  $limit  최대 조회 건수
+     * @return Collection 임시 첨부 목록
+     */
+    public function findStaleTempAttachments(Carbon $threshold, int $limit): Collection
+    {
+        return Attachment::query()
+            ->whereNotNull('temp_key')
+            ->whereNull('post_id')
+            ->where('created_at', '<', $threshold)
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->limit($limit)
+            ->get(['id', 'board_id', 'temp_key', 'disk', 'path', 'created_at']);
+    }
+
+    /**
+     * 소프트 삭제된 지 오래된 첨부를 오래된 순으로 조회합니다.
+     *
+     * @param  Carbon  $threshold  기준 시각
+     * @param  int  $limit  최대 조회 건수
+     * @return Collection 소프트 삭제 첨부 목록
+     */
+    public function findSoftDeletedOlderThan(Carbon $threshold, int $limit): Collection
+    {
+        return Attachment::onlyTrashed()
+            ->where('deleted_at', '<', $threshold)
+            ->orderBy('deleted_at')
+            ->orderBy('id')
+            ->limit($limit)
+            ->get(['id', 'board_id', 'post_id', 'disk', 'path', 'deleted_at']);
+    }
+
+    /**
+     * 첨부 레코드를 영구 삭제합니다.
+     *
+     * @param  Attachment  $attachment  첨부파일 모델
+     * @return bool 삭제 성공 여부
+     */
+    public function forceDelete(Attachment $attachment): bool
+    {
+        return (bool) $attachment->forceDelete();
     }
 }

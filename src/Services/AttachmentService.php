@@ -9,6 +9,7 @@ use App\Support\ImageResizer;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -440,8 +441,9 @@ class AttachmentService
         // Before 훅
         HookManager::doAction('sirsoft-board.attachment.before_delete', $attachment);
 
-        // 물리 파일은 삭제하지 않음 — 소프트 딜리트만 수행
-        // 추후 배치 작업(Artisan Command + Scheduler)으로 보존 기간 경과 후 정리 예정
+        // 물리 파일은 삭제하지 않음 — 소프트 딜리트만 수행 (휴지통 복원 대비).
+        // 보존기간이 지난 뒤의 파일·기록 파기는 `sirsoft-board:prune-attachments` 가
+        // 담당한다 (purgeSoftDeleted). 운영자가 설정에서 켰을 때만 동작한다.
 
         // DB에서 소프트 삭제
         $result = $this->repository->delete($slug, $id);
@@ -461,6 +463,151 @@ class AttachmentService
         HookManager::doAction('sirsoft-board.attachment.after_delete', $attachment);
 
         return $result;
+    }
+
+    /**
+     * 게시글에 연결되지 않은 채 방치된 임시 첨부를 정리합니다.
+     *
+     * 글쓰기 폼에서 파일만 올리고 저장하지 않고 이탈하면 `temp_key` 만 남은 행과 그 파일이
+     * 남습니다. 연결 시점에 본경로로 옮겨지므로 `temp_key` 가 남아 있다는 것은 "끝내 연결되지
+     * 않았다" 는 뜻이고, 그래서 오탐 여지가 없습니다.
+     *
+     * 파일 → 행 순서를 지켜, 행이 먼저 사라져 파일을 못 찾는 상태를 만들지 않습니다.
+     *
+     * @param  int  $days  보존기간(일)
+     * @param  int  $limit  한 회차에 처리할 최대 건수
+     * @param  bool  $dryRun  true 면 대상만 세고 삭제하지 않음
+     * @return array{scanned: int, deleted: int, failed: int} 처리 결과
+     */
+    public function pruneTempUploads(int $days, int $limit, bool $dryRun = false): array
+    {
+        $threshold = Carbon::now()->subDays($days);
+        $attachments = $this->repository->findStaleTempAttachments($threshold, $limit);
+
+        $result = $this->purgeCollection($attachments, $dryRun, '임시 게시판 첨부');
+
+        if (! $dryRun) {
+            $this->removeEmptyTempDirectories($attachments);
+        }
+
+        return $result;
+    }
+
+    /**
+     * 파일을 모두 지운 temp_key 디렉토리를 정리합니다.
+     *
+     * 파일만 지우고 디렉토리를 남기면 폼 세션마다 빈 디렉토리가 쌓여, 정리를 돌려도
+     * 저장소에는 흔적이 계속 늘어납니다.
+     *
+     * 디렉토리에 파일이 남아 있으면(같은 temp_key 의 다른 첨부가 limit 에 걸려 이번 회차에서
+     * 빠진 경우 등) 삭제하지 않습니다.
+     *
+     * @param  Collection  $attachments  이번 회차에 처리한 첨부 목록
+     */
+    private function removeEmptyTempDirectories(Collection $attachments): void
+    {
+        $directories = [];
+
+        foreach ($attachments as $attachment) {
+            $directory = dirname((string) $attachment->path);
+
+            if ($directory === '' || $directory === '.') {
+                continue;
+            }
+
+            $directories[$attachment->disk.'|'.$directory] = [$attachment->disk, $directory];
+        }
+
+        foreach ($directories as [$disk, $directory]) {
+            $storage = $this->storageForRow($disk);
+
+            if ($storage->files('attachments', $directory) !== []) {
+                continue;
+            }
+
+            $storage->deleteDirectory('attachments', $directory);
+        }
+    }
+
+    /**
+     * 소프트 삭제된 지 보존기간이 지난 첨부를 파일까지 영구 파기합니다.
+     *
+     * 첨부 삭제는 소프트 삭제만 수행하므로 파일이 남아 있습니다. 게시글 복원
+     * (restoreCascadedByPostId)은 첨부의 `deleted_at` 이 보존기간 안에 있을 때에만 첨부까지
+     * 온전히 복원되므로, 보존기간은 휴지통 복원 가능 기간과 같게 유지해야 합니다.
+     *
+     * @param  int  $days  보존기간(일)
+     * @param  int  $limit  한 회차에 처리할 최대 건수
+     * @param  bool  $dryRun  true 면 대상만 세고 삭제하지 않음
+     * @return array{scanned: int, deleted: int, failed: int} 처리 결과
+     */
+    public function purgeSoftDeleted(int $days, int $limit, bool $dryRun = false): array
+    {
+        $threshold = Carbon::now()->subDays($days);
+        $attachments = $this->repository->findSoftDeletedOlderThan($threshold, $limit);
+
+        return $this->purgeCollection($attachments, $dryRun, '소프트 삭제 게시판 첨부');
+    }
+
+    /**
+     * 첨부 컬렉션을 파일 → 기록 순으로 영구 파기합니다.
+     *
+     * @param  Collection  $attachments  대상 첨부 목록
+     * @param  bool  $dryRun  true 면 대상만 세고 삭제하지 않음
+     * @param  string  $label  로그용 대상 설명
+     * @return array{scanned: int, deleted: int, failed: int} 처리 결과
+     */
+    private function purgeCollection(Collection $attachments, bool $dryRun, string $label): array
+    {
+        $result = ['scanned' => $attachments->count(), 'deleted' => 0, 'failed' => 0];
+
+        if ($dryRun) {
+            return $result;
+        }
+
+        foreach ($attachments as $attachment) {
+            $storage = $this->storageForRow($attachment->disk);
+
+            if ($storage->exists('attachments', $attachment->path) && ! $storage->delete('attachments', $attachment->path)) {
+                Log::warning("{$label} 파일 삭제 실패 — 기록 보존", [
+                    'attachment_id' => $attachment->id,
+                    'disk' => $attachment->disk,
+                    'path' => $attachment->path,
+                ]);
+
+                $result['failed']++;
+
+                continue;
+            }
+
+            $this->repository->forceDelete($attachment);
+            $result['deleted']++;
+        }
+
+        return $result;
+    }
+
+    /**
+     * 첨부 행에 기록된 disk 기준 스토리지를 반환합니다.
+     *
+     * 디스크를 전환한 뒤에도 전환 이전 행의 파일을 그 행의 실제 저장 위치에서 지우기 위한
+     * 해석입니다. 미등록 disk(그 디스크를 제공하던 확장이 비활성화된 경우)는 주입 스토리지로
+     * 폴백합니다 — withDisk 로 미등록 disk 인스턴스를 만들면 이후 호출이 예외가 됩니다.
+     *
+     * @param  string|null  $disk  행의 disk 컬럼 값
+     * @return StorageInterface 행 disk 의 스토리지
+     */
+    private function storageForRow(?string $disk): StorageInterface
+    {
+        if ($disk === null || $disk === '' || $disk === $this->storage->getDisk()) {
+            return $this->storage;
+        }
+
+        if (config("filesystems.disks.{$disk}") === null) {
+            return $this->storage;
+        }
+
+        return $this->storage->withDisk($disk);
     }
 
     /**

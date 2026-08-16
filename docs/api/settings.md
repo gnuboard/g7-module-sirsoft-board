@@ -393,6 +393,9 @@ HTTP/1.1 200
 | seo.seo_boards | body | boolean | 아니오 | — | 게시판 목록 페이지의 SEO 페이지 생성 활성화 여부 |
 | seo.seo_board | body | boolean | 아니오 | — | 개별 게시판 페이지의 SEO 페이지 생성 활성화 여부 |
 | seo.seo_post_detail | body | boolean | 아니오 | — | 게시글 상세 페이지의 SEO 페이지 생성 활성화 여부 |
+| attachment_settings | body | array | 아니오 | — | 첨부 정리 정책 카테고리 값. 삭제된 첨부의 물리 파일을 언제 파기할지 정합니다. |
+| attachment_settings.purge_enabled | body | boolean | 아니오 | — | 삭제 첨부 영구 정리 활성화 여부. **기본 false** — 사용자 파일을 실제로 파기하므로 운영자가 직접 켜야 동작합니다. 예약 작업(`sirsoft-board:prune-attachments --scheduled`)이 이 값을 false 폴백으로 재확인합니다. |
+| attachment_settings.purge_retention_days | body | integer | 아니오 | min 1, max 3650 | 삭제 첨부 보존기간(일, 기본 30). 게시글을 휴지통에서 복원하면 이 기간 안의 첨부는 함께 복원되므로, 휴지통 복원 가능 기간과 같게 유지해야 합니다. 하한·상한은 `config('sirsoft-board.limits')` 가 정하며 화면 입력도 같은 값을 읽습니다. |
 
 **요청 예시**
 

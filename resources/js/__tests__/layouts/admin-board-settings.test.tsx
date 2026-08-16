@@ -1611,10 +1611,12 @@ describe('기본 설정 탭 (general) - 날짜 표시 방식', () => {
         expect(option).not.toBeNull();
 
         // click 액션으로 date_display_format: "standard" 설정
+        // 키는 점 경로다 — 중첩 객체로 넘기면 spread 누적이 생겨 저장 payload 가 어긋난다.
         const clickAction = option.actions?.find((a: any) => a.type === 'click');
         expect(clickAction).toBeDefined();
         expect(clickAction.handler).toBe('setState');
-        expect(clickAction.params?.form?.display?.date_display_format).toBe('standard');
+        expect(clickAction.params?.['form.display.date_display_format']).toBe('standard');
+        expect(clickAction.params?.form).toBeUndefined();
     });
 
     it('relative 옵션 라디오 버튼이 존재한다', () => {
@@ -1622,10 +1624,12 @@ describe('기본 설정 탭 (general) - 날짜 표시 방식', () => {
         expect(option).not.toBeNull();
 
         // click 액션으로 date_display_format: "relative" 설정
+        // 키는 점 경로다 — 중첩 객체로 넘기면 spread 누적이 생겨 저장 payload 가 어긋난다.
         const clickAction = option.actions?.find((a: any) => a.type === 'click');
         expect(clickAction).toBeDefined();
         expect(clickAction.handler).toBe('setState');
-        expect(clickAction.params?.form?.display?.date_display_format).toBe('relative');
+        expect(clickAction.params?.['form.display.date_display_format']).toBe('relative');
+        expect(clickAction.params?.form).toBeUndefined();
     });
 
     it('라디오 버튼 name이 display.date_display_format이다', () => {

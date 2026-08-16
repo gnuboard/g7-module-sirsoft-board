@@ -58,6 +58,7 @@ class StoreBoardSettingsRequest extends FormRequest
             'spam_security.comment_cooldown_seconds',
             'spam_security.report_cooldown_seconds',
             'spam_security.view_count_cache_ttl',
+            'attachment_settings.purge_retention_days',
         ];
 
         $booleanFields = [
@@ -73,6 +74,7 @@ class StoreBoardSettingsRequest extends FormRequest
             'seo.seo_boards',
             'seo.seo_board',
             'seo.seo_post_detail',
+            'attachment_settings.purge_enabled',
         ];
 
         $data = $this->all();
@@ -262,6 +264,11 @@ class StoreBoardSettingsRequest extends FormRequest
             'seo.seo_boards' => ['nullable', 'boolean'],
             'seo.seo_board' => ['nullable', 'boolean'],
             'seo.seo_post_detail' => ['nullable', 'boolean'],
+
+            // 첨부 정리 정책 — 사용자 파일을 파기하므로 보존기간 하한을 서버가 강제한다.
+            // 상한(3650일)은 "사실상 정리하지 않음" 과 구분되지 않는 값을 저장하지 않기 위함이다.
+            'attachment_settings.purge_enabled' => ['nullable', 'boolean'],
+            'attachment_settings.purge_retention_days' => ['nullable', 'integer', 'min:'.$limits['attachment_purge_retention_days_min'], 'max:'.$limits['attachment_purge_retention_days_max']],
         ];
     }
 
@@ -311,7 +318,7 @@ class StoreBoardSettingsRequest extends FormRequest
     public function validatedSettings(): array
     {
         $validated = $this->validated();
-        $validCategories = ['basic_defaults', 'report_policy', 'spam_security', 'display', 'seo', 'notifications'];
+        $validCategories = ['basic_defaults', 'report_policy', 'spam_security', 'display', 'seo', 'notifications', 'attachment_settings'];
 
         return array_filter(
             $validated,

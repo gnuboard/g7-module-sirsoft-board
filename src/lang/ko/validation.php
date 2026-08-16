@@ -401,6 +401,10 @@ return [
             'override_values.max_file_size' => '최대 파일 크기',
             'override_values.max_file_count' => '최대 파일 개수',
             'override_values.new_display_hours' => '신규 표시 시간',
+
+            // attachment_settings
+            'attachment_settings.purge_enabled' => '삭제 첨부 영구 정리',
+            'attachment_settings.purge_retention_days' => '삭제 첨부 보존기간',
         ],
     ],
 
