@@ -118,7 +118,7 @@ class AttachmentController extends AdminBaseController
             }
 
             // 삭제 (Service에서 처리)
-            $result = $this->attachmentService->delete($slug, $id);
+            $result = $this->attachmentService->delete($slug, $id, 'admin');
 
             if (! $result) {
                 return $this->error('sirsoft-board::messages.attachment.delete_failed', 500);
@@ -149,7 +149,7 @@ class AttachmentController extends AdminBaseController
 
             // FileUploader가 [{id, order}] 형태로 전송 → [ID => order] 매핑으로 변환
             $orders = collect($validated['order'])->pluck('order', 'id')->all();
-            $result = $this->attachmentService->reorder($slug, $orders);
+            $result = $this->attachmentService->reorder($slug, $orders, 'admin');
 
             if (! $result) {
                 return $this->error('sirsoft-board::messages.attachment.reorder_failed', 500);

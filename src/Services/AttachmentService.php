@@ -16,6 +16,7 @@ use Modules\Sirsoft\Board\Exceptions\AttachmentLimitExceededException;
 use Modules\Sirsoft\Board\Models\Attachment;
 use Modules\Sirsoft\Board\Repositories\Contracts\AttachmentRepositoryInterface;
 use Modules\Sirsoft\Board\Repositories\Contracts\BoardRepositoryInterface;
+use Modules\Sirsoft\Board\Support\SecretContentGate;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
@@ -346,6 +347,45 @@ class AttachmentService
     }
 
     /**
+     * 비밀글 첨부파일 접근 권한을 검증합니다(KVE-2026-1914).
+     *
+     * 첨부가 속한 게시글이 비밀글이면 SecretContentGate(SSoT) 판정을 통과한
+     * 요청(작성자 본인 또는 게시판 manager/posts.read-secret)에만 서빙합니다.
+     * 첨부 서빙은 상세 요청과 분리된 별도 요청이라 password_verified 는 세팅되지
+     * 않으므로, 비회원이 비밀번호로 검증한 경우는 이 경로에서 인정되지 않습니다
+     * (안전 측 실패 — 해시/ID 만으로 비밀글 첨부를 가져가는 것을 차단).
+     *
+     * @param  string  $slug  게시판 슬러그
+     * @param  Attachment  $attachment  첨부파일 모델
+     *
+     * @throws AccessDeniedHttpException 비밀글 첨부에 권한 없이 접근한 경우
+     */
+    private function assertSecretPostAttachmentAccess(string $slug, Attachment $attachment): void
+    {
+        if (! $attachment->post_id) {
+            return;
+        }
+
+        $post = $this->repository->findPostForGate($slug, $attachment->post_id);
+
+        // 부모 글을 못 읽으면 막는다(fail-closed). 첨부에 post_id 가 있는데 그 글을 못 찾는
+        // 것은 정상 상태가 아니다 — 슬러그가 다른 게시판이거나 글이 사라진 경우이며, 통과시키면
+        // 게이트가 있어야 할 자리에서 무게이트가 된다. 조회는 withTrashed 라 소프트 삭제로는
+        // null 이 되지 않는다.
+        if (! $post) {
+            throw new AccessDeniedHttpException(__('auth.scope_denied'));
+        }
+
+        if (! $post->is_secret) {
+            return;
+        }
+
+        if (! app(SecretContentGate::class)->canView($post)) {
+            throw new AccessDeniedHttpException(__('auth.scope_denied'));
+        }
+    }
+
+    /**
      * ID로 첨부파일 조회
      *
      * @param  string  $slug  게시판 슬러그
@@ -380,15 +420,18 @@ class AttachmentService
      *
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  첨부파일 ID
+     * @param  string  $context  호출 컨텍스트 (admin | user) — 스코프 권한 식별자 결정에 쓰인다
      * @return bool 삭제 성공 여부
      */
-    public function delete(string $slug, int $id): bool
+    public function delete(string $slug, int $id, string $context = 'user'): bool
     {
         $attachment = $this->repository->findById($slug, $id);
 
         if (! $attachment) {
             return false;
         }
+
+        $this->assertAttachmentWithinScope($slug, $attachment, $context);
 
         // 삭제 후 재정렬을 위해 정보 저장
         $postId = $attachment->post_id;
@@ -425,10 +468,13 @@ class AttachmentService
      *
      * @param  string  $slug  게시판 슬러그
      * @param  array<int, int>  $orders  첨부파일 ID => order 매핑
+     * @param  string  $context  호출 컨텍스트 (admin | user) — 스코프 권한 식별자 결정에 쓰인다
      * @return bool 성공 여부
      */
-    public function reorder(string $slug, array $orders): bool
+    public function reorder(string $slug, array $orders, string $context = 'user'): bool
     {
+        $this->assertReorderWithinScope($slug, $orders, $context);
+
         // Before 훅
         HookManager::doAction('sirsoft-board.attachment.before_reorder', $slug, $orders);
 
@@ -438,6 +484,63 @@ class AttachmentService
         HookManager::doAction('sirsoft-board.attachment.after_reorder', $slug, $orders);
 
         return $result;
+    }
+
+    /**
+     * 첨부가 액터의 스코프 안에 있는지 검사합니다.
+     *
+     * 첨부 관리 라우트는 `{id}`(정수)로 선언돼 라우트 모델 바인딩이 일어나지 않고, 순서
+     * 변경은 아예 정적 경로다. 두 경우 모두 PermissionMiddleware 가 모델을 resolve 하지
+     * 못해 스코프 검사를 건너뛰므로(목록 엔드포인트로 간주) 서비스가 재적용한다.
+     * 사용자 경로는 컨트롤러가 `canDelete`(작성자 본인)로 막고 있었으나 관리자 경로는
+     * 그 대응물이 없어 비어 있었다 — 두 경로 모두 여기서 같은 판정을 받는다.
+     *
+     * @param  string  $slug  게시판 슬러그
+     * @param  Attachment  $attachment  대상 첨부
+     *
+     * @throws AccessDeniedHttpException 스코프 밖 첨부인 경우
+     */
+    private function assertAttachmentWithinScope(string $slug, Attachment $attachment, string $context): void
+    {
+        // 컨텍스트는 호출부가 명시한다 — PostService 가 쓰는 방식과 같다. 요청에서
+        // 컨트롤러 네임스페이스를 스니핑하는 사설 복제본이 이미 4곳에 있는데 5번째를
+        // 만들지 않는다.
+        $scopePermission = $context === 'admin'
+            ? "sirsoft-board.{$slug}.admin.attachments.upload"
+            : "sirsoft-board.{$slug}.attachments.upload";
+
+        if (! PermissionHelper::checkScopeAccess($attachment, $scopePermission)) {
+            throw new AccessDeniedHttpException(__('auth.scope_denied'));
+        }
+    }
+
+    /**
+     * 순서 변경 대상 첨부 전체가 액터의 스코프 안에 있는지 검사합니다.
+     *
+     * 순서는 집합 전체에 대한 하나의 배열이라 일부만 반영하면 나머지와 어긋난다 —
+     * 걸러내지 않고 전량 거부한다(코어 첨부/메뉴 순서 변경과 같은 의미론).
+     *
+     * @param  string  $slug  게시판 슬러그
+     * @param  array<int, array{id: int, order: int}>  $orders  순서 데이터
+     *
+     * @throws AccessDeniedHttpException 스코프 밖 첨부가 하나라도 포함된 경우
+     */
+    private function assertReorderWithinScope(string $slug, array $orders, string $context): void
+    {
+        $ids = array_values(array_unique(array_filter(
+            array_map(static fn ($item): int => (int) ($item['id'] ?? 0), $orders)
+        )));
+
+        foreach ($ids as $id) {
+            $attachment = $this->repository->findById($slug, $id);
+
+            // 이 게시판 소속이 아닌 id 는 통과시키지 않는다.
+            if (! $attachment) {
+                throw new AccessDeniedHttpException(__('auth.scope_denied'));
+            }
+
+            $this->assertAttachmentWithinScope($slug, $attachment, $context);
+        }
     }
 
     /**
@@ -517,6 +620,9 @@ class AttachmentService
         // 삭제된 게시글의 첨부파일은 관리 권한자만 접근
         $this->assertDeletedPostAttachmentAccess($slug, $attachment);
 
+        // 비밀글 첨부파일은 열람 권한자만 접근
+        $this->assertSecretPostAttachmentAccess($slug, $attachment);
+
         // 다운로드 활동이력 기록 훅
         // 권한/삭제글 가드 통과 후 발화 → 차단된 시도는 기록하지 않음.
         // $context('user'|'admin')는 로그 부가정보용 (log_type 은 요청 경로로 자동 결정).
@@ -580,6 +686,9 @@ class AttachmentService
         // 삭제된 게시글의 첨부파일은 관리 권한자만 접근
         $this->assertDeletedPostAttachmentAccess($slug, $attachment);
 
+        // 비밀글 첨부파일은 열람 권한자만 접근
+        $this->assertSecretPostAttachmentAccess($slug, $attachment);
+
         return $this->storage->response(
             'attachments',
             $attachment->path,
@@ -611,6 +720,9 @@ class AttachmentService
 
         // 삭제된 게시글의 첨부파일은 관리 권한자만 접근
         $this->assertDeletedPostAttachmentAccess($slug, $attachment);
+
+        // 비밀글 첨부파일은 열람 권한자만 접근
+        $this->assertSecretPostAttachmentAccess($slug, $attachment);
 
         // 파일 존재 확인
         if (! $this->storage->exists('attachments', $attachment->path)) {

@@ -14,6 +14,8 @@ use Modules\Sirsoft\Board\Http\Requests\StoreCommentRequest;
 use Modules\Sirsoft\Board\Http\Requests\UpdateCommentRequest;
 use Modules\Sirsoft\Board\Http\Requests\VerifyCommentPasswordRequest;
 use Modules\Sirsoft\Board\Http\Resources\CommentResource;
+use Modules\Sirsoft\Board\Http\Resources\PostResource;
+use Modules\Sirsoft\Board\Repositories\Contracts\PostRepositoryInterface;
 use Modules\Sirsoft\Board\Services\BoardService;
 use Modules\Sirsoft\Board\Services\CommentService;
 
@@ -32,7 +34,8 @@ class CommentController extends PublicBaseController
      */
     public function __construct(
         private CommentService $commentService,
-        private BoardService $boardService
+        private BoardService $boardService,
+        private PostRepositoryInterface $postRepository
     ) {
         parent::__construct();
     }
@@ -55,6 +58,32 @@ class CommentController extends PublicBaseController
 
             if (! $board->use_comment) {
                 return $this->error('sirsoft-board::messages.comments.comments_disabled', 403);
+            }
+
+            // 비밀글 댓글 게이팅(KVE-2026-1914): 부모 게시글이 비밀글이면 열람 권한이 없는
+            // 요청에는 댓글 목록을 노출하지 않는다(게시글 상세와 동일 정책, SecretContentGate SSoT).
+            $post = $this->postRepository->find($slug, $postId);
+
+            // 부모 글을 못 읽으면 막는다(fail-closed). `find` 는 슬러그로 게시판을 먼저 찾는데
+            // 그 게시판이 없으면 null 을 돌려주므로, 통과시키면 비밀 게이트가 있어야 할 자리에서
+            // 무게이트로 댓글 목록이 나간다.
+            if (! $post) {
+                return $this->error('sirsoft-board::messages.posts.not_found', 404);
+            }
+
+            if ($post->is_secret && ! PostResource::canViewSecretForPost($post)) {
+                return $this->success(
+                    'sirsoft-board::messages.comments.index_success',
+                    CommentResource::collection([])
+                );
+            }
+
+            // 이미 조회한 부모 post 를 CommentResource 로 전달한다(KVE-2026-1914 이중 방어 A-4b).
+            // Resource 는 이 인스턴스를 재사용해 (a) 2차 비밀 게이트를 댓글당 lazy-load 없이
+            // 재확인하고 (b) toArray 의 slug 도출도 재사용한다 — 목록의 댓글당 board_posts
+            // 조회(N+1)를 제거한다. 컨트롤러가 SSoT 로 부모 post 를 쥐고 있으므로 추가 쿼리 0.
+            if ($post) {
+                request()->attributes->set('sirsoft_board_parent_post', $post);
             }
 
             $comments = $this->commentService->getCommentsByPostId($slug, $postId);

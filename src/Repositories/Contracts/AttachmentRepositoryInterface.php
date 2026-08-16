@@ -4,6 +4,7 @@ namespace Modules\Sirsoft\Board\Repositories\Contracts;
 
 use Illuminate\Database\Eloquent\Collection;
 use Modules\Sirsoft\Board\Models\Attachment;
+use Modules\Sirsoft\Board\Models\Post;
 
 /**
  * 게시판 첨부파일 Repository 인터페이스
@@ -38,6 +39,18 @@ interface AttachmentRepositoryInterface
      * @return bool 소속 게시글이 삭제 상태인지 여부
      */
     public function isPostDeleted(string $slug, int $postId): bool;
+
+    /**
+     * 첨부파일이 속한 게시글을 게시판 스코프로 조회합니다(비밀 게이팅용).
+     *
+     * 비밀글 첨부 서빙 시 부모 게시글의 소유자/비밀 여부를 판정하기 위해 사용합니다.
+     * 게시판을 찾을 수 없거나 게시글이 없으면 null 을 반환합니다.
+     *
+     * @param  string  $slug  게시판 슬러그
+     * @param  int  $postId  게시글 ID
+     * @return Post|null 게시글 모델 또는 null
+     */
+    public function findPostForGate(string $slug, int $postId): ?Post;
 
     /**
      * 여러 ID로 첨부파일 조회 (order 정렬)
