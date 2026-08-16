@@ -401,6 +401,10 @@ return [
             'override_values.max_file_size' => 'Max File Size',
             'override_values.max_file_count' => 'Max File Count',
             'override_values.new_display_hours' => 'New Display Hours',
+
+            // attachment_settings
+            'attachment_settings.purge_enabled' => 'Permanent Cleanup Of Deleted Attachments',
+            'attachment_settings.purge_retention_days' => 'Deleted Attachment Retention Period',
         ],
     ],
 

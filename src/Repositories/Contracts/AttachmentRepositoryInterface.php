@@ -3,6 +3,7 @@
 namespace Modules\Sirsoft\Board\Repositories\Contracts;
 
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Carbon;
 use Modules\Sirsoft\Board\Models\Attachment;
 use Modules\Sirsoft\Board\Models\Post;
 
@@ -198,4 +199,36 @@ interface AttachmentRepositoryInterface
      * @return int 삭제된 첨부파일 수
      */
     public function forceDeleteByBoardId(int $boardId): int;
+
+    /**
+     * 게시글에 연결되지 않은 채 방치된 임시 첨부를 오래된 순으로 조회합니다.
+     *
+     * 글쓰기 폼에서 업로드만 하고 저장 없이 이탈하면 `temp_key` 가 남은 채
+     * `board_id = 0` 인 행과 그 파일이 영구 잔존합니다. 그 회수 대상을 찾습니다.
+     *
+     * @param  Carbon  $threshold  기준 시각 (이 시각 이전 업로드가 대상)
+     * @param  int  $limit  최대 조회 건수
+     * @return Collection 임시 첨부 목록 (created_at 오름차순)
+     */
+    public function findStaleTempAttachments(Carbon $threshold, int $limit): Collection;
+
+    /**
+     * 소프트 삭제된 지 오래된 첨부를 오래된 순으로 조회합니다.
+     *
+     * 첨부 삭제는 소프트 삭제만 수행하므로(휴지통 복원 대비) 물리 파일은 남아 있습니다.
+     * 보존기간이 지난 뒤 파일과 기록을 함께 파기할 대상을 찾습니다.
+     *
+     * @param  Carbon  $threshold  기준 시각 (이 시각 이전 삭제분이 대상)
+     * @param  int  $limit  최대 조회 건수
+     * @return Collection 소프트 삭제 첨부 목록 (deleted_at 오름차순)
+     */
+    public function findSoftDeletedOlderThan(Carbon $threshold, int $limit): Collection;
+
+    /**
+     * 첨부 레코드를 영구 삭제합니다.
+     *
+     * @param  Attachment  $attachment  첨부파일 모델
+     * @return bool 삭제 성공 여부
+     */
+    public function forceDelete(Attachment $attachment): bool;
 }
