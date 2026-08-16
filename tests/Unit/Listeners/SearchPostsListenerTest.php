@@ -7,15 +7,16 @@ use App\Models\User;
 use App\Support\Query\BoundedPage;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Modules\Sirsoft\Board\Listeners\SearchPostsListener;
 use Modules\Sirsoft\Board\Services\BoardService;
 use Modules\Sirsoft\Board\Services\PostService;
-use Tests\TestCase;
+use Modules\Sirsoft\Board\Tests\ModuleTestCase;
 
 /**
  * SearchPostsListener 단위 테스트 — 게시판별 권한 필터링 및 날짜 포맷 검증
  */
-class SearchPostsListenerTest extends TestCase
+class SearchPostsListenerTest extends ModuleTestCase
 {
     /**
      * 검색 결과 페이지(BoundedPage)를 만듭니다.
@@ -222,6 +223,46 @@ class SearchPostsListenerTest extends TestCase
         // created_at_formatted: 표시용 포맷 (비어있지 않은 문자열)
         $this->assertArrayHasKey('created_at_formatted', $item);
         $this->assertNotEmpty($item['created_at_formatted']);
+    }
+
+    /**
+     * 검색 실패가 "결과 0건" 으로 위장되지 않고 failed 페이로드로 표면화되는지 확인 (#103)
+     *
+     * 수정 전에는 catch 가 로그만 남기고 카테고리 키를 설정하지 않아, 화면이
+     * "검색 결과가 없습니다" 를 그렸다.
+     *
+     * @effects failed_flag_in_response, exception_stack_logged
+     */
+    public function test_search_failure_surfaces_failed_payload_and_logs_exception(): void
+    {
+        Log::spy();
+
+        $exception = new \RuntimeException('DB 오류 재현');
+        $this->boardService
+            ->method('getActiveBoardsForSearch')
+            ->willThrowException($exception);
+
+        $context = [
+            'type' => 'posts',
+            'q' => '문의',
+            'sort' => 'relevance',
+            'page' => 1,
+            'per_page' => 10,
+            'user' => null,
+            'request' => null,
+        ];
+
+        $result = $this->listener->searchPosts([], $context);
+
+        $this->assertArrayHasKey('posts', $result);
+        $this->assertTrue($result['posts']['failed'] ?? false, '실패 카테고리에는 failed 플래그가 실려야 합니다.');
+        $this->assertFalse($result['posts']['total_is_exact'], '실패한 0건을 "정확한 0건" 으로 말하면 안 됩니다.');
+        $this->assertSame([], $result['posts']['items']);
+        $this->assertSame([], $result['posts']['available_boards'], '기존 응답 키 집합(available_boards)은 유지되어야 합니다.');
+
+        Log::shouldHaveReceived('error')
+            ->withArgs(fn (string $message, array $ctx = []) => ($ctx['exception'] ?? null) === $exception)
+            ->once();
     }
 
     /**
