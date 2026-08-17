@@ -13,6 +13,7 @@ use App\Extension\Traits\ClearsTemplateCaches;
 use App\Helpers\PermissionHelper;
 use App\Models\Menu;
 use App\Models\Role;
+use App\Models\User;
 use App\Repositories\Concerns\ResolvesSortSpec;
 use App\Services\MenuService;
 use App\Services\RoleService;

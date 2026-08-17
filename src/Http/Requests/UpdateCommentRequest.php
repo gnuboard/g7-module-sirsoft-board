@@ -60,7 +60,7 @@ class UpdateCommentRequest extends FormRequest
             'status' => ['nullable', 'string', Rule::in(PostStatus::values())],
             // 비회원인 경우 비밀번호 필수 (수정 권한 검증용). 단, 검증 토큰이 있으면 선택.
             'password' => [$isGuest && ! $hasVerificationToken ? 'required' : 'nullable', 'string', 'min:4', 'max:20'],
-            'verification_token' => ['nullable', 'string'],
+            'verification_token' => ['nullable', 'string', 'max:255'],
         ];
 
         // 훅: 모듈/플러그인이 validation rules를 동적으로 추가할 수 있도록 필터 제공

@@ -256,12 +256,12 @@ class CommentController extends PublicBaseController
             );
 
             // 비회원 댓글: 평문 비밀번호 재전송 대신 검증 토큰으로도 본인 확인 (게시글과 동형)
-            $verificationToken = request()->input('verification_token');
+            $verificationToken = $request->validated('verification_token');
             if (! $canDelete && ! empty($verificationToken)) {
                 $canDelete = $this->commentService->consumeCommentVerifyToken(
                     $slug,
                     $commentId,
-                    (string) $verificationToken
+                    $verificationToken
                 );
             }
 

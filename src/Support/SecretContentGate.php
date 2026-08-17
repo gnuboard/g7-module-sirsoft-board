@@ -81,21 +81,4 @@ class SecretContentGate
     {
         return $request->route('slug') ?? ($post->relationLoaded('board') ? $post->board?->slug : null);
     }
-
-    /**
-     * Admin 요청 여부를 확인합니다.
-     *
-     * @param  Request  $request  HTTP 요청
-     * @return bool Admin 요청 여부
-     */
-    private function isAdminRequest(Request $request): bool
-    {
-        $controller = $request->route()?->getController();
-
-        if (! $controller) {
-            return false;
-        }
-
-        return str_contains(get_class($controller), '\\Admin\\');
-    }
 }

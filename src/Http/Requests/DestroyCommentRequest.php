@@ -33,6 +33,7 @@ class DestroyCommentRequest extends FormRequest
     {
         return [
             'password' => ['nullable', 'string', 'min:4', 'max:20'],
+            'verification_token' => ['nullable', 'string', 'max:255'],
         ];
     }
 

@@ -657,23 +657,6 @@ class PostResource extends BaseApiResource
     }
 
     /**
-     * Admin 요청 여부를 확인합니다.
-     *
-     * @param  Request  $request  HTTP 요청
-     * @return bool Admin 요청 여부
-     */
-    private function isAdminRequest(Request $request): bool
-    {
-        $controller = $request->route()?->getController();
-
-        if (! $controller) {
-            return false;
-        }
-
-        return str_contains(get_class($controller), '\\Admin\\');
-    }
-
-    /**
      * 비밀글 내용 열람 가능 여부를 확인합니다.
      *
      * 열람 가능 조건 (우선순위 순):

@@ -1075,7 +1075,8 @@ class PostRepository implements PostRepositoryInterface
         $activityType = $filters['activity_type'] ?? 'authored';
         $sort = $filters['sort'] ?? 'latest'; // latest, oldest, views
         // 열람자 관점. 이 값이 대상 사용자와 다르면(비로그인 포함) **타인 관점**이므로
-        // 비밀글·미발행글을 내보내지 않는다.
+        // 비밀글·미발행글의 **본문(content_plain)만 비운다** — 행·제목·배지는 목록 화면과
+        // 동일하게 유지한다(제목 공개 정책 2026-02-04, 행 제거가 아니라 본문 마스킹이 의도).
         //
         // 종전에는 `is_public` 옵트인 플래그로 이 판정을 했는데, 그 키를 설정하는 코드가
         // 저장소 어디에도 없어서 필터가 한 번도 적용되지 않았다(사문). 옵트인은 호출부가
@@ -1776,6 +1777,7 @@ class PostRepository implements PostRepositoryInterface
         $descendants = [];
 
         while ($frontier !== []) {
+            // audit:allow query-unbounded-get reason: 대상은 한 원글의 답글 트리 한 레벨 — 삭제/복원은 트리 전체가 하나의 의사표시라 단일 트랜잭션에서 전량 확보해야 하며(부분 반영 시 원글과 답글 상태가 어긋남), visited 가드가 유한 종료를 보장한다
             $children = Post::withTrashed()
                 ->where('board_id', $board->id)
                 ->whereIn('parent_id', $frontier)
@@ -2008,7 +2010,7 @@ class PostRepository implements PostRepositoryInterface
             ->whereNull('deleted_at')
             ->whereNull('parent_id')
             // 노출 제한 필터 — 미발행(블라인드·삭제)·비활성 게시판 글은 대시보드 최신글에서 제외한다.
-            // 비밀글은 제목 공개 정책(2026-01-02)에 따라 관리자에게 제목을 노출한다(제외하지 않음).
+            // 비밀글은 제목 공개 정책(2026-02-04)에 따라 관리자에게 제목을 노출한다(제외하지 않음).
             ->where('status', PostStatus::Published->value)
             ->whereHas('board', fn ($q) => $q->where('is_active', true))
             ->with(['board', 'user'])

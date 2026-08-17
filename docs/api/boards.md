@@ -4377,6 +4377,7 @@ HTTP/1.1 201
 | postId | path | string | 예 | — | 대상 post의 식별자 |
 | commentId | path | string | 예 | — | 대상 comment의 식별자 |
 | password | body | string | 아니오 | min 4, max 20 | 비회원 댓글 삭제 시 소유권 확인용 비밀번호. 형식(문자열, 4~20자)은 `DestroyCommentRequest` 가 검증하며, 배열 주입 등 형식 위반은 422. 소유권 판정 자체는 서비스(`canDelete`)가 수행 |
+| verification_token | body | string | 아니오 | max 255 | 비회원 댓글 삭제 시 비밀번호 재입력을 대체하는 임시 검증 토큰 (verify-password 로 발급, 1회 소비). 문자열 형식 위반(배열 주입 등)은 422 |
 
 **요청 예시**
 
@@ -4432,6 +4433,9 @@ HTTP/1.1 200
 | slug | path | string | 예 | — | 대상 리소스의 slug (URL 친화 식별자) |
 | postId | path | string | 예 | — | 대상 post의 식별자 |
 | commentId | path | string | 예 | — | 대상 comment의 식별자 |
+| content | body | string | 예 | 게시판 설정의 min/max 길이 | 수정할 댓글 본문 (금지 키워드 검사 포함) |
+| password | body | string | 조건부 | min 4, max 20 | 비회원 댓글 수정 시 소유권 확인용 비밀번호 (검증 토큰이 있으면 생략 가능) |
+| verification_token | body | string | 아니오 | max 255 | 비회원 댓글 수정 시 비밀번호 재입력을 대체하는 임시 검증 토큰 (verify-password 로 발급, 1회 소비) |
 
 > 이 엔드포인트는 확장이 파라미터를 추가할 수 있습니다 (`sirsoft-board.comment.update_validation_rules`).
 

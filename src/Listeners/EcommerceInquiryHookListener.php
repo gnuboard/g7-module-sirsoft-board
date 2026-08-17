@@ -511,11 +511,11 @@ class EcommerceInquiryHookListener implements HookListenerInterface
      * 해제 판정에 사용합니다. SoftDeletes 전역 스코프가 삭제된 답변을 제외하므로
      * "살아있는 답변" 만 집계됩니다.
      *
-     * @param  mixed  $carry  이전 필터 결과 (초기값: 0)
+     * @param  mixed  $carry  이전 필터 결과 (초기값: null = 판정 불가)
      * @param  int  $parentPostId  부모 문의 Post ID
-     * @return int 살아있는 답변 수 (조회 실패 시 이전 필터 결과 유지)
+     * @return int|null 살아있는 답변 수 (조회 실패 시 이전 필터 결과 유지 — null 이면 소비측이 판정 불가로 no-op)
      */
-    public function countReplies(mixed $carry, int $parentPostId): int
+    public function countReplies(mixed $carry, int $parentPostId): ?int
     {
         try {
             return $this->postRepository->countRepliesByParentId($parentPostId);
@@ -525,7 +525,9 @@ class EcommerceInquiryHookListener implements HookListenerInterface
                 'error' => $e->getMessage(),
             ]);
 
-            return (int) $carry;
+            // 실패를 0(답변 없음)으로 접으면 소비측이 답변완료를 오해제한다 —
+            // 판정 불가(null)를 그대로 흘려보낸다.
+            return is_numeric($carry) ? (int) $carry : null;
         }
     }
 
