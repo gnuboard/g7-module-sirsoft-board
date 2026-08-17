@@ -84,6 +84,7 @@
         "max_content_length": "최대 게시글 글자 수",
         "use_reply": "답변글 사용",
         "max_reply_depth": "답변글 최대 깊이",
+        "reply_delete_policy": "답변글 삭제 방식",
         "use_comment": "댓글 사용",
         "comment_order": "댓글 정렬 순서",
         "min_comment_length": "최소 댓글 글자 수",
@@ -172,6 +173,7 @@
             "max_content_length": "게시글 본문의 최대 글자 수를 설정합니다 ({{min}}~{{max}})",
             "use_reply": "ON으로 설정해야 새 게시판에 답변글 기능이 적용됩니다.",
             "max_reply_depth": "답변글의 최대 중첩 깊이를 설정합니다 ({{min}}~{{max}})",
+            "reply_delete_policy": "답변글이 달린 글을 삭제할 때의 동작을 설정합니다",
             "blocked_keywords": "등록된 키워드가 포함된 게시글\/댓글은 작성이 차단됩니다",
             "use_comment": "ON으로 설정해야 새 게시판에 댓글 기능이 적용됩니다. 아래 댓글 세부 설정도 함께 적용됩니다.",
             "comment_order": "댓글의 기본 정렬 방향을 설정합니다",
@@ -202,6 +204,10 @@
             "disabled": "사용 안함",
             "enabled": "선택 가능",
             "always": "항상 비밀글"
+        },
+        "reply_delete_policy": {
+            "block": "삭제 차단",
+            "cascade": "함께 삭제"
         },
         "order_by": {
             "created_at": "최신순",
@@ -287,6 +293,7 @@
             "use_comment": "댓글 사용",
             "use_reply": "답변글 사용",
             "max_reply_depth": "답변글 최대 깊이",
+            "reply_delete_policy": "답변글 삭제 방식",
             "max_comment_depth": "대댓글 최대 깊이",
             "comment_order": "댓글 정렬 순서",
             "show_view_count": "조회수 표시",

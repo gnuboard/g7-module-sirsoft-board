@@ -5,6 +5,7 @@ namespace Modules\Sirsoft\Board\Http\Requests\Admin;
 use App\Models\Role;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Modules\Sirsoft\Board\Enums\ReplyDeletePolicy;
 use Modules\Sirsoft\Board\Http\Requests\Concerns\ReadsBoardLimits;
 
 /**
@@ -174,6 +175,7 @@ class StoreBoardSettingsRequest extends FormRequest
             'basic_defaults.use_comment' => ['nullable', 'boolean'],
             'basic_defaults.use_reply' => ['nullable', 'boolean'],
             'basic_defaults.max_reply_depth' => ['nullable', 'integer', "min:{$maxReplyDepthMin}", "max:{$maxReplyDepthMax}"],
+            'basic_defaults.reply_delete_policy' => ['nullable', 'string', Rule::in(ReplyDeletePolicy::values())],
             'basic_defaults.max_comment_depth' => ['nullable', 'integer', "min:{$maxCommentDepthMin}", "max:{$maxCommentDepthMax}"],
             'basic_defaults.comment_order' => ['nullable', 'string', 'in:ASC,DESC'],
             'basic_defaults.show_view_count' => ['nullable', 'boolean'],

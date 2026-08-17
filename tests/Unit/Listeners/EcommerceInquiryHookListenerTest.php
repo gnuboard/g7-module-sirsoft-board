@@ -15,12 +15,14 @@ use Modules\Sirsoft\Board\Tests\BoardTestCase;
  * EcommerceInquiryHookListener 단위 테스트
  *
  * 검증 목적:
- * - getSubscribedHooks: 7개 훅 등록, 모두 filter 타입
- * - createAndReturn: 성공(post_id/inquirable_type 반환), title 자동생성, parent_id Re: 처리, 예외 시 null
+ * - getSubscribedHooks: 8개 훅 등록, 모두 filter 타입
+ * - createAndReturn: 성공(post_id/inquirable_type 반환), title 자동생성, parent_id Re: 처리, 예외 시 null,
+ *   기존 살아있는 답변 존재 시 중복 생성 차단(duplicate 마커), 답변 soft delete 후 재등록 허용
  * - getByIds: 빈 배열 → carry 그대로, 유효 ID 목록 → 필드 포함 배열 반환
  * - getBoardSettings: 존재하지 않는 slug → carry 그대로, 유효 slug → 설정 배열 반환
- * - deletePost: 성공 → carry 반환, 존재하지 않는 PostId → RuntimeException
+ * - deletePost: 성공 → carry 반환, 답글 자식까지 cascade soft delete, 존재하지 않는 PostId → RuntimeException
  * - deleteReplyPost: reply 없음 → RuntimeException, 성공 → carry 반환
+ * - countReplies: 살아있는 자식만 집계
  *
  * @group board
  * @group unit
@@ -65,9 +67,9 @@ class EcommerceInquiryHookListenerTest extends BoardTestCase
     // ==========================================
 
     /**
-     * 7개 훅이 모두 등록되어 있고, 모두 filter 타입이어야 합니다.
+     * 8개 훅이 모두 등록되어 있고, 모두 filter 타입이어야 합니다.
      */
-    public function test_subscribed_hooks_registers_all_seven_filter_hooks(): void
+    public function test_subscribed_hooks_registers_all_eight_filter_hooks(): void
     {
         $hooks = EcommerceInquiryHookListener::getSubscribedHooks();
 
@@ -79,6 +81,7 @@ class EcommerceInquiryHookListenerTest extends BoardTestCase
             'sirsoft-ecommerce.inquiry.delete_reply',
             'sirsoft-ecommerce.inquiry.get_by_ids',
             'sirsoft-ecommerce.inquiry.get_settings',
+            'sirsoft-ecommerce.inquiry.count_replies',
         ];
 
         foreach ($expectedHooks as $hookName) {
@@ -86,7 +89,7 @@ class EcommerceInquiryHookListenerTest extends BoardTestCase
             $this->assertSame('filter', $hooks[$hookName]['type'], "훅 {$hookName}은 filter 타입이어야 합니다.");
         }
 
-        $this->assertCount(7, $hooks, '총 7개의 훅이 등록되어 있어야 합니다.');
+        $this->assertCount(8, $hooks, '총 8개의 훅이 등록되어 있어야 합니다.');
     }
 
     // ==========================================
@@ -214,6 +217,65 @@ class EcommerceInquiryHookListenerTest extends BoardTestCase
         ]);
 
         $this->assertNull($result);
+    }
+
+    /**
+     * createAndReturn: 부모에 이미 살아있는 답변이 있으면 중복 생성 차단 → null 반환
+     *
+     * 2차 방어(게시판 실데이터 기준): 피벗 is_answered 플래그가 어긋난 경우에도
+     * 게시판에 중복 답변이 쌓이지 않아야 합니다.
+     */
+    public function test_create_and_return_returns_duplicate_marker_when_parent_already_has_reply(): void
+    {
+        $parentPostId = $this->createTestPost(['title' => '원본 문의']);
+        $this->createTestPost([
+            'title' => 'Re: 원본 문의',
+            'parent_id' => $parentPostId,
+            'depth' => 1,
+        ]);
+
+        $result = $this->listener->createAndReturn(null, $this->board->slug, [
+            'content' => '두 번째 답변 시도',
+            'parent_id' => $parentPostId,
+            'ip_address' => '127.0.0.1',
+        ]);
+
+        // null(무응답/실패)이 아닌 중복 마커 — 호출 서비스가 "이미 등록된 답변" 사유로
+        // 변환한다. null 로 되돌리면 사유가 generic 실패로 위장된다 (PO 실측 제보 회귀).
+        $this->assertSame(
+            ['duplicate' => true],
+            $result,
+            '살아있는 답변이 이미 있으면 중복 마커로 차단되어야 합니다.'
+        );
+    }
+
+    /**
+     * createAndReturn: 기존 답변이 soft delete 된 뒤에는 답변 재등록이 허용된다.
+     *
+     * 중복 차단 판정은 살아있는 답변만 대상으로 해야 합니다 (SoftDeletes 기본 스코프).
+     */
+    public function test_create_and_return_allows_reply_after_previous_reply_soft_deleted(): void
+    {
+        $parentPostId = $this->createTestPost(['title' => '원본 문의']);
+        $replyPostId = $this->createTestPost([
+            'title' => 'Re: 원본 문의',
+            'parent_id' => $parentPostId,
+            'depth' => 1,
+        ]);
+
+        // 기존 답변 soft delete
+        Post::find($replyPostId)->delete();
+
+        $result = $this->listener->createAndReturn(null, $this->board->slug, [
+            'content' => '삭제 후 재등록 답변',
+            'parent_id' => $parentPostId,
+            'ip_address' => '127.0.0.1',
+        ]);
+
+        $this->assertIsArray($result, '기존 답변이 삭제된 뒤에는 답변 재등록이 허용되어야 합니다.');
+        $this->assertArrayHasKey('post_id', $result);
+        $this->assertIsInt($result['post_id']);
+        $this->assertNotSame($replyPostId, $result['post_id']);
     }
 
     // ==========================================
@@ -385,6 +447,27 @@ class EcommerceInquiryHookListenerTest extends BoardTestCase
     }
 
     /**
+     * deletePost: 부모 문의 삭제 시 답글 자식도 함께 cascade soft delete 된다.
+     *
+     * 훅 경유 삭제는 cascade_replies 옵션으로 게시판 답글 삭제 정책과 무관하게
+     * 시스템 생성 답변을 함께 정리해야 합니다.
+     */
+    public function test_delete_post_soft_deletes_reply_children_too(): void
+    {
+        $parentPostId = $this->createTestPost(['title' => '원본 문의']);
+        $replyPostId = $this->createTestPost([
+            'title' => 'Re: 원본 문의',
+            'parent_id' => $parentPostId,
+            'depth' => 1,
+        ]);
+
+        $this->listener->deletePost(null, $this->board->slug, $parentPostId);
+
+        $this->assertSoftDeleted('board_posts', ['id' => $parentPostId]);
+        $this->assertSoftDeleted('board_posts', ['id' => $replyPostId]);
+    }
+
+    /**
      * deletePost: 존재하지 않는 postId → RuntimeException
      */
     public function test_delete_post_throws_runtime_exception_for_nonexistent_post(): void
@@ -423,5 +506,35 @@ class EcommerceInquiryHookListenerTest extends BoardTestCase
 
         $this->assertSame($carry, $result);
         $this->assertSoftDeleted('board_posts', ['id' => $replyPostId]);
+    }
+
+    // ==========================================
+    // countReplies
+    // ==========================================
+
+    /**
+     * countReplies: 살아있는 자식만 집계한다 (soft delete 된 답변 제외).
+     */
+    public function test_count_replies_counts_only_live_children(): void
+    {
+        $parentPostId = $this->createTestPost(['title' => '원본 문의']);
+        $this->createTestPost([
+            'title' => 'Re: 살아있는 답변',
+            'parent_id' => $parentPostId,
+            'depth' => 1,
+        ]);
+        $trashedReplyId = $this->createTestPost([
+            'title' => 'Re: 삭제될 답변',
+            'parent_id' => $parentPostId,
+            'depth' => 1,
+        ]);
+
+        Post::find($trashedReplyId)->delete();
+
+        $this->assertSame(
+            1,
+            $this->listener->countReplies(0, $parentPostId),
+            'soft delete 된 답변은 집계에서 제외되어야 합니다.'
+        );
     }
 }

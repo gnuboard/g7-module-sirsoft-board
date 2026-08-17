@@ -419,6 +419,60 @@ class AttachmentRepository implements AttachmentRepositoryInterface
     }
 
     /**
+     * 여러 게시글의 살아있는 첨부를 cascade 로 일괄 소프트 삭제합니다.
+     *
+     * 답글 트리 연쇄 삭제(softDeleteCascadeByParentId)로 지워지는 자손 게시글들의
+     * 첨부 정리용입니다. 단건 softDeleteByPostId 와 동일한 쿼리를 whereIn 으로 확장했습니다.
+     * 물리 파일은 보존하며 deleted_at 마킹만 수행합니다. (복원 가능성 유지)
+     *
+     * @param  string  $slug  게시판 슬러그
+     * @param  array<int>  $postIds  게시글 ID 배열
+     * @return int 삭제된 첨부 수
+     */
+    public function softDeleteByPostIds(string $slug, array $postIds): int
+    {
+        if ($postIds === []) {
+            return 0;
+        }
+
+        $board = Board::where('slug', $slug)->first();
+
+        return Attachment::where('board_id', $board?->id)
+            ->whereIn('post_id', $postIds)
+            ->update([
+                'trigger_type' => TriggerType::Cascade->value,
+                'deleted_at' => now(),
+            ]);
+    }
+
+    /**
+     * 여러 게시글의 cascade 로 지워진 첨부만 일괄 복원합니다.
+     *
+     * 답글 트리 연쇄 복원(restoreCascadedByParentId)으로 되살아난 자손 게시글들의
+     * 첨부 복원용입니다. 사용자가 직접 지운 첨부(trigger_type='user')는 유지됩니다.
+     *
+     * @param  string  $slug  게시판 슬러그
+     * @param  array<int>  $postIds  게시글 ID 배열
+     * @return int 복원된 첨부 수
+     */
+    public function restoreCascadedByPostIds(string $slug, array $postIds): int
+    {
+        if ($postIds === []) {
+            return 0;
+        }
+
+        $board = Board::where('slug', $slug)->first();
+
+        return Attachment::onlyTrashed()
+            ->where('board_id', $board?->id)
+            ->whereIn('post_id', $postIds)
+            ->where('trigger_type', TriggerType::Cascade->value)
+            ->update([
+                'deleted_at' => null,
+            ]);
+    }
+
+    /**
      * 게시판 ID 기준으로 첨부파일을 일괄 영구 삭제합니다.
      *
      * 게시판 영구 삭제(deleteBoard) 시 사용합니다. 소프트 삭제와 달리

@@ -991,10 +991,11 @@ HTTP/1.1 200
 | 401 | Unauthenticated | 유효한 Bearer 토큰이 없거나 만료된 경우 |
 | 403 | Forbidden | 요구 권한(`sirsoft-board.{slug}.admin.posts.write\|sirsoft-board.{slug}.admin.manage`)이 없는 경우 |
 | 404 | Not Found | path 파라미터에 해당하는 리소스가 없는 경우 |
+| 422 | Unprocessable Entity | 게시판의 답글 삭제 정책(`reply_delete_policy`)이 `block` 이고 대상 글에 살아 있는 답글이 있는 경우 (`답글이 달린 글은 삭제할 수 없습니다. 답글을 먼저 삭제해 주세요.` — `sirsoft-board::validation.post.delete.has_replies`) |
 
 <!-- @generated:end -->
 
-**설명** 게시판 관리자가 게시글 1건을 소프트 삭제합니다. `auth:sanctum` + admin 인증이 필요하며, 라우트 권한은 `posts.write` 또는 `manage`입니다. 컨트롤러가 대상 게시글을 조회한 뒤 세분화된 권한 분기를 적용합니다: `admin.manage`는 모든 글(비회원 글 포함)을, `admin.posts.write`는 본인 글만 삭제할 수 있으며 이미 삭제된 글의 재처리는 `admin.manage`가 필요합니다. `PostService::deletePost()`가 'admin' 컨텍스트로 소프트 삭제를 수행합니다.
+**설명** 게시판 관리자가 게시글 1건을 소프트 삭제합니다. `auth:sanctum` + admin 인증이 필요하며, 라우트 권한은 `posts.write` 또는 `manage`입니다. 컨트롤러가 대상 게시글을 조회한 뒤 세분화된 권한 분기를 적용합니다: `admin.manage`는 모든 글(비회원 글 포함)을, `admin.posts.write`는 본인 글만 삭제할 수 있으며 이미 삭제된 글의 재처리는 `admin.manage`가 필요합니다. `PostService::deletePost()`가 'admin' 컨텍스트로 소프트 삭제를 수행합니다. 삭제 동작은 게시판의 답글 삭제 정책(`reply_delete_policy`)을 따릅니다 — `cascade`(기본)에서는 원글 삭제 시 살아 있는 답글 트리(및 그 답글들의 댓글·첨부)가 함께 소프트 삭제되고 이후 원글을 복원하면 연쇄 삭제분(`trigger_type='cascade'`)만 선택 복원되며, `block` 에서는 살아 있는 직계 답글이 있으면 `before_delete` 훅 발화 전에 차단되어(부수효과 없음) 422 를 반환합니다.
 
 
 ### GET /api/modules/sirsoft-board/admin/board/{slug}/posts/{id}

@@ -189,6 +189,24 @@ interface AttachmentRepositoryInterface
     public function restoreCascadedByPostId(string $slug, int $postId): int;
 
     /**
+     * 여러 게시글의 살아있는 첨부를 cascade 로 일괄 소프트 삭제합니다.
+     *
+     * @param  string  $slug  게시판 슬러그
+     * @param  array<int>  $postIds  게시글 ID 배열
+     * @return int 삭제된 첨부 수
+     */
+    public function softDeleteByPostIds(string $slug, array $postIds): int;
+
+    /**
+     * 여러 게시글의 cascade 로 지워진 첨부만 일괄 복원합니다.
+     *
+     * @param  string  $slug  게시판 슬러그
+     * @param  array<int>  $postIds  게시글 ID 배열
+     * @return int 복원된 첨부 수
+     */
+    public function restoreCascadedByPostIds(string $slug, array $postIds): int;
+
+    /**
      * 게시판 ID 기준으로 첨부파일을 일괄 영구 삭제합니다.
      *
      * 게시판 영구 삭제(deleteBoard) 시 사용합니다. 소프트 삭제와 달리
