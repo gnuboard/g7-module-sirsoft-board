@@ -241,7 +241,7 @@ class EcommerceInquiryHookListenerTest extends BoardTestCase
         ]);
 
         // null(무응답/실패)이 아닌 중복 마커 — 호출 서비스가 "이미 등록된 답변" 사유로
-        // 변환한다. null 로 되돌리면 사유가 generic 실패로 위장된다 (PO 실측 제보 회귀).
+        // 변환한다. null 로 되돌리면 사유가 generic 실패로 위장된다 (운영 실측 제보 회귀).
         $this->assertSame(
             ['duplicate' => true],
             $result,
