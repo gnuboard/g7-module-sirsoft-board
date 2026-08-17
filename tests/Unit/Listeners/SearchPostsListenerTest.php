@@ -266,6 +266,69 @@ class SearchPostsListenerTest extends ModuleTestCase
     }
 
     /**
+     * 제목/본문에 삽입된 태그가 하이라이트 필드에서 이스케이프되는지 확인 (⑧/N-8)
+     *
+     * @scenario case=search_highlight_escape
+     *
+     * @effects highlighted_fields_escaped
+     */
+    public function test_format_post_result_escapes_markup_in_highlighted_fields(): void
+    {
+        $user = User::factory()->make(['id' => 9999]);
+
+        $board = $this->createBoardStub(1, 'notice', '공지사항');
+
+        $this->boardService
+            ->method('getActiveBoardsForSearch')
+            ->willReturn(new Collection([$board]));
+
+        $this->boardService
+            ->method('getActiveBoardsListForFilter')
+            ->willReturn([]);
+
+        $post = (object) [
+            'id' => 1,
+            'title' => '<img src=x onerror=alert(1)> 테스트',
+            // 엔티티로 인코딩된 태그가 html 모드 프리뷰에서 부활하면 안 된다 (N-8).
+            'content' => '&lt;script&gt;alert(1)&lt;/script&gt; 테스트 본문',
+            'content_mode' => 'html',
+            'author_name' => '작성자',
+            'created_at' => now(),
+            'view_count' => 0,
+            'comments_count' => 0,
+            'user' => null,
+            'board' => $this->createBoardStub(1, 'notice', '공지사항'),
+        ];
+
+        $this->postService
+            ->method('searchAcrossBoards')
+            ->willReturn($this->boundedPage(new Collection([$post]), 1));
+
+        Gate::before(fn ($u) => $u->id === 9999 ? true : null);
+
+        $result = $this->listener->searchPosts([], [
+            'type' => 'all',
+            'q' => '테스트',
+            'sort' => 'relevance',
+            'page' => 1,
+            'per_page' => 10,
+            'user' => $user,
+            'request' => null,
+        ]);
+
+        $item = $result['posts']['items'][0];
+
+        // 제목 하이라이트: 태그 이스케이프 + 검색어만 <mark>
+        $this->assertStringNotContainsString('<img', $item['title_highlighted']);
+        $this->assertStringContainsString('&lt;img', $item['title_highlighted']);
+        $this->assertStringContainsString('<mark>테스트</mark>', $item['title_highlighted']);
+
+        // 본문 프리뷰: 부활한 <script> 없음
+        $this->assertStringNotContainsString('<script>', $item['content_preview']);
+        $this->assertStringNotContainsString('<script>', $item['content_preview_highlighted']);
+    }
+
+    /**
      * id를 포함하는 Board 스텁 생성
      *
      * @param  int  $id  게시판 ID

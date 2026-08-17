@@ -256,6 +256,33 @@ class Module extends AbstractModule
                         ],
                     ],
                 ],
+                // 대시보드 조회 권한 (type: admin)
+                [
+                    'identifier' => 'dashboard',
+                    'name' => [
+                        'ko' => '게시판 대시보드',
+                        'en' => 'Board Dashboard',
+                    ],
+                    'description' => [
+                        'ko' => '게시판 대시보드 조회 권한',
+                        'en' => 'Board dashboard view permissions',
+                    ],
+                    'permissions' => [
+                        [
+                            'action' => 'view',
+                            'name' => [
+                                'ko' => '대시보드 조회',
+                                'en' => 'View Dashboard',
+                            ],
+                            'description' => [
+                                'ko' => '게시판 대시보드(현황/추세/최신글/미처리 신고) 조회',
+                                'en' => 'View board dashboard (overview, trend, recent posts, pending reports)',
+                            ],
+                            'type' => 'admin',
+                            'roles' => ['admin', 'manager'],
+                        ],
+                    ],
+                ],
                 // 신고 관리 권한 (type: admin)
                 [
                     'identifier' => 'reports',

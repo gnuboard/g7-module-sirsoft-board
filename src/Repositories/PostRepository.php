@@ -1807,6 +1807,10 @@ class PostRepository implements PostRepositoryInterface
         return Post::query()
             ->whereNull('deleted_at')
             ->whereNull('parent_id')
+            // 노출 제한 필터 — 미발행(블라인드·삭제)·비활성 게시판 글은 대시보드 최신글에서 제외한다.
+            // 비밀글은 제목 공개 정책(2026-01-02)에 따라 관리자에게 제목을 노출한다(제외하지 않음).
+            ->where('status', PostStatus::Published->value)
+            ->whereHas('board', fn ($q) => $q->where('is_active', true))
             ->with(['board', 'user'])
             ->orderByDesc('created_at')
             ->limit($limit)
