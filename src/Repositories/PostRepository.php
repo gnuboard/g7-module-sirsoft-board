@@ -1720,6 +1720,206 @@ class PostRepository implements PostRepositoryInterface
     }
 
     /**
+     * 부모 게시글 ID로 살아있는 답변(자식) 게시글 수를 조회합니다.
+     *
+     * SoftDeletes 전역 스코프가 삭제된 답변을 자동 제외하므로,
+     * "삭제된 답변 후 재등록 허용" 판정의 근거로 사용됩니다.
+     *
+     * @param  int  $parentPostId  부모 게시글 ID
+     * @return int 살아있는 자식 게시글 수
+     */
+    public function countRepliesByParentId(int $parentPostId): int
+    {
+        return Post::where('parent_id', $parentPostId)->count();
+    }
+
+    /**
+     * 게시글에 살아있는 직계 답글이 있는지 확인합니다.
+     *
+     * 답글 삭제 정책(block) 의 차단 판정 기준입니다. 살아있는 자손은 살아있는
+     * 부모 체인이 필요하므로 직계 검사만으로 판정이 완결됩니다.
+     *
+     * @param  string  $slug  게시판 슬러그
+     * @param  int  $postId  게시글 ID
+     * @return bool 살아있는 직계 답글 존재 여부
+     */
+    public function hasAliveReplies(string $slug, int $postId): bool
+    {
+        $board = Board::where('slug', $slug)->first();
+
+        return Post::where('board_id', $board?->id)
+            ->where('parent_id', $postId)
+            ->exists();
+    }
+
+    /**
+     * 게시글의 전체 자손(답글 트리) ID 를 수집합니다.
+     *
+     * 반복 BFS + 방문 ID 집합 가드로 순환 데이터에서도 유한 종료를 보장합니다(규정).
+     * 삭제된 중간 노드 밑의 자손도 도달해야 하므로 순회는 withTrashed 로 수행합니다
+     * (끊긴 체인 밑 과거 고아 스윕의 전제).
+     *
+     * @param  string  $slug  게시판 슬러그
+     * @param  int  $postId  루트 게시글 ID
+     * @return array<int> 자손 게시글 ID 배열 (루트 미포함)
+     */
+    public function collectDescendantIds(string $slug, int $postId): array
+    {
+        $board = Board::where('slug', $slug)->first();
+
+        if ($board === null) {
+            return [];
+        }
+
+        $visited = [$postId => true];
+        $frontier = [$postId];
+        $descendants = [];
+
+        while ($frontier !== []) {
+            $children = Post::withTrashed()
+                ->where('board_id', $board->id)
+                ->whereIn('parent_id', $frontier)
+                ->pluck('id')
+                ->all();
+
+            $next = [];
+            foreach ($children as $childId) {
+                if (isset($visited[$childId])) {
+                    continue;
+                }
+                $visited[$childId] = true;
+                $next[] = $childId;
+                $descendants[] = $childId;
+            }
+
+            $frontier = $next;
+        }
+
+        return $descendants;
+    }
+
+    /**
+     * 게시글의 살아있는 자손 답글 전체를 cascade 로 일괄 소프트 삭제합니다.
+     *
+     * 자손 중 살아있는 것만 단일 UPDATE 로 `status='deleted', trigger_type='cascade',
+     * deleted_at=now()` 마킹합니다 (status 포함: 관리자 삭제 탭 필터가 status 기준).
+     * 이미 trashed 인 자손(trigger 'user' 등)은 기본 스코프 밖이라 변조되지 않습니다.
+     * 작업 이력(action_log)은 부모에만 남깁니다 — 댓글 cascade 와 동일한 규약입니다.
+     *
+     * @param  string  $slug  게시판 슬러그
+     * @param  int  $postId  부모 게시글 ID
+     * @return array<int> 소프트 삭제된 자손 게시글 ID 배열
+     */
+    public function softDeleteCascadeByParentId(string $slug, int $postId): array
+    {
+        $descendantIds = $this->collectDescendantIds($slug, $postId);
+
+        if ($descendantIds === []) {
+            return [];
+        }
+
+        // 살아있는 자손만 선별 (기본 스코프가 trashed 제외)
+        $aliveIds = Post::whereIn('id', $descendantIds)->pluck('id')->all();
+
+        if ($aliveIds === []) {
+            return [];
+        }
+
+        Post::whereIn('id', $aliveIds)->update([
+            'status' => PostStatus::Deleted->value,
+            'trigger_type' => TriggerType::Cascade->value,
+            'deleted_at' => now(),
+        ]);
+
+        return $aliveIds;
+    }
+
+    /**
+     * 게시글 복원 시, cascade 로 지워진 자손 답글만 top-down 으로 선택 복원합니다.
+     *
+     * 레벨 순회 + 방문 가드: 각 레벨에서 `parent_id ∈ (복원됨 ∪ alive)` 인
+     * cascade-trashed 자손만 복원합니다. 사용자 직접 삭제('user')로 trashed 인
+     * 중간 노드는 복원되지 않고 그 서브트리도 그대로 유지됩니다(고아 재생성 금지).
+     *
+     * 트레이드오프(의도): 삭제 전 blinded 였던 자손도 복원 시 published 가 됩니다 —
+     * 부모 restorePost 의 기존 의미론(updateStatus published)과 동일합니다.
+     *
+     * @param  string  $slug  게시판 슬러그
+     * @param  int  $postId  복원된 부모 게시글 ID
+     * @return array<int> 복원된 자손 게시글 ID 배열
+     */
+    public function restoreCascadedByParentId(string $slug, int $postId): array
+    {
+        $board = Board::where('slug', $slug)->first();
+
+        if ($board === null) {
+            return [];
+        }
+
+        $visited = [$postId => true];
+        $frontier = [$postId];
+        $restored = [];
+
+        while ($frontier !== []) {
+            // 이미 살아있는 자식 — 더 깊은 레벨의 cascade 복원 통로로만 사용
+            $aliveChildren = Post::where('board_id', $board->id)
+                ->whereIn('parent_id', $frontier)
+                ->pluck('id')
+                ->all();
+
+            // cascade 로 지워진 자식만 복원 대상
+            $toRestore = Post::onlyTrashed()
+                ->where('board_id', $board->id)
+                ->whereIn('parent_id', $frontier)
+                ->where('trigger_type', TriggerType::Cascade->value)
+                ->pluck('id')
+                ->all();
+
+            if ($toRestore !== []) {
+                Post::onlyTrashed()->whereIn('id', $toRestore)->update([
+                    'status' => PostStatus::Published->value,
+                    'deleted_at' => null,
+                ]);
+                $restored = array_merge($restored, $toRestore);
+            }
+
+            $next = [];
+            foreach (array_merge($aliveChildren, $toRestore) as $childId) {
+                if (isset($visited[$childId])) {
+                    continue;
+                }
+                $visited[$childId] = true;
+                $next[] = $childId;
+            }
+
+            $frontier = $next;
+        }
+
+        return $restored;
+    }
+
+    /**
+     * 게시판의 전체 게시글 ID 를 청크 단위로 순회하며 콜백에 전달합니다.
+     *
+     * 게시판 삭제 벌크 훅(board.posts.before_force_delete)의 페이로드 공급용입니다.
+     * withTrashed 포함(삭제 대상은 trashed 도 물리 제거되므로), chunkById(키셋) 로
+     * OFFSET 밀림 없이 순회합니다.
+     *
+     * @param  int  $boardId  게시판 ID
+     * @param  int  $size  청크 크기
+     * @param  callable  $callback  청크마다 호출될 콜백 (int[] $postIds)
+     */
+    public function eachIdChunkByBoardId(int $boardId, int $size, callable $callback): void
+    {
+        Post::withTrashed()
+            ->where('board_id', $boardId)
+            ->select('id')
+            ->chunkById($size, function ($posts) use ($callback) {
+                $callback($posts->pluck('id')->all());
+            });
+    }
+
+    /**
      * 비활성 게시판 ID 목록을 조회합니다.
      *
      * boards 테이블은 소규모(~수십 건)이므로 단순 쿼리로 충분합니다.

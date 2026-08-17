@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Modules\Sirsoft\Board\Exceptions\CommentDepthExceededException;
 use Modules\Sirsoft\Board\Exceptions\PostNotCommentableException;
+use Modules\Sirsoft\Board\Http\Requests\DestroyCommentRequest;
 use Modules\Sirsoft\Board\Http\Requests\StoreCommentRequest;
 use Modules\Sirsoft\Board\Http\Requests\UpdateCommentRequest;
 use Modules\Sirsoft\Board\Http\Requests\VerifyCommentPasswordRequest;
@@ -221,12 +222,13 @@ class CommentController extends PublicBaseController
     /**
      * 댓글을 삭제합니다.
      *
+     * @param  DestroyCommentRequest  $request  댓글 삭제 요청 (비회원 password 형식 검증)
      * @param  string  $slug  게시판 slug
      * @param  int  $postId  게시글 ID
      * @param  int  $commentId  댓글 ID
      * @return JsonResponse 댓글 삭제 결과 응답
      */
-    public function destroy(string $slug, int $postId, int $commentId): JsonResponse
+    public function destroy(DestroyCommentRequest $request, string $slug, int $postId, int $commentId): JsonResponse
     {
         try {
             $board = $this->boardService->getBoardBySlug($slug, checkScope: false);
@@ -242,8 +244,8 @@ class CommentController extends PublicBaseController
             // 경로의 게시글에 속한 댓글만 조회 (교차 게시글 접근 차단)
             $comment = $this->commentService->getComment($slug, $commentId, $postId);
 
-            // 비회원인 경우 password 파라미터 필요
-            $password = request()->input('password');
+            // 비회원인 경우 password 파라미터 필요 (형식 검증은 DestroyCommentRequest — 배열 주입 422 차단)
+            $password = $request->validated('password');
 
             // 권한 확인 (Service에서 처리)
             $canDelete = $this->commentService->canDelete(

@@ -13,7 +13,7 @@ use App\Extension\Traits\ClearsTemplateCaches;
 use App\Helpers\PermissionHelper;
 use App\Models\Menu;
 use App\Models\Role;
-use App\Models\User;
+use App\Repositories\Concerns\ResolvesSortSpec;
 use App\Services\MenuService;
 use App\Services\RoleService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -42,6 +42,26 @@ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 class BoardService
 {
     use ClearsTemplateCaches;
+    use ResolvesSortSpec;
+
+    /**
+     * 관리자 게시판 목록 정렬 허용 컬럼 화이트리스트
+     *
+     * IndexBoardRequest 의 sort_by in: 목록과 동일해야 한다 (화면 ⊆ 게이트 ⊆ 저장소).
+     * `name` 은 JSON 다국어 컬럼이라 제외한다.
+     *
+     * @var array<int, string>
+     */
+    private const BOARD_SORT_COLUMNS = [
+        'id',
+        'slug',
+        'type',
+        'is_active',
+        'posts_count',
+        'comments_count',
+        'created_at',
+        'updated_at',
+    ];
 
     /**
      * BoardService 생성자
@@ -106,13 +126,21 @@ class BoardService
             });
         }
 
-        // 정렬
-        $sortBy = $filters['sort_by'] ?? 'created_at';
-        $sortOrder = $filters['sort_order'] ?? 'desc';
-        $query->orderBy($sortBy, $sortOrder);
+        // 정렬 — 요청 유래 값은 닫힌 집합으로만 해석 (미허용 컬럼은 기본값 fallback: 이중 방어)
+        [$sortSpec] = $this->resolveSortSpec(
+            $filters,
+            self::BOARD_SORT_COLUMNS,
+            'created_at',
+        );
+        $query->orderBy($sortSpec['column'], $sortSpec['direction']);
 
-        // 페이지네이션
-        $perPage = $filters['per_page'] ?? 20;
+        // 비고유 컬럼 동률 구간에서도 전순서 보장 (페이지 경계 중복/누락 방지 규정)
+        $query->orderBy('id', 'desc');
+
+        // 페이지네이션 (1~999 클램프 — 게이트 우회 내부 호출 대비 이중 방어)
+        // 상한 999 는 IndexBoardRequest 와 동일해야 한다: 게시판은 운영자 등록
+        // 설정성 테이블이라 전체 목록 셀렉트 소비처(999/200)가 이 값을 쓴다.
+        $perPage = min(max((int) ($filters['per_page'] ?? 20), 1), 999);
 
         return $query->paginate($perPage);
     }
@@ -532,6 +560,15 @@ class BoardService
             // (소프트 삭제 시 게시판이 사라진 뒤 접근 불가한 고아 데이터로 잔존)
             $this->attachmentRepository->forceDeleteByBoardId($board->id);
             $this->commentRepository->forceDeleteByBoardId($board->id);
+
+            // 2-1. 훅: 삭제될 글 ID 목록을 연동 확장에 통지 (이커머스 문의 피벗 정리 등)
+            // withTrashed 전체를 1,000건 chunk 당 1회씩 다회 발화한다 — 리스너는 멱등 의무.
+            // 트랜잭션 내부 발화라 게시판 삭제와 원자적이다. per-post after_delete 훅을
+            // 재사용하지 않는 이유: 글마다 모델 로드 N회 + 소프트/하드 삭제 의미 불일치.
+            $this->postRepository->eachIdChunkByBoardId($board->id, 1000, function (array $postIds) use ($board) {
+                HookManager::doAction('sirsoft-board.board.posts.before_force_delete', $board, $postIds);
+            });
+
             $this->postRepository->forceDeleteByBoardId($board->id);
 
             // 3. 게시판 권한 삭제 (그누보드7 규정: detach 후 삭제)
@@ -742,7 +779,7 @@ class BoardService
             }
 
             // 그누보드7 규정: detach 후 삭제
-            $role->permissions()->detach();
+            $this->roleRepository->detachAllPermissions($role);
             $role->users()->detach();
             $this->roleRepository->delete($role);
         }

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Modules\Sirsoft\Board\Enums\PostStatus;
 use Modules\Sirsoft\Board\Exceptions\AttachmentLimitExceededException;
 use Modules\Sirsoft\Board\Exceptions\BoardNotFoundException;
+use Modules\Sirsoft\Board\Exceptions\PostHasRepliesException;
 use Modules\Sirsoft\Board\Exceptions\PostNotFoundException;
 use Modules\Sirsoft\Board\Http\Requests\Admin\PostFormDataRequest;
 use Modules\Sirsoft\Board\Http\Requests\Admin\PostFormMetaRequest;
@@ -315,6 +316,9 @@ class PostController extends AdminBaseController
                 'sirsoft-board::messages.posts.delete_success',
                 new PostResource($deletedPost)
             );
+        } catch (PostHasRepliesException $e) {
+            // 답글 삭제 정책(block): 살아있는 답글이 있어 삭제 거부 — 입력(대상 선택) 문제이므로 422
+            return $this->error($e->getMessageKey(), 422);
         } catch (ModelNotFoundException $e) {
             throw new PostNotFoundException($id);
         } catch (AccessDeniedHttpException $e) {

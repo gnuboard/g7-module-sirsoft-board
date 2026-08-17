@@ -84,6 +84,7 @@
     "max_content_length": "Maximum Content Length",
     "use_reply": "Enable Reply Posts",
     "max_reply_depth": "Max Reply Depth",
+    "reply_delete_policy": "Reply Delete Policy",
     "use_comment": "Enable Comments",
     "comment_order": "Comment Sort Order",
     "min_comment_length": "Min Comment Length",
@@ -172,6 +173,7 @@
       "max_content_length": "Set the maximum character count for post content ({{min}}–{{max}})",
       "use_reply": "Must be ON to apply reply post feature to new boards.",
       "max_reply_depth": "Set the maximum nesting depth for replies ({{min}}–{{max}})",
+      "reply_delete_policy": "Set what happens when deleting a post that has replies",
       "blocked_keywords": "Posts or comments containing registered keywords will be blocked",
       "use_comment": "Must be ON to apply comment feature to new boards. Comment detail settings below will also apply.",
       "comment_order": "Set the default sort direction for comments",
@@ -202,6 +204,10 @@
       "disabled": "Disabled",
       "enabled": "Optional",
       "always": "Always Secret"
+    },
+    "reply_delete_policy": {
+      "block": "Block deletion",
+      "cascade": "Delete together"
     },
     "order_by": {
       "created_at": "Latest",
@@ -287,6 +293,7 @@
       "use_comment": "Enable Comments",
       "use_reply": "Enable Replies",
       "max_reply_depth": "Max Reply Depth",
+      "reply_delete_policy": "Reply Delete Policy",
       "max_comment_depth": "Max Comment Depth",
       "comment_order": "Comment Sort Order",
       "show_view_count": "Show View Count",

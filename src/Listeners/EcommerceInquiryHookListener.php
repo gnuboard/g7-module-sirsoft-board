@@ -85,6 +85,12 @@ class EcommerceInquiryHookListener implements HookListenerInterface
                 'priority' => 10,
                 'type' => 'filter',
             ],
+            // 이커머스 → 게시판: 살아있는 답변 수 조회 (Filter 훅)
+            'sirsoft-ecommerce.inquiry.count_replies' => [
+                'method' => 'countReplies',
+                'priority' => 10,
+                'type' => 'filter',
+            ],
         ];
     }
 
@@ -107,7 +113,8 @@ class EcommerceInquiryHookListener implements HookListenerInterface
      * @param  mixed  $carry  이전 필터 결과 (초기값: null)
      * @param  string  $slug  게시판 슬러그
      * @param  array  $data  게시글 생성 데이터
-     * @return array|null 성공 시 ['post_id' => int, 'inquirable_type' => string], 실패 시 null
+     * @return array|null 성공 시 ['post_id' => int, 'inquirable_type' => string],
+     *                    중복 답변 차단 시 ['duplicate' => true], 실패 시 null
      */
     public function createAndReturn(mixed $carry, string $slug, array $data): ?array
     {
@@ -122,6 +129,20 @@ class EcommerceInquiryHookListener implements HookListenerInterface
             // 주입한다 — Listener 는 request() 를 직접 참조하지 않는다(입력 우회 방지).
             if (empty($data['ip_address'])) {
                 $data['ip_address'] = '0.0.0.0';
+            }
+
+            // 2차 방어(게시판 실데이터): 이미 살아있는 답변이 있는 부모에는 자식 Post 생성 거부.
+            // 1차 방어(피벗 is_answered)는 서비스가 담당하지만, API 동시 호출/직접 호출로
+            // 플래그가 어긋난 경우에도 게시판에 중복 답변이 쌓이지 않도록 여기서 최종 차단한다.
+            if (! empty($data['parent_id']) && $this->postRepository->findFirstReplyWithBoard((int) $data['parent_id']) !== null) {
+                Log::warning('EcommerceInquiryHookListener: 기존 답변이 있는 문의에 중복 답변 생성 시도 차단', [
+                    'slug' => $slug,
+                    'parent_id' => $data['parent_id'],
+                ]);
+
+                // null(훅 무응답/실패)과 구분되는 중복 마커 — 호출 서비스가 이 마커로
+                // "이미 등록된 답변" 사유를 사용자에게 그대로 안내한다.
+                return ['duplicate' => true];
             }
 
             // parent_id 있으면 답변글 → 부모 Post 제목으로 Re: 원글제목 설정
@@ -342,8 +363,14 @@ class EcommerceInquiryHookListener implements HookListenerInterface
                 throw new ModelNotFoundException("Post {$postId} or its board could not be found.");
             }
 
-            // 이커머스 경로: 알림 발송 SKIP (createPost와 동일한 skip_notification 패턴)
-            $this->postService->deletePost($post->board->slug, $postId, options: ['skip_notification' => true]);
+            // 이커머스 경로: 알림 발송 SKIP (createPost와 동일한 skip_notification 패턴).
+            // cascade_replies: 훅 경유 삭제는 게시판 답글 삭제 정책(block)과 무관하게 답변을
+            // 함께 정리한다 — 문의 답변은 시스템 생성이므로 정책에 막히면 안 되고,
+            // 기설치본의 다건 고아 답변도 cascade 스윕이 함께 정리한다.
+            $this->postService->deletePost($post->board->slug, $postId, options: [
+                'skip_notification' => true,
+                'cascade_replies' => true,
+            ]);
         } catch (ModelNotFoundException $e) {
             Log::warning('EcommerceInquiryHookListener: Post 삭제 실패 - 게시글 또는 게시판 없음', [
                 'post_id' => $postId,
@@ -446,8 +473,12 @@ class EcommerceInquiryHookListener implements HookListenerInterface
                 throw new ModelNotFoundException("Reply Post {$reply->id}'s board could not be found.");
             }
 
-            // 이커머스 경로: 알림 발송 SKIP (createPost와 동일한 skip_notification 패턴)
-            $this->postService->deletePost($reply->board->slug, $reply->id, options: ['skip_notification' => true]);
+            // 이커머스 경로: 알림 발송 SKIP (createPost와 동일한 skip_notification 패턴).
+            // cascade_replies: 답변 밑에 달린 자식 글까지 함께 정리 (정책 무관 — 시스템 생성 답변)
+            $this->postService->deletePost($reply->board->slug, $reply->id, options: [
+                'skip_notification' => true,
+                'cascade_replies' => true,
+            ]);
         } catch (\RuntimeException $e) {
             throw $e;
         } catch (ModelNotFoundException $e) {
@@ -471,6 +502,31 @@ class EcommerceInquiryHookListener implements HookListenerInterface
         }
 
         return $carry;
+    }
+
+    /**
+     * 부모 문의 Post 의 살아있는 답변 수 반환 (`sirsoft-ecommerce.inquiry.count_replies` 필터 훅)
+     *
+     * 이커머스 모듈이 답변 삭제 후 `is_answered` 재계산, 게시판 직권 삭제 시 답변완료
+     * 해제 판정에 사용합니다. SoftDeletes 전역 스코프가 삭제된 답변을 제외하므로
+     * "살아있는 답변" 만 집계됩니다.
+     *
+     * @param  mixed  $carry  이전 필터 결과 (초기값: 0)
+     * @param  int  $parentPostId  부모 문의 Post ID
+     * @return int 살아있는 답변 수 (조회 실패 시 이전 필터 결과 유지)
+     */
+    public function countReplies(mixed $carry, int $parentPostId): int
+    {
+        try {
+            return $this->postRepository->countRepliesByParentId($parentPostId);
+        } catch (\Exception $e) {
+            Log::error('EcommerceInquiryHookListener: 답변 수 조회 실패', [
+                'parent_post_id' => $parentPostId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return (int) $carry;
+        }
     }
 
     // ─── 내부 유틸리티 ────────────────────────────────────────
