@@ -189,12 +189,22 @@ class CommentController extends PublicBaseController
                 $slug
             );
 
+            // 비회원 댓글: 평문 비밀번호 재전송 대신 검증 토큰으로도 본인 확인 (게시글과 동형)
+            if (! $canUpdate && $request->filled('verification_token')) {
+                $canUpdate = $this->commentService->consumeCommentVerifyToken(
+                    $slug,
+                    $commentId,
+                    (string) $request->input('verification_token')
+                );
+            }
+
             if (! $canUpdate) {
                 return $this->forbidden('sirsoft-board::messages.comment.update_forbidden');
             }
 
-            // 검증된 필드만 반영 (미검증 입력의 대량 할당 차단). password는 검증용이므로 제거
-            $data = collect($request->validated())->except('password')->toArray();
+            // 검증된 필드만 반영 (미검증 입력의 대량 할당 차단).
+            // password/verification_token 은 본인 확인용이므로 저장 데이터에서 제거
+            $data = collect($request->validated())->except(['password', 'verification_token'])->toArray();
             $updatedComment = $this->commentService->updateComment($slug, $commentId, $data, $postId);
 
             return $this->successWithResource(
@@ -243,6 +253,16 @@ class CommentController extends PublicBaseController
                 $slug
             );
 
+            // 비회원 댓글: 평문 비밀번호 재전송 대신 검증 토큰으로도 본인 확인 (게시글과 동형)
+            $verificationToken = request()->input('verification_token');
+            if (! $canDelete && ! empty($verificationToken)) {
+                $canDelete = $this->commentService->consumeCommentVerifyToken(
+                    $slug,
+                    $commentId,
+                    (string) $verificationToken
+                );
+            }
+
             if (! $canDelete) {
                 return $this->forbidden('sirsoft-board::messages.comment.delete_forbidden');
             }
@@ -288,16 +308,18 @@ class CommentController extends PublicBaseController
                 return $this->error('sirsoft-board::messages.comment.invalid_password', 401);
             }
 
-            // 검증 성공 시 임시 토큰 생성 (프론트엔드에서 로컬 스토리지에 저장)
+            // 검증 성공 시 1회용 토큰을 발급하고 캐시에 저장한다.
+            // (게시글과 동형 — update/destroy 가 이 토큰을 소비해 평문 비밀번호 재전송을 대체)
             $verificationToken = Str::random(32);
+            $tokenResult = $this->commentService->storeCommentVerifyToken($slug, $commentId, $verificationToken);
 
             return $this->success(
                 'sirsoft-board::messages.comment.password_verified',
                 [
                     'verified' => true,
                     'comment_id' => $commentId,
-                    'verification_token' => $verificationToken,
-                    'expires_at' => now()->addHours(1)->toIso8601String(), // 1시간 유효
+                    'verification_token' => $tokenResult['token'],
+                    'expires_at' => $tokenResult['expires_at'],
                 ]
             );
         } catch (ModelNotFoundException) {

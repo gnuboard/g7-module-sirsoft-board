@@ -127,6 +127,21 @@ class BoardRepository implements BoardRepositoryInterface
     }
 
     /**
+     * 게시판을 영구 삭제합니다.
+     *
+     * @param  int  $id  게시판 ID
+     * @return bool 삭제 성공 여부
+     *
+     * @throws ModelNotFoundException
+     */
+    public function forceDelete(int $id): bool
+    {
+        $board = $this->findOrFail($id);
+
+        return (bool) $board->forceDelete();
+    }
+
+    /**
      * 모든 게시판을 조회합니다.
      *
      * @return Collection 게시판 컬렉션
@@ -222,6 +237,8 @@ class BoardRepository implements BoardRepositoryInterface
                 ->whereNull('deleted_at')
                 ->whereNull('parent_id')
                 ->where('status', 'published')
+                // 비밀글도 제목은 공개한다(본문만 보호) — 2026-02-04 확정 정책. 목록/검색/홈과 동일.
+                // 게시판별 열람 권한은 BoardService::getCachedRecentPosts 가 응답 시점에 적용한다.
                 ->orderBy('created_at', 'desc')
                 ->limit($limit)
         );
