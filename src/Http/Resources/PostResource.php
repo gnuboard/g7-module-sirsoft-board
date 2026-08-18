@@ -539,6 +539,13 @@ class PostResource extends BaseApiResource
             return null;
         }
 
+        // 비밀글·삭제글 첨부는 무서명 preview 가 서빙 게이트에 차단되므로,
+        // 이 직렬화(게이트 통과가 확인된 응답)에 한해 <img> 렌더 가능한
+        // 한시 서명 preview URL 을 발급한다. 정상글은 무서명 공개 URL 유지.
+        $signedPreviewSlug = ($this->deleted_at || $this->is_secret)
+            ? ($slug ?? $this->getSlug($request))
+            : null;
+
         // 삭제된 게시글: 관리 권한자가 아니면 첨부 목록 미노출.
         // 단, 게시글 삭제로 함께 숨겨진(cascade) 첨부는 사용자가 직접 지운 것이 아니므로
         // 글을 볼 수 있는 사람에게는 노출한다 (cascade 댓글 노출과 일관).
@@ -548,14 +555,14 @@ class PostResource extends BaseApiResource
                     && $attachment->trigger_type === TriggerType::Cascade->value
             )->values();
 
-            return AttachmentResource::collection($cascadeAttachments);
+            return AttachmentResource::collectionFor($cascadeAttachments, $signedPreviewSlug);
         }
 
         if ($this->is_secret && ! $this->canViewSecretContent($request, $slug)) {
             return [];
         }
 
-        return AttachmentResource::collection($this->attachments);
+        return AttachmentResource::collectionFor($this->attachments, $signedPreviewSlug);
     }
 
     // =========================================================================

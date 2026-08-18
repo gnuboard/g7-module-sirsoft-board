@@ -853,11 +853,17 @@ class AttachmentService
      * 컨트롤러에서 fileResponse()로 캐싱 헤더와 함께 응답할 수 있도록
      * 파일 경로와 메타 정보를 반환합니다.
      *
+     * $signatureVerified 는 요청 URL 의 한시 서명이 검증된 경우다 — 서명은
+     * 비밀글·삭제글 게이트를 통과한 응답 직렬화(PostResource)만 발급하므로,
+     * 검증된 서명은 그 게이트 통과 자격의 위임으로 보고 콘텐츠 상태 게이트를
+     * 재적용하지 않는다 (<img> 는 인증 헤더를 실을 수 없는 렌더 경로).
+     *
      * @param  string  $slug  게시판 슬러그
      * @param  int  $id  첨부파일 ID
+     * @param  bool  $signatureVerified  한시 서명 검증 통과 여부
      * @return array{path: string, mime_type: string, filename: string}|null 파일 정보 또는 null
      */
-    public function getFileInfo(string $slug, int $id): ?array
+    public function getFileInfo(string $slug, int $id, bool $signatureVerified = false): ?array
     {
         $attachment = $this->repository->findById($slug, $id);
 
@@ -865,11 +871,13 @@ class AttachmentService
             return null;
         }
 
-        // 삭제된 게시글의 첨부파일은 관리 권한자만 접근
-        $this->assertDeletedPostAttachmentAccess($slug, $attachment);
+        if (! $signatureVerified) {
+            // 삭제된 게시글의 첨부파일은 관리 권한자만 접근
+            $this->assertDeletedPostAttachmentAccess($slug, $attachment);
 
-        // 비밀글 첨부파일은 열람 권한자만 접근
-        $this->assertSecretPostAttachmentAccess($slug, $attachment);
+            // 비밀글 첨부파일은 열람 권한자만 접근
+            $this->assertSecretPostAttachmentAccess($slug, $attachment);
+        }
 
         // 파일 존재 확인
         if (! $this->storage->exists('attachments', $attachment->path)) {

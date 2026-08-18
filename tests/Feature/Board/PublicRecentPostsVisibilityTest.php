@@ -108,6 +108,54 @@ class PublicRecentPostsVisibilityTest extends ModuleTestCase
         $this->assertNotContains('비밀글읽기가능', $titles);
     }
 
+    // ========== 게시판 디렉토리(boards index + 내장 최근글) ==========
+    //
+    // 최근글·인기글·인기게시판·대시보드에는 열람 권한 필터가 적용되었지만,
+    // 게시판 디렉토리(GET /boards?limit=N)는 활성 게시판 전체 + 내장 최근글 제목을
+    // 무필터로 직렬화해 우회로가 남아 있었다 (7.0.7 사전점검 SEO 봇 렌더 실측 발견 —
+    // 게스트 홈 화면에 회원전용 게시판 글 제목이 노출).
+
+    /**
+     * @scenario case=board_directory_readable_filter
+     *
+     * @effects board_directory_excludes_unreadable_board_and_posts
+     */
+    #[Test]
+    public function guest_board_directory_excludes_unreadable_board_and_its_post_titles(): void
+    {
+        $response = $this->getJson('/api/modules/sirsoft-board/boards?limit=3');
+        $response->assertStatus(200);
+
+        $slugs = array_column($response->json('data'), 'slug');
+        $this->assertContains($this->readableBoard->slug, $slugs);
+        $this->assertNotContains($this->hiddenBoard->slug, $slugs, '읽기 권한 없는 게시판은 디렉토리에 노출되면 안 된다.');
+
+        // 내장 최근글 제목까지 전수 검사 — 게시판 행이 아닌 다른 경로로도 새면 안 된다
+        $raw = json_encode($response->json('data'), JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('공개글읽기가능', $raw);
+        $this->assertStringNotContainsString('숨김게시판글', $raw, '읽기 권한 없는 게시판의 글 제목이 디렉토리 응답에 노출되면 안 된다.');
+    }
+
+    /**
+     * @scenario case=board_directory_readable_filter
+     *
+     * @effects board_directory_includes_readable_board_for_permitted_member
+     */
+    #[Test]
+    public function member_with_read_permission_sees_restricted_board_in_directory(): void
+    {
+        $member = $this->memberWithReadOn($this->hiddenBoard->slug);
+
+        $response = $this->actingAs($member)->getJson('/api/modules/sirsoft-board/boards?limit=3');
+        $response->assertStatus(200);
+
+        $slugs = array_column($response->json('data'), 'slug');
+        $this->assertContains($this->hiddenBoard->slug, $slugs, '열람 권한을 가진 회원에게는 해당 게시판이 디렉토리에 보여야 한다.');
+
+        $raw = json_encode($response->json('data'), JSON_UNESCAPED_UNICODE);
+        $this->assertStringContainsString('숨김게시판글', $raw, '열람 권한자는 그 게시판의 최근글 제목도 볼 수 있어야 한다.');
+    }
+
     // ========== 헬퍼 ==========
 
     /**

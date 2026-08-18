@@ -19,13 +19,17 @@ description: |
   - ⑧: 검색 하이라이트가 원문을 이스케이프하지 않던 문제 — 코어 SearchHighlighter 위임.
 
 axes:
-  case: [recent_readable_filter, popular_readable_filter, popular_boards_readable, available_boards_guest, available_boards_member, available_boards_bearer_http, dashboard_permission_gate, dashboard_recent_visibility, pending_reports_scope, comment_token_lifecycle, search_highlight_escape]
+  case: [recent_readable_filter, popular_readable_filter, popular_boards_readable, available_boards_guest, available_boards_member, available_boards_bearer_http, dashboard_permission_gate, dashboard_recent_visibility, pending_reports_scope, comment_token_lifecycle, search_highlight_escape, board_directory_readable_filter]
 
 exclusions: []
 
 effects:
   - unreadable_board_titles_absent_for_caller
   - popular_boards_exclude_unreadable
+  # 게시판 디렉토리(boards index + 내장 최근글) — 최근글·인기글·인기게시판에 필터가 걸린 뒤에도
+  # 이 경로가 무필터로 남아 비공개 게시판·글 제목의 우회 노출로였다 (7.0.7 사전점검 SEO 실측 발견)
+  - board_directory_excludes_unreadable_board_and_posts
+  - board_directory_includes_readable_board_for_permitted_member
   - available_boards_match_read_permission
   - search_route_resolves_bearer_user
   - dashboard_requires_view_permission

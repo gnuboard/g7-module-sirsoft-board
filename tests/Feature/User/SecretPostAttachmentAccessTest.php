@@ -9,6 +9,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
 use Modules\Sirsoft\Board\Tests\BoardTestCase;
 
 /**
@@ -305,5 +306,138 @@ class SecretPostAttachmentAccessTest extends BoardTestCase
 
         $this->assertNotSame(403, $response->getStatusCode(), '정상글 첨부는 권한 차단되면 안 됩니다');
         $this->assertLessThan(500, $response->getStatusCode(), '게이트 통과 시 서버 오류가 아니어야 합니다');
+    }
+
+    // ==========================================
+    // 서명 preview URL (비밀글 <img> 썸네일 렌더 경로)
+    //
+    // 브라우저 <img src> 는 Authorization 헤더를 실을 수 없어, 비밀 게이트 도입 후
+    // 열람 권한자(작성자·manager) 화면의 비밀글 첨부 썸네일이 무인증 요청 → 403 으로
+    // 깨졌다. 게이트를 통과한 응답 직렬화(PostResource)가 한시 서명 URL 을 발급하고,
+    // 서빙 엔드포인트가 유효 서명을 허용한다 — 무서명 게이트는 종전과 동일하다.
+    // ==========================================
+
+    /**
+     * 서명 preview URL 을 만든다.
+     *
+     * @param  string  $hash  첨부 해시
+     * @param  int  $minutes  유효 시간(분, 음수면 만료된 URL)
+     * @return string 상대경로 서명 URL
+     */
+    private function signedPreviewUrl(string $hash, int $minutes = 30): string
+    {
+        return URL::temporarySignedRoute(
+            'api.modules.sirsoft-board.boards.attachment.preview',
+            now()->addMinutes($minutes),
+            ['slug' => $this->board->slug, 'hash' => $hash],
+            absolute: false
+        );
+    }
+
+    /**
+     * 유효한 한시 서명 preview URL 은 무인증(게스트) 요청도 비밀 게이트를 통과한다.
+     *
+     * @scenario viewer=guest
+     *
+     * @effects guest_with_valid_signature_passes_secret_preview_gate
+     */
+    public function test_guest_with_valid_signed_url_passes_secret_preview_gate(): void
+    {
+        $postId = $this->secretPost();
+        $this->createAttachment($postId, 'secsignedAAA', image: true);
+
+        $response = $this->get($this->signedPreviewUrl('secsignedAAA'));
+
+        // 실제 파일이 없어 404 여도 403(비밀 차단)은 아니어야 한다
+        $this->assertNotSame(403, $response->getStatusCode(), '유효 서명 URL 은 비밀 게이트를 통과해야 합니다');
+        $this->assertLessThan(500, $response->getStatusCode(), '게이트 통과 시 서버 오류가 아니어야 합니다');
+    }
+
+    /**
+     * 변조된 서명 preview URL 은 종전과 동일하게 비밀 게이트에 차단된다 (403).
+     *
+     * @scenario viewer=guest
+     *
+     * @effects guest_with_tampered_signature_still_blocked
+     */
+    public function test_guest_with_tampered_signature_still_blocked(): void
+    {
+        $postId = $this->secretPost();
+        $this->createAttachment($postId, 'sectamperAAA', image: true);
+
+        $tampered = preg_replace_callback(
+            '/(signature=)([0-9a-f]+)/',
+            fn ($m) => $m[1].substr($m[2], 0, -8).strrev(substr($m[2], -8)),
+            $this->signedPreviewUrl('sectamperAAA')
+        );
+
+        $this->get($tampered)->assertStatus(403);
+    }
+
+    /**
+     * 만료된 서명 preview URL 은 비밀 게이트에 차단된다 (403, 한시성 보장).
+     *
+     * @scenario viewer=guest
+     *
+     * @effects guest_with_expired_signature_still_blocked
+     */
+    public function test_guest_with_expired_signature_still_blocked(): void
+    {
+        $postId = $this->secretPost();
+        $this->createAttachment($postId, 'secexpireAAA', image: true);
+
+        $this->get($this->signedPreviewUrl('secexpireAAA', minutes: -1))->assertStatus(403);
+    }
+
+    /**
+     * 열람 권한자(작성자)에게 직렬화되는 비밀글 상세 응답의 첨부 preview_url 은
+     * 한시 서명 URL 이고, 그 URL 은 무인증 <img> 요청으로도 게이트를 통과한다
+     * (렌더 계약의 양끝 검증).
+     *
+     * @scenario viewer=owner
+     *
+     * @effects secret_post_detail_serializes_signed_preview_url
+     */
+    public function test_secret_post_detail_serializes_signed_preview_url_for_owner(): void
+    {
+        $postId = $this->secretPost();
+        $this->createAttachment($postId, 'secserialAAA', image: true);
+
+        $previewUrl = $this->actingAs($this->ownerUser, 'sanctum')
+            ->getJson("/api/modules/sirsoft-board/boards/{$this->board->slug}/posts/{$postId}")
+            ->assertStatus(200)
+            ->json('data.attachments.0.preview_url');
+
+        $this->assertIsString($previewUrl);
+        $this->assertStringContainsString('signature=', $previewUrl);
+
+        $response = $this->get($previewUrl);
+        $this->assertNotSame(403, $response->getStatusCode(), '직렬화된 서명 URL 은 무인증 게이트를 통과해야 합니다');
+        $this->assertLessThan(500, $response->getStatusCode(), '게이트 통과 시 서버 오류가 아니어야 합니다');
+    }
+
+    /**
+     * 정상글(비밀 아님) 상세 응답의 첨부 preview_url 은 종전과 동일한 무서명
+     * 공개 hash 경로다 (공개 콘텐츠에 만료성 URL 이 섞이는 회귀 방지).
+     *
+     * @scenario viewer=regular
+     *
+     * @effects normal_post_detail_serializes_plain_preview_url
+     */
+    public function test_normal_post_detail_serializes_plain_preview_url(): void
+    {
+        $postId = $this->createTestPost([
+            'title' => '정상글 첨부 직렬화',
+            'status' => 'published',
+            'is_secret' => false,
+        ]);
+        $this->createAttachment($postId, 'normserialAA', image: true);
+
+        $previewUrl = $this->actingAs($this->regularUser, 'sanctum')
+            ->getJson("/api/modules/sirsoft-board/boards/{$this->board->slug}/posts/{$postId}")
+            ->assertStatus(200)
+            ->json('data.attachments.0.preview_url');
+
+        $this->assertSame($this->previewUrl('normserialAA'), $previewUrl);
     }
 }

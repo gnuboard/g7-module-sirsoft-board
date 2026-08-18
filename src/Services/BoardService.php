@@ -200,6 +200,29 @@ class BoardService
     }
 
     /**
+     * 활성 게시판 중 호출자가 열람할 수 있는 게시판만 조회합니다.
+     *
+     * 게시판 디렉토리(전체 게시판 목록 + 내장 최근글)처럼 비로그인에게도 열리는
+     * 응답에 사용합니다 — 최근글·인기글·인기게시판과 동일한 열람 권한 기준
+     * (sirsoft-board.{slug}.posts.read)을 호출자 시점에 적용해, 디렉토리 경로가
+     * 비공개 게시판·글 제목의 우회 노출로가 되지 않게 합니다.
+     *
+     * @param  string  $orderBy  정렬 기준 컬럼
+     * @param  string  $orderDirection  정렬 방향
+     * @return Collection 호출자가 열람 가능한 활성 게시판 컬렉션
+     */
+    public function getReadableActiveBoards(
+        string $orderBy = 'created_at',
+        string $orderDirection = 'desc'
+    ): Collection {
+        $user = Auth::user();
+
+        return $this->getActiveBoards($orderBy, $orderDirection)
+            ->filter(fn ($board) => PermissionHelper::check("sirsoft-board.{$board->slug}.posts.read", $user))
+            ->values();
+    }
+
+    /**
      * 메뉴용 경량 게시판 목록을 조회합니다.
      *
      * id, name, slug만 조회하며 posts COUNT 쿼리를 실행하지 않습니다.
