@@ -2,8 +2,8 @@
 
 namespace Modules\Sirsoft\Board\Models;
 
-use App\Helpers\InlineMediaPolicy;
 use App\Models\User;
+use App\Support\AssetUrl;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -33,7 +33,6 @@ use Illuminate\Support\Str;
  * @property int $order
  * @property array|null $meta
  * @property int|null $created_by
- * @property string|null $guest_owner_hash
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
@@ -45,21 +44,6 @@ use Illuminate\Support\Str;
 class Attachment extends Model
 {
     use HasFactory, SoftDeletes;
-
-    /**
-     * 본문 미디어(편집기 본문에 넣은 이미지·동영상) 컬렉션.
-     *
-     * 첨부 목록에 보이지 않고 첨부 개수 상한에도 세지 않는다. 일반 첨부 업로드(`UploadAttachmentRequest`)는
-     * 이 이름을 쓸 수 없다 — 클라이언트가 컬렉션 이름을 정하면 상한을 피해 갈 수 있다(#883).
-     */
-    public const COLLECTION_CONTENT_MEDIA = 'content_media';
-
-    /**
-     * 일반 첨부 업로드가 쓸 수 없는 예약 컬렉션 — 첨부 개수 상한 집계에서도 뺀다.
-     *
-     * @var array<int, string>
-     */
-    public const RESERVED_COLLECTIONS = [self::COLLECTION_CONTENT_MEDIA];
 
     /**
      * 테이블명
@@ -96,25 +80,11 @@ class Attachment extends Model
         'order',
         'meta',
         'created_by',
-        'guest_owner_hash',
         'trigger_type',
     ];
 
     /**
-     * 직렬화에서 숨길 속성
-     *
-     * 비회원 소유 증명 해시는 응답(첨부 목록·업로드 응답·메타)에 싣지 않는다 — 해시라도 소유 판정 재료다.
-     *
-     * @var array<int, string>
-     */
-    protected $hidden = [
-        'guest_owner_hash',
-    ];
-
-    /**
      * 속성 캐스팅
-     *
-     * @return array
      */
     protected function casts(): array
     {
@@ -131,8 +101,6 @@ class Attachment extends Model
 
     /**
      * 모델 부트 메서드
-     *
-     * @return void
      */
     protected static function boot(): void
     {
@@ -202,7 +170,12 @@ class Attachment extends Model
 
         // route() 생성은 빈 슬러그(미해석 board)에서 예외가 되므로 문자열 조립을 유지한다
         // — 빈 슬러그 허용은 AttachmentPreviewUrlTest 가 고정한 기존 계약이다.
-        return '/api/modules/sirsoft-board/boards/'.$boardSlug.'/attachment/'.$this->hash;
+        //
+        // 마운트 접두사는 손조립이 놓치는 축이다. 코어 형제(`App\Models\Attachment`)가
+        // 같은 사유로 이미 `AssetUrl::basePrefix()` 를 붙였는데 이 확장만 빠져 있었다 —
+        // 소비 지점이 `Img.src` 라 라우터를 거치지 않아 접두사를 붙일 주체가 여기밖에
+        // 없고, 하위 폴더 배치에서는 오류 없이 첨부가 전부 깨진다.
+        return AssetUrl::basePrefix().'/api/modules/sirsoft-board/boards/'.$boardSlug.'/attachment/'.$this->hash;
     }
 
     /**
@@ -251,7 +224,11 @@ class Attachment extends Model
 
         // route() 생성은 빈 슬러그(미해석 board)에서 예외가 되므로 문자열 조립을 유지한다
         // — 빈 슬러그 허용은 AttachmentPreviewUrlTest 가 고정한 기존 계약이다.
-        return '/api/modules/sirsoft-board/boards/'.$slug.'/attachment/'.$this->hash.'/preview';
+        //
+        // 접두사 사유는 위 `getDownloadUrlAttribute` 와 같다. 서명 분기(위)는 여기서
+        // 건드리지 않는다 — 그 값은 Laravel 이 서명한 경로이고 검증 쪽이 같은 값을
+        // 재조립하므로, 접두사를 이 자리에서 덧붙이면 서명이 어긋난다.
+        return AssetUrl::basePrefix().'/api/modules/sirsoft-board/boards/'.$slug.'/attachment/'.$this->hash.'/preview';
     }
 
     /**
@@ -263,15 +240,13 @@ class Attachment extends Model
     public const SIGNED_PREVIEW_TTL_MINUTES = 30;
 
     /**
-     * 인라인 표시 가능한 이미지 여부 확인
+     * 이미지 여부 확인
      *
-     * 스크립트를 품을 수 있는 SVG 는 이미지가 아닌 파일로 취급한다 (InlineMediaPolicy — KVE-2026-2366).
-     *
-     * @return bool 래스터 이미지 여부
+     * @return bool 이미지 여부
      */
     public function getIsImageAttribute(): bool
     {
-        return InlineMediaPolicy::isInlineImage($this->mime_type);
+        return str_starts_with($this->mime_type, 'image/');
     }
 
     /**

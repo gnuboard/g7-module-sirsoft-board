@@ -18,9 +18,6 @@ use Modules\Sirsoft\Board\Tests\BoardTestCase;
  * - 공지글 네비게이션 미제공 (prev/next 모두 null)
  * - 첫 번째 글 prev=null, 마지막 글 next=null
  * - 존재하지 않는 게시글 → 404
- *
- * @effects navigation_boundary_null,
- *   navigation_null_for_notice
  */
 class PostNavigationApiTest extends BoardTestCase
 {
@@ -94,6 +91,9 @@ class PostNavigationApiTest extends BoardTestCase
     /**
      * 목록의 첫 번째 글(가장 최신 = id가 가장 큰)은 prev가 null인지 검증
      */
+    /**
+     * @effects navigation_boundary_null
+     */
     public function test_first_post_has_null_prev(): void
     {
         // Given
@@ -113,6 +113,9 @@ class PostNavigationApiTest extends BoardTestCase
 
     /**
      * 목록의 마지막 글(가장 오래된 = id가 가장 작은)은 next가 null인지 검증
+     */
+    /**
+     * @effects navigation_boundary_null
      */
     public function test_last_post_has_null_next(): void
     {
@@ -152,6 +155,11 @@ class PostNavigationApiTest extends BoardTestCase
 
     /**
      * 공지글은 navigation 미제공 — prev/next 모두 null 반환
+     */
+    /**
+     * @scenario post_kind=notice
+     *
+     * @effects navigation_null_for_notice
      */
     public function test_notice_post_returns_null_navigation(): void
     {

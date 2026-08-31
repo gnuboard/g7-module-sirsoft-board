@@ -1,3 +1,6 @@
+// @scenario board-identity-policy-source-filter
+// (매니페스트 소속 표기 — 회차 16 W6: 선언된 파일은 마킹을 최소 1개 가진다)
+
 // e2e:allow 관리자 설정 전용 partial(출처필터 제거·목적박스 유지)은 레이아웃 렌더 테스트로 검증, develop 출시 동작 머지 복구라 신규 E2E 불요
 /**
  * 본인인증 정책 데이터소스/네비게이션의 source_identifier 형식 회귀 테스트.
@@ -6,10 +9,6 @@
  *   `source_identifier: "module:sirsoft-board"` (잘못된 접두사 포함) 으로 필터하여
  *   DB 의 `source_identifier='sirsoft-board'` (모듈 식별자만 저장) 와 매칭되지 않아
  *   정책 목록이 항상 비어있던 문제.
- *
- * @effects source_type_filter_removed_from_dom,
- *   scope_filter_remains_functional,
- *   search_filter_remains_functional
  */
 
 import { describe, it, expect } from 'vitest';

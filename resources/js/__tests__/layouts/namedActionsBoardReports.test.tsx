@@ -1,3 +1,6 @@
+// @scenario board-reports-search
+// (매니페스트 소속 표기 — 회차 16 W6: 선언된 파일은 마킹을 최소 1개 가진다)
+
 /**
  * 게시판 신고현황 named_actions 검증 테스트
  *
@@ -6,11 +9,6 @@
  * - Desktop/Mobile Enter keypress + 검색 버튼 click이 actionRef 참조하는지 검증
  *
  * @vitest-environment jsdom
- *
- * @effects search_keyword_propagated_to_url_query,
- *   search_field_propagated_to_url_query,
- *   mobile_search_propagates_to_url_query,
- *   search_input_value_retained_after_navigation
  */
 
 import { describe, it, expect } from 'vitest';

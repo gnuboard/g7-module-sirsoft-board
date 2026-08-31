@@ -1,4 +1,5 @@
-# audit:allow test-scenario-coverage reason: |
+# audit:allow test-scenario-coverage reason: issue:#609 |
+# audit:allow scenario-referenced-test-file-marked reason: issue:#609 형제 표식(test-scenario-coverage)의 유예를 명시 승계 — 15차 F-21 에서 표식 연쇄를 끊으며 이 룰의 유예를 자기 표식으로 옮겼다. 선언한 test_files 의 @scenario/@effects 마킹은 후속
 #   axes 의 cross product 27 case 는 표현용으로 폭이 넓지만 의미 있는 입력 조합은 5개 내외다.
 #   비즈니스 로직 effects (총 합계 / 변화율 분기 / 빈 상태 / 카운트 배지) 는 PHPUnit Unit
 #   (BoardDashboardServiceTest) + Feature (DashboardApiTest) 로 단언이 끝나고, 레이아웃
@@ -56,13 +57,6 @@ effects:
   - quick_menu_buttons_hidden_when_module_inactive
   - community_section_hidden_when_module_inactive
   - non_admin_blocked_from_dashboard
-  # 서비스·커맨드·API 단위 계약 (K2 2026-10-06 — 집계 「오늘」을 사이트 표준시로 바꾸면서 테스트별 매핑을 붙였다)
-  - overview_zero_when_today_row_missing
-  - post_graph_change_rate_vs_previous_week
-  - board_stats_aggregate_upserts_recent_days_only
-  - board_stats_aggregate_idempotent
-  - aggregate_command_dry_run_persists_nothing
-  - recent_posts_limit_validated
 
 test_files:
   - modules/_bundled/sirsoft-board/tests/Feature/Admin/DashboardApiTest.php

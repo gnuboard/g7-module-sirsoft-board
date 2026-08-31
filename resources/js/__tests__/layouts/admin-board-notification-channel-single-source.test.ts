@@ -2,7 +2,7 @@
  * @file admin-board-notification-channel-single-source.test.ts
  * @description 게시판 환경설정 알림 정의 탭 — 채널 표현식 단일 출처 회귀 테스트
  *
- * 회귀 배경 (#518 실측 결함):
+ * 회귀 배경 (#518 3차 실측 결함 #1):
  * 알림 정의 탭의 채널은 URL(`query.channel`)과 페이지 로컬 상태(`_local.activeNotificationChannel`)
  * 두 곳에서 읽히고 있었다. 두 값은 갱신 시점이 다르다 — 다른 설정 탭에 갔다 돌아오면 URL 의
  * channel 은 사라지지만(탭 전환은 목록 상태를 승계하지 않는다) `_local` 은 이전 채널로 남는다.
@@ -23,7 +23,8 @@
  * 그래서 아래 두 단언은 소비와 전송을 **함께** 묶는다: templates 를 읽는 화면이면
  * 그 채널을 서버에 넘겨야 한다.
  *
- * @scenario resource=board_notification_definition,endpoint=admin_settings,observation=consumer_screen
+ * 대상(마커 아님 — 평문): board_notification_definition · admin_settings · consumer_screen.
+ * @scenario board-notification-definition-channel-contract
  * @effects board_notification_channel_reads_single_source, board_notification_list_requests_template_channel, board_notification_reset_button_uses_server_aggregate
  */
 
@@ -84,9 +85,6 @@ function readLayout(filePath: string): Record<string, any> {
 }
 
 describe('게시판 알림 정의 탭 — 채널 단일 출처 (#518)', () => {
-    /**
-     * @effects board_notification_channel_reads_single_source
-     */
     it('채널 표현식이 URL 만 읽는다', () => {
         const bindings = [
             ...collectBindings(readLayout(SETTINGS_LAYOUT)),
@@ -108,9 +106,6 @@ describe('게시판 알림 정의 탭 — 채널 단일 출처 (#518)', () => {
         ).toEqual([]);
     });
 
-    /**
-     * @effects board_notification_channel_reads_single_source
-     */
     it('채널 전환은 URL 만 갱신한다 (로컬 상태에 복제하지 않는다)', () => {
         const raw = fs.readFileSync(NOTIFICATION_TAB, 'utf-8');
 
@@ -143,9 +138,6 @@ describe('게시판 알림 정의 탭 — 서버 채널 필터 정합 (#518)', (
         return source;
     }
 
-    /**
-     * @effects board_notification_list_requests_template_channel
-     */
     it('templates 를 그리는 화면이면 목록 요청에 template_channel 을 보낸다', () => {
         const consumesTemplates = collectBindings(readLayout(NOTIFICATION_TAB)).some((binding) =>
             /def\.templates/.test(binding),
@@ -164,9 +156,6 @@ describe('게시판 알림 정의 탭 — 서버 채널 필터 정합 (#518)', (
         ).toBeDefined();
     });
 
-    /**
-     * @effects board_notification_list_requests_template_channel
-     */
     it('서버에 넘기는 채널과 화면이 찾는 채널이 같은 표현식이다', () => {
         const sent = findDefinitionsDataSource().params.template_channel;
 
@@ -184,9 +173,6 @@ describe('게시판 알림 정의 탭 — 서버 채널 필터 정합 (#518)', (
         ).toBe(screenChannel!.trim());
     });
 
-    /**
-     * @effects board_notification_reset_button_uses_server_aggregate
-     */
     it('되돌리기 버튼은 서버 집계(has_customized_templates)로 판정한다', () => {
         const raw = fs.readFileSync(NOTIFICATION_TAB, 'utf-8');
 
